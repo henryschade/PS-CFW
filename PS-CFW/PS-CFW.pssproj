@@ -26,7 +26,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Documentation\" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="AD-Routines.ps1" />
     <Compile Include="Common.ps1" />
@@ -40,6 +42,9 @@
     <Compile Include="Groups.ps1" />
     <Compile Include="Jobs.ps1" />
     <Compile Include="Machine.ps1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Documentation\HowToVS.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Target Name="Build" />

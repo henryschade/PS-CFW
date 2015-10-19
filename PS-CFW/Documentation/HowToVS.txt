@@ -4,3 +4,14 @@ http://rickrainey.com/2013/07/27/visual-studio-and-gitub-the-basics-of-working-w
 Could also be useful:
 https://github.com/mono/MonoGame/wiki/Tutorials:-Getting-Started-on-Windows-with-Visual-Studio
 http://stackoverflow.com/questions/19982053/how-do-i-add-an-existing-solution-to-github-from-visual-studio-2013
+
+
+1) Open VS 2013+.
+2) Open Team Explorer.
+3) Connect to team projects.
+4) Clone.
+	a) HTTPS URL to GitHub Repository.					("https://github.com/henryschade/PS-CFW.git")
+	b) Local path to new Project/Developement space.	("C:\Projects\PS-Scripts\PS-CFW")
+5) Click Clone.
+6) Home button in Team Explorer.
+7) 
