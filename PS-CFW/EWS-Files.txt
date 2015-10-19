@@ -1,0 +1,118 @@
+###########################################
+# Updated Date:	15 July 2015
+# Purpose:		Backup files to/from specified locations.
+# Requires:
+##########################################
+
+
+	function DoTheBackUp{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strSourceDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDestDir
+		)
+
+		#For the isNumeric() routine.
+		. C:\Projects\PS-Scripts\PS-Common.ps1;
+
+		if (($strSourceDir.Trim() -eq "") -or ($strSourceDir -eq $null)){
+			$strSourceDir = Read-Host "What is the Source Directory? `r`n  (defaults to: C:\Projects\PS-Scripts\) `r`n";
+			if (($strSourceDir.Trim() -eq "") -or ($strSourceDir -eq $null)){
+				$strSourceDir = "C:\Projects\PS-Scripts\";
+			}
+		}
+		if (($strDestDir.Trim() -eq "") -or ($strDestDir -eq $null)){
+			$strDestDir = Read-Host "What is the Destination Directory? `r`n  (defaults to: \\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\PS-Scripts\) `r`n";
+			if (($strDestDir.Trim() -eq "") -or ($strDestDir -eq $null)){
+				$strDestDir = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\PS-Scripts\";
+			}
+		}
+
+		if (!($strSourceDir.EndsWith("\"))){
+			$strSourceDir = $strSourceDir + "\";
+		}
+		if (!($strDestDir.EndsWith("\"))){
+			$strDestDir = $strDestDir + "\";
+		}
+
+		$objSrcSubItems = Get-ChildItem $strSourceDir -Force;		#force is necessary to get hidden files/folders
+		$objDestSubItems = Get-ChildItem $strDestDir -Force;		#force is necessary to get hidden files/folders
+
+		foreach ($objSrcItem in $objSrcSubItems){
+			if (($objSrcItem -ne "") -and ($objSrcItem -ne $null)){
+				#Write-Host $objSrcItem.PSIsContainer;
+				if ($objSrcItem.PSIsContainer -eq $False){
+					#A File
+					if ((!($objSrcItem.Name.EndsWith(".lnk"))) -and ((isNumeric $objSrcItem.Name.SubString(0, 2)) -eq $False)){
+						<#
+						#Write-Host $objSrcItem;			#Same as .Name
+						#Write-Host $objSrcItem.Name;
+						#Write-Host $objSrcItem.FullName;
+						#Write-Host $objSrcItem.Attributes;
+						#Write-Host $objSrcItem.Length;
+						#Write-Host $objSrcItem.CreationTime;
+						#Write-Host $objSrcItem.LastWriteTime;
+						#Write-Host $objSrcItem.LastAccessTime;
+						#Write-Host $objSrcItem.VersionInfo;
+
+						#(Get-Date -format "MM/dd/yyyy")
+						#(Get-Date).ToString("yyyyMMdd")
+						#$intTime = ([System.DateTime]::Now - $dteStart).TotalMinutes;
+						#$intTime = [Math]::Round($intTime, 2);
+						#>
+
+						if (([System.DateTime]::Now - $objSrcItem.LastWriteTime).TotalDays -lt 1){
+							#Write-Host $objSrcItem.Name "  " ([Math]::Round(([System.DateTime]::Now - $objSrcItem.LastWriteTime).TotalHours, 3)) " Hours";
+							$bolFoundFile = $False;
+							foreach ($objDestItem in $objDestSubItems){
+								if ($objSrcItem.Name -eq $objDestItem.Name){
+									#Found the file in the Destination Directory.
+									$bolFoundFile = $True;
+									if ($objSrcItem.LastWriteTime -gt $objDestItem.LastWriteTime){
+										#Source file is newer
+										Write-Host $objSrcItem.Name "(" $objSrcItem.LastWriteTime ") is newer than " $objDestItem.Name "(" $objDestItem.LastWriteTime ")";
+
+										#Check if have a backup file.
+										$strDateCode = (Get-Date).ToString("yyyyMMdd");
+										if (!(Test-Path -Path ($strDestDir + $strDateCode + "_" + $objSrcItem.Name))){
+											Write-Host "  Creating backup file. `r`n" $objSrcItem.Name;
+											Copy-Item -Path $objSrcItem.FullName -Destination ($strDestDir + $strDateCode + "_" + $objSrcItem.Name);
+										}
+										Copy-Item -Path $objSrcItem.FullName -Destination $objDestItem.FullName;
+									}
+								}
+
+								if ($bolFoundFile -eq $True){
+									break;
+								}
+							}
+							if ($bolFoundFile -eq $False){
+								Write-Host $objSrcItem.Name " was not found in the destination directory.";
+								Write-Host "Do you want to copy this file? `r`n [Y]es or [N]o"
+								$objResponse = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
+								if ($objResponse.Character -eq "Y"){
+									Write-Host "Copying " $objSrcItem.Name;
+									Copy-Item -Path $objSrcItem.FullName -Destination $objDestItem.FullName;
+								}
+							}
+						}else{
+							#More than 1 day old.
+							#Write-Host $objSrcItem.Name "  " ([Math]::Round(([System.DateTime]::Now - $objSrcItem.LastWriteTime).TotalDays, 3)) " Days";
+						}
+					}
+				}else{
+					#A Directory
+				}
+			}
+		}
+	}
+
+
+	if (($args[0] -ne "") -and ($args[0] -ne $null)){
+		#Write-Host "Args is: " $args[0];
+		if (($args[1] -ne "") -and ($args[1] -ne $null)){
+			#Write-Host "Args is: " $args[1];
+			DoTheBackUp $args[0] $args[1];
+		}else{
+			DoTheBackUp $args[0];
+		}
+	}

@@ -28,7 +28,18 @@
   </PropertyGroup>
   <ItemGroup />
   <ItemGroup>
-    <Compile Include="Script.ps1" />
+    <Compile Include="AD-Routines.ps1" />
+    <Compile Include="Common.ps1" />
+    <Compile Include="DB-Routines.ps1" />
+    <Compile Include="Display.ps1" />
+    <Compile Include="EWS-Files.txt" />
+    <Compile Include="Excel.ps1" />
+    <Compile Include="Exchange.ps1" />
+    <Compile Include="FileOperations.ps1" />
+    <Compile Include="Forms.ps1" />
+    <Compile Include="Groups.ps1" />
+    <Compile Include="Jobs.ps1" />
+    <Compile Include="Machine.ps1" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Target Name="Build" />
