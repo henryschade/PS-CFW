@@ -1,6 +1,7 @@
 ###########################################
 # Updated Date:	17 July 2015
 # Purpose:		Routines that require a Computer, or that interact w/ a Computer.
+# Requirements: None
 ##########################################
 
 	function CheckIfOnline($strComp){

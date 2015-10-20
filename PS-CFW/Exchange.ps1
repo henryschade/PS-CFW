@@ -1,7 +1,7 @@
 ###########################################
 # Updated Date:	10 August 2015
 # Purpose:		Exchange routines.
-# Requires:		.\EWS-Files.txt  ($strEWSFiles)
+# Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process, and the following need to be defined/setup: $global:objJobs, and $global:objExchPool.
 #				UpdateResults() is a routine in AScII and Exchange-GUI.
 ##########################################

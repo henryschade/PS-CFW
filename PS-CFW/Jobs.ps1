@@ -12,6 +12,7 @@
 #				#http://www.nivot.org/post/2009/01/22/CTP3TheRunspaceFactoryAndPowerShellAccelerators
 #				#http://msdn.microsoft.com/en-us/library/system.management.automation.runspaces.runspacefactory.createrunspacepool(v=vs.85).aspx
 #				#http://thesurlyadmin.com/2013/02/11/multithreading-powershell-scripts/
+# Requirements: PowerShell v2.0+
 ##########################################
 
 	function CheckJob{

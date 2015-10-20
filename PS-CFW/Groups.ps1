@@ -1,5 +1,5 @@
 ####################################################
-# Updated Date:	23 July 2015
+# Updated Date:		23 July 2015
 # Purpose:			Group (AD and Exchange) routines.
 # Requirements:		AddUserToGroup(), CreateGroup() require "PS-AD-Routines.ps1".
 ####################################################

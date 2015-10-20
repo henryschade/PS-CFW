@@ -11,7 +11,7 @@ http://stackoverflow.com/questions/19982053/how-do-i-add-an-existing-solution-to
 3) Connect to team projects.
 4) Clone.
 	a) HTTPS URL to GitHub Repository.					("https://github.com/henryschade/PS-CFW.git")
-	b) Local path to new Project/Developement space.	("C:\Projects\PS-Scripts\PS-CFW")
+	b) Local path to new Project/Developement space.	("C:\Projects\PS-CFW")
 5) Click Clone.
 6) Home button in Team Explorer.
 7) 
