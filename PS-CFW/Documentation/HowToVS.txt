@@ -14,4 +14,4 @@ http://stackoverflow.com/questions/19982053/how-do-i-add-an-existing-solution-to
 	b) Local path to new Project/Developement space.	("C:\Projects\PS-CFW")
 5) Click Clone.
 6) Home button in Team Explorer.
-7) 
+7) Changes.
