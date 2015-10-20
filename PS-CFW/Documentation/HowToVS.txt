@@ -6,6 +6,9 @@ https://github.com/mono/MonoGame/wiki/Tutorials:-Getting-Started-on-Windows-with
 http://stackoverflow.com/questions/19982053/how-do-i-add-an-existing-solution-to-github-from-visual-studio-2013
 
 
+The following is based loosly off of the instructions found at:
+	https://github.com/mono/MonoGame/wiki/Tutorials:-Getting-Started-on-Windows-with-Visual-Studio
+
 1) Open VS 2013+.
 2) Open Team Explorer.
 3) Connect to team projects.
@@ -14,4 +17,5 @@ http://stackoverflow.com/questions/19982053/how-do-i-add-an-existing-solution-to
 	b) Local path to new Project/Developement space.	("C:\Projects\PS-CFW")
 5) Click Clone.
 6) Home button in Team Explorer.
-7) 
+7) Changes (I think).
+8) 
