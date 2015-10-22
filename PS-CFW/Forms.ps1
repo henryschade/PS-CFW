@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	24 September 2015
+# Updated Date:	22 October 2015
 # Purpose:		My functions to create PS Forms and Controls
 # Web sites that helped me:
 #				http://bytecookie.wordpress.com/2011/07/17/gui-creation-with-powershell-the-basics/
@@ -417,6 +417,11 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strCodeFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][Int]$intVarScope = 1
 		)
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters passed in.
+			#$objReturn.Results		= $True or $False.  Was the routine successful.
+			#$objReturn.Message		= "Success" or the error message.
+			#$objReturn.Returns		= The GUI/Interface object.
 		#$strFormFile = The full path to the XAML GUI file.  i.e. "C:\Projects\PS-Scripts\Testing\SourceCodeGUI.xaml";
 		#$strCodeFile = The full path to the file with all the functions/events.  i.e."C:\Projects\PS-Scripts\Testing\PS-SourceCodeGUI.ps1";
 		#$intVarScope = The Scope to create the GUI variables at. (0 through the number of scopes, where 0 is the current scope and 1 is its parent)
