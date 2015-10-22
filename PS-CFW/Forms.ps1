@@ -1,7 +1,6 @@
 ###########################################
-# Updated Date:	5 June 2015
+# Updated Date:	24 September 2015
 # Purpose:		My functions to create PS Forms and Controls
-# Requirements: None
 # Web sites that helped me:
 #				http://bytecookie.wordpress.com/2011/07/17/gui-creation-with-powershell-the-basics/
 #				http://blogs.technet.com/b/heyscriptingguy/archive/2011/07/24/create-a-simple-graphical-interface-for-a-powershell-script.aspx
@@ -18,11 +17,16 @@
 #					List an objects Properties/Events/Methods/etc:  -  http://stackoverflow.com/questions/7377959/how-to-find-properties-of-an-object
 ##########################################
 
-	#Import the Assemblies
-	#Add-Type -AssemblyName System.Windows.Forms;
+	#See PS-SourceCodeGUI.ps1 for a sample of how to use GetXAMLGUI().
+		#$strCodeFile1 = "C:\Projects\PS-Scripts\Testing\PS-SourceCodeGUI.ps1";
+		#$strFormFile1 = "C:\Projects\PS-Scripts\Testing\SourceCodeGUI.xaml";
+		#$objRet = GetXAMLGUI $strFormFile1 $strCodeFile1;
+		#$objRet.Returns.ShowDialog() | Out-Null;
+		#$txbSrcChanges.Text = "Changed";
+		#$objRet.Returns.Close();
 
-	#[Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null;
-	#[Reflection.Assembly]::LoadWithPartialName("System.Drawing") | Out-Null;
+	#Import the necessary libraries.
+	#Add-Type -AssemblyName System.Windows.Forms;
 
 	#loading the necessary .net libraries (using void to suppress output)
 	[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms");
@@ -407,6 +411,197 @@
 
 	}
 
+	Function GetXAMLGUI{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFormFile, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strCodeFile, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][Int]$intVarScope = 1
+		)
+		#$strFormFile = The full path to the XAML GUI file.  i.e. "C:\Projects\PS-Scripts\Testing\SourceCodeGUI.xaml";
+		#$strCodeFile = The full path to the file with all the functions/events.  i.e."C:\Projects\PS-Scripts\Testing\PS-SourceCodeGUI.ps1";
+		#$intVarScope = The Scope to create the GUI variables at. (0 through the number of scopes, where 0 is the current scope and 1 is its parent)
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $False
+			Message = "Error"
+			Returns = "";
+		}
+
+		#[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework');
+		Add-Type -AssemblyName presentationframework;
+		if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -eq "STA"){
+			#PowerShell.exe –sta doesn’t load up WPF’s assemblies, so need these two as well.
+			Add-Type -AssemblyName PresentationCore;
+			Add-Type -AssemblyName WindowsBase;
+		}
+
+		$objNS = $null;
+
+		#Get the list of functions.
+		[Array]$arrFunctionList = Get-Content $strCodeFile | Where-Object {(($_ -like "*function *") -and ($_ -like "*{") -and ($_ -like "*_*") -and (!($_ -like "*#*")))};
+		[System.Collections.ArrayList]$arrFunctionList = $arrFunctionList;
+		for ($intX = 0; $intX -lt $arrFunctionList.Count; $intX++){
+			$arrFunctionList[$intX] = $arrFunctionList[$intX] -Replace "function ", "";		#This uses Regular expressions
+			$arrFunctionList[$intX] = $arrFunctionList[$intX] -Replace "\{", "";			#This uses Regular expressions
+			$arrFunctionList[$intX] = $arrFunctionList[$intX].Trim();
+		}
+
+		#Get and Prep the XAML file.
+		#[xml]$objXAMLFile = [System.IO.File]::ReadAllLines($strFormFile);
+		#If the XAML has a [ x:Class="xxxxxxxx"] block need to remove it.
+		[string]$objXAMLFile = "";
+		foreach ($strLine in [System.IO.File]::ReadAllLines($strFormFile)){
+			if (($strLine -ne $null) -and ($strLine -ne "")){
+				$strLine = $strLine.Replace(" x:", " ");
+
+				#The Class entry is at the end of the line in all my samples so far.
+				if ($strLine.Contains("x:Class")){
+					$strLine = $strLine.SubString(0, ($strLine.IndexOf("x:Class") - 1));
+				}
+				if ($strLine.Contains("Class")){
+					$strLine = $strLine.SubString(0, ($strLine.IndexOf("Class") - 1));
+				}
+
+				if ($strLine.Contains("xmlns")){
+					#http://blogs.technet.com/b/georgewallace/archive/2014/11/13/using-selectsinglenode-in-powershell-with-xml-namespace-azure-vnetconfig.aspx
+					#If the XML (XAML) includes a default namespace, you must add a prefix and namespace URI.
+					#https://msdn.microsoft.com/en-us/library/h0hw012b(v=vs.110).aspx
+					$objNS = $True;
+				}
+			}
+
+			$objXAMLFile = $objXAMLFile + $strLine;
+		}
+		[xml]$objXAMLFile = $objXAMLFile;
+
+		#If the XAML includes a default namespace, you must add a prefix and namespace URI.
+		#if (($objXAMLFile.DocumentElement.NamespaceURI -ne "") -and ($objXAMLFile.DocumentElement.NamespaceURI -ne $null)){
+		if ($objNS -eq $True){
+			#XmlNamespaceManager nsmgr = new XmlNamespaceManager(doc.NameTable);
+			$objNS = New-Object System.Xml.XmlNamespaceManager($objXAMLFile.NameTable);
+			#nsmgr.AddNamespace("ab", "http://www.lucernepublishing.com");
+			$objNS.AddNamespace("ns", $objXAMLFile.DocumentElement.NamespaceURI);
+		}
+
+		#Read in the XAML.
+		$objReader = (New-Object System.Xml.XmlNodeReader $objXAMLFile);
+		$Error.Clear();
+		#PowerShell needs to run in STA mode to display Windows Presentation Foundation (WPF) windows.
+			#$host.Runspace.ApartmentState;
+			#[System.Threading.Thread]::CurrentThread.GetApartmentState();
+		#For info about STA vs. MTA:
+		#http://stackoverflow.com/questions/127188/could-you-explain-sta-and-mta
+		$objForm = [Windows.Markup.XamlReader]::Load($objReader);
+		if ($Error){
+			$strMessage = "Unable to load Windows.Markup.XamlReader.";
+			if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne "STA"){
+				$strMessage = $strMessage + "`r`n" + "The PowerShell environment needs to be in 'STA' mode.";
+			}else{
+				$strMessage = $strMessage + "`r`n" + "The .NET Framework could be missing and/or Invalid XAML code was encountered.";
+			}
+			$objReturn.Message = $strMessage + "`r`n`r`n" + $Error;
+
+			##http://powershell.com/cs/blogs/tips/archive/2011/01/17/checking-sta-mode.aspx
+			#if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne "STA"){
+			#	#Get Script path and name.
+			#	$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
+
+			#	$strMessage = "The PowerShell environment needs to be in 'STA' mode, so restarting.";
+			#	#WriteLogFile $strMessage $strLogDirL $strLogFile;
+			#	Write-Host $strMessage -foregroundcolor Green -background blue;
+			#	Write-Host "Press any key to continue ..." -foregroundcolor red;
+			#	$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
+
+			#	#Launch script in a separate PowerShell process with STA enabled.
+			#	Start-Process ($PSHOME + "\powershell.exe") -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
+			#	exit;
+
+			#	#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
+			#	$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
+			#	Stop-Process -Id $PID;
+			#}
+		}else{
+			#Get the Form objects/elements, by name, and create PowerShell variables for them.
+			if ($objNS -eq $null){
+				#$objXAMLFile.SelectNodes("//*[@Name]") | %{Set-Variable -Name ($_.Name) -Value $objForm.FindName($_.Name)};
+				#$objNodes = $objXAMLFile.SelectNodes("//*[@Name]");
+				$objNodes = $objXAMLFile.SelectNodes("//*");
+			}else{
+				#XmlNode book = doc.SelectSingleNode("//ab:book", nsmgr);
+				$objNodes = $objXAMLFile.SelectNodes("//ns:*", $objNS);
+			}
+
+			$strMessage = "Error";
+			foreach ($objNode in $objNodes){
+				if (($objNode.Name -ne "") -and ($objNode.Name -ne $null) -and ($objNode.Name -ne "Grid")){
+					#Write-Host $objNode.Name;
+					#Create variables for each of the nodes/controlls. (for "-Scope",  0 is the current scope and 1 is its parent).
+					Set-Variable -Name ($objNode.Name) -Value $objForm.FindName($objNode.Name) -Scope $intVarScope;
+
+					#Add any events that we have defined to the Form Objects.
+					#$btnExit.Add_Click({$form.Close()});
+					$intY = $arrFunctionList.Count;
+					do{
+						if (($arrFunctionList[$intY] -ne $null) -and ($arrFunctionList[$intY] -ne "")){
+							$bCheck = [boolean]($arrFunctionList[$intY] -match $objNode.Name);
+							if ($bCheck -eq $True){
+								#$frmExchGUI.Add_ResizeBegin({frmExchGUI_ResizeBegin});
+								$arrSplit = $arrFunctionList[$intY].Split('_');
+								$strAddMe = "$" + $arrSplit[0] + ".Add_" + $arrSplit[1] + "({" + $arrFunctionList[$intY] + "});";
+								$Error.Clear();
+								$strResults = try{Invoke-Expression $strAddMe}catch{$null};
+
+								#if ($objReturn.Message -eq "Error"){
+								if ($strMessage -eq "Error"){
+									#$objReturn.Message = "Success, Added the following events:";
+									$strMessage = "Successfully Added the following events:";
+								}
+								if (!($Error)){
+									#$objReturn.Message = $objReturn.Message + "`r`n" + $arrFunctionList[$intY];
+									$strMessage = $strMessage + "`r`n" + $arrFunctionList[$intY];
+									#Remove the function from the array.
+									$arrFunctionList.RemoveAt($intY);
+								}
+
+								break;
+							}
+						}else{
+							if ($arrFunctionList[$intY] -eq ""){
+								$arrFunctionList.RemoveAt($intY);
+							}
+						}
+						$intY--;
+					} while ($intY -gt -1)
+				}
+			}
+			$objReturn.Message = $strMessage;
+
+			if ($arrFunctionList.Count -gt 0){
+				#$objReturn.Message = $objReturn.Message.Replace("Successfully ", "Error, But ");
+				$objReturn.Message = $objReturn.Message + "`r`n`r`n" + "Failed to add the following events: `r`n";
+				$objReturn.Message = $objReturn.Message + ($arrFunctionList -join "`r`n");
+			}
+			$objReturn.Results = $True;
+			#$objReturn.Message = "Success";
+			$objReturn.Returns = $objForm;
+
+			#$objForm.ShowDialog() | out-null;
+		}
+
+		return $objReturn;
+	}
+
 	Function MsgBox{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strMessage, 
@@ -473,7 +668,7 @@
 
 
 
-	# All the code below here is for my testing.
+	# All the code below here is for my WinForms testing.
 	Function btnButton1_Click{
 		$objTextBox3.TEXT = "";
 		#frmTestingForm

@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	2 May 2014
+# Updated Date:	28 August 2015
 # Purpose:		Background Job and RunSpace Functions.
 #				All this code is based on info from the following URLs:
 #				#http://technet.microsoft.com/en-US/library/hh847783.aspx
@@ -12,7 +12,6 @@
 #				#http://www.nivot.org/post/2009/01/22/CTP3TheRunspaceFactoryAndPowerShellAccelerators
 #				#http://msdn.microsoft.com/en-us/library/system.management.automation.runspaces.runspacefactory.createrunspacepool(v=vs.85).aspx
 #				#http://thesurlyadmin.com/2013/02/11/multithreading-powershell-scripts/
-# Requirements: PowerShell v2.0+
 ##########################################
 
 	function CheckJob{
@@ -134,6 +133,9 @@
 
 		$objPool = [RunSpaceFactory]::CreateRunspacePool($intMin, $intMax, $objInitSessState, $Host);		#$Host = local host.
 		#$objPool = [RunSpaceFactory]::CreateRunspacePool($intMin, $intMax);
+		#If need the RunSpacePool to be STA, instead of the default MTA.
+		#http://blogs.msdn.com/b/powershell/archive/2008/05/22/wpf-powershell-part-1-hello-world-welcome-to-the-week-of-wpf.aspx
+		#$objPool.ApartmentState, $objPool.ThreadOptions = “STA”, “ReuseThread”;
 		$objPool.Open();
 
 		#Write-Host "Created a Pool of $($objPool.GetAvailableRunspaces()) Runspaces.";
@@ -269,7 +271,8 @@
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strJobName,
 			[ValidateNotNull()][Parameter(Mandatory=$True)]$Jobs,
-			[ValidateNotNull()][Parameter(Mandatory=$False)]$objControl
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$objControl, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$bIgnoreErr = $False
 		)
 		$objJobs = $Jobs;
 
@@ -315,7 +318,7 @@
 			}
 
 			#if ((($strJobResults -eq $null) -or ($strJobResults -eq "")) -or (($objJobs[$intX].Powershell.Streams.Error.Count -gt 0) -and (($objJobs[$intX].Powershell.Streams.Error -ne $null) -and ($objJobs[$intX].Powershell.Streams.Error -ne "")))){
-			if (($strJobResults -eq $null) -or ($strJobResults -eq "") -or ($objJobs[$intX].Powershell.Streams.Error.Count -gt 0)){
+			if (($strJobResults -eq $null) -or ($strJobResults -eq "") -or (($objJobs[$intX].Powershell.Streams.Error.Count -gt 0) -and ($bIgnoreErr -ne $True))){
 				#$strJobResults = "Job finished running, good or bad, and is not returning any results."
 				#Write-Host $strJobResults;
 				#Write-Host "Error??";

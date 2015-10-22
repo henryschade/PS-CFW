@@ -1,9 +1,8 @@
 ###########################################
 # Updated Date:	31 March 2015
 # Purpose:		Code to interact w/ Excel
-# Requirements: None
 #
-# Code is from following URL, but modified for my use.
+# Code from following URL, but modified for my use.
 # http://mypowershell.webnode.sk/news/create-or-open-excel-file-in-powershell/
 ##########################################
 

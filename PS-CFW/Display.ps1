@@ -1,8 +1,7 @@
 ###########################################
 # Updated Date:	1 June 2015
-# Purpose:		Started out for Hide/Show PowerShell Console Window, then added 
-# 				Display Orientation Methods, now it is for all display related routines.
-# Requirements: None
+# Purpose:		Hide/Show PowerShell Console Window.
+# 				Display Orientation Methods.
 ##########################################
 
 	#http://www.aspnet-answers.com/microsoft/Powershell/30523953/invisible-windows.aspx
@@ -239,7 +238,7 @@ $DisplayCode = @"
 			}
 		}
 	}
-"@;		#This MUST end w/ no leading spaces.
+"@
 
 
 $ConsoleCode = @'
@@ -277,6 +276,7 @@ $ConsoleCode = @'
 	$Error.Clear();
 	#Add-Type $DisplayCode
 	Add-Type -TypeDefinition $DisplayCode -IgnoreWarnings;
+
 	if ($Error){
 		#If the Add-Type() commandlet fails, try this:
 		#Can build a CSharpCodeProvider object and load the source code (above) into it.
@@ -321,6 +321,7 @@ $ConsoleCode = @'
 	$Error.Clear();
 	##Add-Type $ConsoleCode
 	Add-Type -TypeDefinition $ConsoleCode -IgnoreWarnings;
+
 	if ($Error){
 		#If the Add-Type() commandlet fails, try this:
 		#Can build a CSharpCodeProvider object and load the source code (above) into it.

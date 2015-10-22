@@ -1,11 +1,12 @@
 ###########################################
-# Updated Date:	17 June 2015
+# Updated Date:	20 October 2015
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
 
 	function SampleUsage{
-		. C:\SRM_Apps_N_Tools\PS-Scripts\PS-DB-Routines.ps1
+		. C:\Projects\PS-Scripts\PS-DB-Routines.ps1
+
 		$arrDBInfo = GetDBInfo "SRMDB";
 		$strSQL = "SELECT UpdatedDate, ChangeLog, DisableOld FROM AppChanges WHERE AppInitials='CA'";
 		$Results = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $False $arrDBInfo[3] $arrDBInfo[4] 180 $True;
@@ -28,6 +29,18 @@
 				}
 			}
 		}
+
+
+		$arrDBInfo = GetDBInfo "ECMD";
+		$strSQL = "SELECT * FROM Certs_Collection WHERE (Subject like '%ADIDBO216191%')";
+		$Results = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $False $arrDBInfo[3] $arrDBInfo[4] 180 $True;
+		#$Results = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $False $arrDBInfo[5] $arrDBInfo[6] 180 $True;
+		if ($Results.Rows[0].Message -eq "Error"){
+			Write-Host "Error running " $Results.Rows[0].Results;
+		}else{
+			$Results;
+		}
+
 
 		$arrDBInfo = GetDBInfo "Score";
 		$strSQL = "SELECT TOP 10 ticket, Type FROM Transactions ORDER BY date_time DESC";
@@ -154,7 +167,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strSummary, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$intQuant, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)]$dteStart, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)]$strToolName
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strToolName, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strQuoteNum
 		)
 		#Should pass in the above with info.
 		#strCOI = Domain/Network.
@@ -162,12 +176,13 @@
 		#strTeam = i.e. SRM
 		#strAssignment = i.e. UA
 		#strTicketNum = A Ticket #.
-		#strAction = The Action being done. i.e. "Disable", "Create Account"
-		#strCTI = The CTI/CAS of the ticket being worked.
+		#strAction = The Action being done. i.e. "Disable", "Create Account".   	[taskDesc]
+		#strCTI = The CTI/CAS of the ticket being worked.							[cas]
 		#strSummary = The Ticket Summary/Short Desc.
 		#intQuant = The Quantity on the Ticket.
 		#dteStart = The time the work started.
 		#strToolName = The name of the Tool doing the work.
+		#$strQuoteNum = A Quote/BO #.
 
 		if (($strSource -eq "") -or ($strSource -eq $null)){
 			$strSource = "Ticket";
@@ -216,6 +231,9 @@
 		if ($strTicketNum.Length -gt 15){
 			$strTicketNum = $strTicketNum.SubString(0, 15)
 		}
+		if ($strQuoteNum.Length -gt 15){
+			$strQuoteNum = $strQuoteNum.SubString(0, 15)
+		}
 		if ($strToolName.Length -gt 20){
 			$strToolName = $strToolName.SubString(0, 20)
 		}
@@ -229,7 +247,7 @@
 			$strSummary = $strSummary.SubString(0, 128)
 		}
 
-		[String]$strSQL = "INSERT INTO Transactions (login_name, date_time, Zone, site, coi, Source, Team, Assignment, ticket, Type, cas, taskDesc, taskRef, title, res, QTY, credit_time, handle_time) VALUES ("
+		[String]$strSQL = "INSERT INTO Transactions (login_name, date_time, Zone, site, coi, Source, Team, Assignment, ticket, QuoteNumber, Type, cas, taskDesc, taskRef, title, res, QTY, credit_time, handle_time) VALUES ("
 		#[Environment]::UserDomainName
 		$strSQL = $strSQL + "'" + [Environment]::UserName + "', "   														#login_name
 		$strSQL = $strSQL + "'" + [System.DateTime]::Now + "', "      														#date_time
@@ -240,11 +258,8 @@
 		$strSQL = $strSQL + "'" + $strTeam + "', "																			#Team
 		$strSQL = $strSQL + "'" + $strAssignment + "', "																	#Assignment
 		$strSQL = $strSQL + "'" + $strTicketNum + "', "																		#Ticket
-		#if (($strAction -eq "") -or ($strAction -eq $null) -or ($strAction -eq "SRM Work")){
-			$strSQL = $strSQL + "'" + $strToolName + "', "																	#type
-		#}else{
-		#	$strSQL = $strSQL + "'" + $strToolName + " - " + $strAction + "', "												#type
-		#}
+		$strSQL = $strSQL + "'" + $strQuoteNum + "', "																		#QuoteNumber
+		$strSQL = $strSQL + "'" + $strToolName + "', "																		#type
 		$strSQL = $strSQL + "'" + $strCTI + "', " 					   														#cas  (CTI or Category.Area.Sub-Area)
 		$strSQL = $strSQL + "'" + $strAction + "', "																		#taskDesc
 		$strSQL = $strSQL + "'" + "0" + "', "                 																#taskRef

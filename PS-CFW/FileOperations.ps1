@@ -1,7 +1,6 @@
 ﻿##########################################
-# Updated Date:	16 June 2015
+# Updated Date:	25 September 2015
 # Purpose:		Routines to set NTFS permissions, set owners on files/folders, create/delete shares, and set share permissions.
-# Requirements: None
 ##########################################
 
 
@@ -24,6 +23,7 @@ function WINSHARE_EXAMPLE_USAGE{
 	#Add/Create a Share. ($sShareComment is optional)
 	$Results = [FileOperations.WinShare]::Add($sSystem, $sLocalPath, $sShareName, $sShareComment);
 	#Check the Results of the Share create.
+	#https://msdn.microsoft.com/en-us/library/windows/desktop/ms681381(v=vs.85).aspx
 	switch ($Results){
 		{(($Results -Contains "NerrSuccess" -or $Results -Contains "1338"))}{
 			#Success
@@ -370,6 +370,14 @@ namespace FileOperations
             out uint securityDescriptorSize
             );
 
+        [DllImport("Netapi32", CharSet=CharSet.Auto)]
+        static extern NetApiStatus NetShareGetInfo(
+            [MarshalAs(UnmanagedType.LPWStr)] string servername,
+            [MarshalAs(UnmanagedType.LPWStr)] string netname,
+            int level,
+            ref IntPtr bufptr
+            );
+
         [DllImport("Netapi32.dll", SetLastError = true)]
         private static extern Int32 NetShareSetInfo(
             [MarshalAs(UnmanagedType.LPWStr)] string servername,
@@ -389,6 +397,11 @@ namespace FileOperations
             [MarshalAs(UnmanagedType.LPWStr)] string strServer,
             [MarshalAs(UnmanagedType.LPWStr)] string strNetName,
             Int32 reserved //must be 0
+            );
+
+        [DllImport("Netapi32", CharSet=CharSet.Auto)]
+        static extern int NetApiBufferFree(
+            IntPtr Buffer
             );
 
         #endregion
@@ -517,6 +530,79 @@ namespace FileOperations
         {
             var result = NetShareDel(computerName, shareName, 0);
             return result;
+        }
+
+        //public static string NetShareGetPath(
+        public static string GetShare(
+			String computerName, 
+			String shareName)
+        {
+			// <summary> Retrieves the local path for the given server and share name. </summary>
+				// 0				No errors encountered.
+				// 5				The user has insufficient privilege for this operation.
+				// 8				Not enough memory
+				// 65				Network access is denied.
+				// 87				Invalid parameter specified.
+				// 53				The network path was not found.
+				// 123				Invalid name
+				// 124				Invalid level parameter.
+				// 234				More data available, buffer too small.
+				// 2100
+				// 2102				Device driver not installed.
+				// 2106				This operation can be performed only on a server.
+				// 2114				Server service not installed.
+				// 2116				NerrUnknownDevDir
+				// 2117				NerrRedirectedPath
+				// 2118				NerrDuplicateShare
+				// 2123				Buffer too small for fixed-length data.
+				// 2127				Error encountered while remotely.  executing function
+				// 2138				The Workstation service is not started.
+				// 2141				The server is not configured for this transaction;  IPC$ is not shared.
+				// 2310				Sharename not found.
+				// (Result + 210)	Sharename not found.
+				// 2351				Invalid computername specified.
+
+            string sharePath = null;
+            IntPtr ptr = IntPtr.Zero;
+
+            string sFullShareInfo = null;
+            string shareComment = null;
+            int shareMaxCon = 0;
+            int shareCurCon = 0;
+
+            if (String.IsNullOrEmpty(computerName) | String.IsNullOrEmpty(shareName))
+            {
+                throw new ArgumentException(
+                    "Invalid argument specified - computerName and shareName arguments must not be empty");
+            }
+
+            //NetApiStatus errCode = NetShareGetInfo(computerName, shareName, 2, ref ptr);
+            NetApiStatus errCode = NetShareGetInfo(computerName, shareName, 502, ref ptr);
+            if (errCode == NetApiStatus.NerrSuccess)
+            {
+                ShareInfo502 shareInfo = (ShareInfo502)Marshal.PtrToStructure(ptr, typeof(ShareInfo502));
+                sharePath = shareInfo.shi502_path;
+				//shareName = shareInfo.shi502_netname;
+				//shareType = shareInfo.shi502_type;
+				shareComment = shareInfo.shi502_remark;
+				//sharePerms = shareInfo.shi502_permissions;
+				shareMaxCon = shareInfo.shi502_max_uses;
+				shareCurCon = shareInfo.shi502_current_uses;
+				//sharePass = shareInfo.shi502_passwd;
+				//shareReserved = shareInfo.shi502_reserved;
+				//shareDescriptor = shareInfo.shi502_security_descriptor;
+
+                NetApiBufferFree(ptr);
+
+				sFullShareInfo = "ShareName:    " + "\\\\" + computerName + "\\" + shareName + "\r\n" + "SharePath:    " + sharePath + "\r\n" + "ShareComment: " + shareComment + "\r\n" + "ShareMaxCon:  " + shareMaxCon + "\r\n" + "ShareCurCon:  " + shareCurCon + "\r\n";
+            }
+            else
+			{
+                //return(errCode);
+                return(errCode.ToString());
+			}
+
+            return sFullShareInfo;
         }
 
         #endregion

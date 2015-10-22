@@ -1,7 +1,6 @@
 ###########################################
-# Updated Date:	23 July 2015
+# Updated Date:	13 October 2015
 # Purpose:		Common routines to all/most other projects.
-# Requirements: None.
 ##########################################
 
 	##How to include/use this file in other projects:
@@ -121,7 +120,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Directory, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$DoSubs = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$TypesToSkip = "", 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$HowOld = 180
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$HowOld = -2
 		)
 		#$Directory = Folder/Directory path to clean.  i.e. "C:\SRM_Apps_N_Tools" or "\\Nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Boise SRM Team\Jay_Nielson\Reports"
 		#$DoSubs = True/False. (defult = False) Check/Clean sub folders too.
@@ -133,7 +132,7 @@
 
 		$strSettingFile = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\MiscSettings.txt";
 
-		if ($HowOld -eq 180){
+		if (($HowOld -lt -1) -or ($HowOld -eq "") -or ($HowOld -eq $null)){
 			if ((Test-Path $strSettingFile)){
 				$Error.Clear();
 				foreach ($strLine in [System.IO.File]::ReadAllLines("\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\MiscSettings.txt")) {
@@ -145,9 +144,14 @@
 					}
 				}
 			}
-			#http://stackoverflow.com/questions/10928030/in-powershell-how-can-i-test-if-a-variable-holds-a-numeric-value
-			Add-Type -Assembly Microsoft.VisualBasic;
-			if (!([Microsoft.VisualBasic.Information]::IsNumeric($HowOld))){
+			##http://stackoverflow.com/questions/10928030/in-powershell-how-can-i-test-if-a-variable-holds-a-numeric-value
+			#Add-Type -Assembly Microsoft.VisualBasic;
+			#if (!([Microsoft.VisualBasic.Information]::IsNumeric($HowOld))){
+			#	$HowOld = 180;
+			#}
+
+			#I have since wrote a PS equivelent of the VB IsNumeric() routine.  (Part of Common.ps1)
+			if ((IsNumeric $HowOld) -ne $True){
 				$HowOld = 180;
 			}
 		}
@@ -227,12 +231,18 @@
 			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
 			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
 		}
-		$strTemp = "CreateZipFile(" + $strTemp.Trim() + ")";
+		#$strTemp = "CreateZipFile(" + $strTemp.Trim() + ")";
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
 		$objReturn = New-Object PSObject -Property @{
 			Name = $strTemp
 			Results = $False
 			Message = "Error"
 			Returns = "";
+		}
+
+		if ((Test-Path -Path $ZipFile)){
+			#File exists, so delete it.
+			Remove-Item $ZipFile;
 		}
 
 		if (!(Test-Path -Path $ZipFile)){
@@ -248,10 +258,14 @@
 			$objZip = [System.IO.Packaging.ZipPackage]::Open($ZipFile, [System.IO.FileMode]"OpenOrCreate", [System.IO.FileAccess]"ReadWrite");
 			#Setup the Array of files to loop through.
 			#$arrFiles = @("c:\file.one", "c:\file.two");
-			$arrFiles = $Files -Replace "C:", "" -Replace "\\", "/";
+			#$arrFiles = $Files -Replace "C:", "" -Replace "\\", "/";
+			$arrFiles = $Files;
 			foreach ($objFile in $arrFiles){
 				#For each file you want to add, we must extract the bytes and add them to a part of the zip file.
-				$partName = New-Object System.Uri($objFile, [System.UriKind]"Relative");
+				#$partName = New-Object System.Uri($objFile, [System.UriKind]"Relative");
+				$partName = New-Object System.Uri(($objFile -Replace "C:", "" -Replace "\\", "/"), [System.UriKind]"Relative");
+				#$partName = New-Object System.Uri($objFile, [System.UriKind]"Absolute");
+				#$partName = New-Object System.Uri(($objFile -Replace "C:", "" -Replace "\\", "/"), [System.UriKind]"Absolute");
 				#Create each part. 
 				$part = $objZip.CreatePart($partName, "application/zip", [System.IO.Packaging.CompressionOption]"Maximum");
 				#$bytes = [System.IO.File]::ReadAllBytes($objFile) | out-null;
@@ -338,6 +352,8 @@
 	}
 
 	function isNumeric($intX){
+		#IsNumeric() equivelant is -> [Boolean]([String]($x -as [int]))
+
 		#http://rosettacode.org/wiki/Determine_if_a_string_is_numeric
 		try {
 			0 + $intX | Out-Null;
@@ -362,6 +378,13 @@
 			#i.e.:
 			#5/13/2015 9:23:15 - NMCI-ISF\henry.schade - ADIDBO226572 (00:24:81:21:CA:CC) - 10.12.21.80 - 8989765 -- $Message
 
+		#Make sure the log directory exist.
+		if (!(Test-Path -Path $LogDir)){
+			#Need to create the directory
+			#PS mkdir, will create any parent folders needed.
+			$strResults = mkdir $LogDir;
+		}
+
 		if (($Message.Trim() -ne "`r`n") -and ($Message.Trim() -ne "")){
 			#$strDateCode = (Get-Date -format "yyyy") + (Get-Date -format "MM") + (Get-Date -format "dd");			# + "." + (Get-Date -format "HH") + (Get-Date -format "mm");
 			$strDateCode = (Get-Date).ToString("yyyyMMdd");
@@ -369,10 +392,14 @@
 			$Message = $Message.Trim().Replace("`r`n", "   ");
 
 			if (($Header -eq "") -or ($Header -eq $null)){
-				if (($txbTicketNum.Text -eq "") -or ($txbTicketNum.Text -eq $null)){
-					$strTicketNum = "none";
+				if (($txbTicketNum -ne $null)){
+					if (($txbTicketNum.Text -eq "") -or ($txbTicketNum.Text -eq $null)){
+						$strTicketNum = "none";
+					}else{
+						$strTicketNum = $txbTicketNum.Text;
+					}
 				}else{
-					$strTicketNum = $txbTicketNum.Text;
+					$strTicketNum = "none";
 				}
 				$strLogHeader = (([System.DateTime]::Now).ToString() + " - " + ([System.Security.Principal.WindowsIdentity]::GetCurrent()).Name + " - " + $env:computername + " (" + (Get-WmiObject Win32_NetworkAdapterConfiguration -Namespace "root\CIMV2" | WHERE{$_.IPEnabled -eq "True"}).MACAddress + ") - " + (Get-WmiObject Win32_NetworkAdapterConfiguration -Namespace "root\CIMV2" | WHERE{$_.IPEnabled -eq "True"}).IPAddress + " - " + $strTicketNum + " -- ");
 				$Message = $strLogHeader + $Message;

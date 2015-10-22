@@ -1,7 +1,7 @@
 ###########################################
-# Updated Date:	10 August 2015
+# Updated Date:	24 September 2015
 # Purpose:		Exchange routines.
-# Requirements:	.\EWS-Files.txt  ($strEWSFiles)
+# Requires:		.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process, and the following need to be defined/setup: $global:objJobs, and $global:objExchPool.
 #				UpdateResults() is a routine in AScII and Exchange-GUI.
 ##########################################
@@ -222,6 +222,25 @@
 		##$objMessage = [Microsoft.Exchange.WebServices.Data.EmailMessage]::Bind($objService, $objItemId, $psPropertySet);
 		#$objMessage = [Microsoft.Exchange.WebServices.Data.EmailMessage]::Bind($objService, $objItemId);
 		#$objMessage;
+
+
+
+
+
+		#Send email with EWS
+		<#
+			$strTo = "henry.schade@nmci-isf.com; andrew.k.freeman@nmci-isf.com; henry.schade@hpe.com";
+			$strTo = "henry.schade@nmci-isf.com";
+			$strFrom = "henry.schade@nmci-isf.com";
+			$strSub = "Test #3 eMail from PS EWS";
+			$strBody = "Test eMail from PS EWS";
+			$strFile = "C:\Users\henry.schade\Desktop\ps command issue.txt";
+			$objRet = SendEmailEWS $strTo $strFrom $strSub $strBody;
+			#$objRet = SendEmailEWS $strTo $strFrom $strSub $strBody -bolAutoSend $False;
+			#$objRet.Returns.Display;
+		#>
+
+
 
 
 
@@ -906,7 +925,6 @@
 
 		#Folder properties:
 		#https://msdn.microsoft.com/en-us/library/microsoft.exchange.webservices.data.folder_properties(v=exchg.80).aspx
-
 		#https://msdn.microsoft.com/en-us/library/dn567668(v=exchg.150).aspx
 
 		#Setup the PSObject to return.
@@ -945,7 +963,7 @@
 				#Add-Type -Path $dllPath;
 
 			#$objExchServ = New-Object Microsoft.Exchange.WebServices.Data.ExchangeService([Microsoft.Exchange.WebServices.Data.ExchangeVersion]::Exchange2010_SP1);
-			#$objExchServ = New-Object Microsoft.Exchange.WebServices.Data.ExchangeService([Microsoft.Exchange.WebServices.Data.ExchangeVersion]::Exchange2010_SP2);
+			#$objExchServ = New-Object Microsoft.Exchange.WebServices.Data.ExchangeService([Microsoft.Exchange.WebServices.Data.ExchangeVersion]::Exchange2013);
 			$objExchServ = New-Object Microsoft.Exchange.WebServices.Data.ExchangeService -ArgumentList $strExchVer;
 			#$objExchServ.TraceEnabled = $False;
 			$objExchServ.TraceEnabled = $bolTrace;
@@ -953,19 +971,21 @@
 			#	#$objExchServ.TraceFlags = TraceFlags.All;
 			#}
 
-			#if ($MailboxName.Contains(($env:username + "@"))){
-			#if ($bolAltCreds -eq $False){
-				#If you are targeting an on-premises Exchange server and your client is domain joined.
+			#$objExchServ.UseDefaultCredentials = $True;
+			if ($MailboxName.Contains(($env:username + "@"))){
+				#Targeting an on-premises Exchange server and your client is domain joined.
 				$objExchServ.UseDefaultCredentials = $True;
-			#}else{
-			#	#If want to connect using impersonation / alternate credentials.
-			#	$cred = Get-Credential $env:username;
-			#	$objExchServ.Credentials = New-Object System.Net.NetworkCredential(($cred.GetNetworkCredential()).UserName, ($cred.GetNetworkCredential()).Password);
-			#	#$objExchServ.Credentials = New-Object System.Net.NetworkCredential($cred.UserName, $cred.Password);
-			#	#$objExchServ.Credentials = New-Object Microsoft.Exchange.WebServices.Data.WebCredentials -ArgumentList ($cred.GetNetworkCredential()).UserName, ($cred.GetNetworkCredential()).Password;
-			#}
+			}else{
+				#Connect using impersonation / alternate credentials.
+				#$Credential = Get-Credential -Credential "SelectAnAccount" | Out-Null;
+				$Credential = $host.ui.PromptForCredential("Need Outlook Credentials", "Please select/enter your Outlook information below.", "", "NetBiosUserName") | Out-Null;
+				#Set the credentials for Exchange
+				$objExchServ.UseDefaultCredentials = $False;
+				$objExchServ.Credentials = New-Object Microsoft.Exchange.WebServices.Data.WebCredentials -ArgumentList $Credential.UserName, $Credential.GetNetworkCredential().Password;
+			}
 
 			$Error.Clear();
+			#Determine/Set the EWS endpoint
 			if ($bolTryAuto){
 				$objExchServ.AutodiscoverUrl($MailboxName, {$True}) | Out-Null;			#This is taking FOREVER.  Looks like it is setting the URL of the ExchangeService object, which is required for subscriptions.
 			}
@@ -1370,6 +1390,8 @@
 		$objSearcher.PageSize = 1000;
 		[void] $objSearcher.PropertiesToLoad.Add("name");
 		[void] $objSearcher.PropertiesToLoad.Add("msexchcurrentserverroles");
+		[void] $objSearcher.PropertiesToLoad.Add("msexchserverrole");
+		[void] $objSearcher.PropertiesToLoad.Add("serverrole");
 		[void] $objSearcher.PropertiesToLoad.Add("networkaddress");
 		$objSearcher.FindAll() | %{
 			$strName = $_.Properties.name[0];
@@ -1378,13 +1400,9 @@
 			if ($bolRetRoleNames -eq $True){
 				$strRoles = ($arrRoles.keys | ?{$_ -band $strRoles} | %{$arrRoles.Get_Item($_)}) -join ", ";
 			}
+			#$strRoles = $strRoles + " (" +  $_.Properties.serverrole + ")";
 
 			#This next block creates a PowerShell object that gets returned.
-			#New-Object PSObject -Property @{
-			#	Name = $_.Properties.name[0];
-			#	FQDN = $_.Properties.networkaddress | %{if ($_ -Match "ncacn_ip_tcp") {$_.Split(":")[1]}};
-			#	Roles = $_.Properties.msexchcurrentserverroles[0];
-			#}
 			New-Object PSObject -Property @{
 				Name = $strName;
 				FQDN = $strFQDN;
@@ -1499,24 +1517,217 @@
 		return $objEmails;
 	}
 
-	function SendEmail{
+	function SendEmailEWS{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$EmailTo, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$EmailFrom, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$EmailSubject, 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$EmailBody
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$EmailBody, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$EmailCC, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$EmailBCC, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$EmailAttach, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Boolean]$AsHTML = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Boolean]$bolTryAuto = $True, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strExchVer = "Exchange2010_SP1"
 		)
+		#http://blogs.technet.com/b/heyscriptingguy/archive/2011/09/24/send-email-from-exchange-online-by-using-powershell.aspx
+
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters passed in.
+			#$objReturn.Results		= $True or $False.  Was an email composed/sent.
+			#$objReturn.Message		= "Success" or the error message.
+			#$objReturn.Returns		= The composed/sent email object.
+		#$EmailTo = Who to send the email to.  (i.e. "andrew.k.freeman@nmci-isf.com")
+		#$EmailFrom = Email/Mailbox to send from.  (i.e. "henry.schade@nmci-isf.com")
+		#$EmailSubject = What to put in the email Subject.
+		#$EmailBody = What to put in the email Body.
+		#$EmailCC = Who to CC on the email.  (i.e. "andrew.k.freeman@nmci-isf.com")
+		#$EmailBCC = Who to BCC on the email.  (i.e. "andrew.k.freeman@nmci-isf.com")
+		#$EmailAttach = Full path to file to attach.
+		#$AsHTML = $True or $False.  Compose the body as HTML?
+		#$bolTryAuto = $True or $False.  Use the .AutodiscoverUrl property to try and find the Exchange URL for the ExchangeService object.
+		#$strExchVer = The version of Exchange that is being connected to. ("Exchange2007_SP1", or "Exchange2010", or "Exchange2010_SP1", or "Exchange2010_SP2", or "Exchange2013")
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $False
+			Message = "Error"
+			Returns = "";
+		}
+
+		#Check that EWS is installed
+		$objResults = EWSVerifyInstall;
+		if ($objResults.Results -eq $True){
+			#Load the EWS Managed API Assembly
+			$dllFile = "Microsoft.Exchange.WebServices.dll";
+			$dllPath = $objResults.Returns + $dllFile;
+			[void][Reflection.Assembly]::LoadFile($dllPath);
+
+			#Insatiate the EWS service object 
+			$objExchServ = New-Object Microsoft.Exchange.WebServices.Data.ExchangeService -ArgumentList $strExchVer;
+			#$objExchServ.TraceEnabled = $bolTrace;
+			#if (($EmailFrom.Contains(($env:username + "@"))) -or ($env:username -eq "") -or ($env:username -eq $null)){
+			if (($EmailFrom.Contains(($env:username + "@")))){
+				$objExchServ.UseDefaultCredentials = $True;
+			}else{
+				#Connect using impersonation / alternate credentials.
+				#$Credential = Get-Credential -Credential "SelectAnAccount";
+				$Credential = $host.ui.PromptForCredential("Need Outlook Credentials", "Please select/enter your Outlook information below.", "", "NetBiosUserName");
+				#Set the credentials for Exchange
+				$objExchServ.Credentials = New-Object Microsoft.Exchange.WebServices.Data.WebCredentials -ArgumentList $Credential.UserName, $Credential.GetNetworkCredential().Password;
+				$objExchServ.UseDefaultCredentials = $False;
+			}
+			$Error.Clear();
+			#Determine/Set the EWS endpoint
+			if ($bolTryAuto){
+				if ($EmailFrom.Contains(($env:username + "@"))){
+					$strRet = $objExchServ.AutodiscoverUrl($EmailFrom, {$True});			#This is taking FOREVER.  Looks like it is setting the URL of the ExchangeService object, which is required for subscriptions.
+				}else{
+					$strRet = $objExchServ.AutodiscoverUrl($Credential.UserName, {$True});
+				}
+			}
+			if (($Error) -or ($bolTryAuto -ne $True)){
+				$Error.Clear();
+				$strURL = [system.URI] "https://cas-sdni.nadsuswe.nads.navy.mil/ews/exchange.asmx";
+				$objExchServ.Url = $strURL;
+			}
+
+			#Create the email message and set the Subject and Body
+			$Error.Clear();
+			$objMessage = New-Object Microsoft.Exchange.WebServices.Data.EmailMessage -ArgumentList $objExchServ;
+			$objMessage.Subject = $EmailSubject;
+			$objMessage.Body = $EmailBody;
+			#If the $AsHTML parameter is not used, send the message as plain text
+			if(!$AsHTML) {
+				$objMessage.Body.BodyType = 'Text';
+			}
+
+			#Add each specified recipient.
+			if (($EmailTo.IndexOf(",") -gt 0) -or ($EmailTo.IndexOf(";") -gt 0)){
+				if ($EmailTo.IndexOf(",") -gt 0){
+					$arrAdds = $EmailTo.Split(",");
+				}else{
+					$arrAdds = $EmailTo.Split(";");
+				}
+				for ($intX = 0; $intX -lt $arrAdds.Count; $intX++){
+					$arrAdds[$intX] = $arrAdds[$intX].Trim();
+					if (($arrAdds[$intX] -ne "") -and ($arrAdds[$intX] -ne $null)){
+						$strRet = $objMessage.ToRecipients.Add($arrAdds[$intX]);
+					}
+				}
+			}else{
+				$strRet = $objMessage.ToRecipients.Add($EmailTo);
+			}
+
+			#Add each CC recipient.
+			if (($EmailCC -ne "") -and ($EmailCC -ne $null)){
+				if (($EmailCC.IndexOf(",") -gt 0) -or ($EmailCC.IndexOf(";") -gt 0)){
+					if ($EmailCC.IndexOf(",") -gt 0){
+						$arrAdds = $EmailCC.Split(",");
+					}else{
+						$arrAdds = $EmailCC.Split(";");
+					}
+					for ($intX = 0; $intX -lt $arrAdds.Count; $intX++){
+						$arrAdds[$intX] = $arrAdds[$intX].Trim();
+						if (($arrAdds[$intX] -ne "") -and ($arrAdds[$intX] -ne $null)){
+							$strRet = $objMessage.CcRecipients.Add($arrAdds[$intX]);
+						}
+					}
+				}else{
+					$strRet = $objMessage.CcRecipients.Add($EmailCC);
+				}
+			}
+
+			#Add each BCC recipient.
+			if (($EmailBCC -ne "") -and ($EmailBCC -ne $null)){
+				if (($EmailBCC.IndexOf(",") -gt 0) -or ($EmailBCC.IndexOf(";") -gt 0)){
+					if ($EmailBCC.IndexOf(",") -gt 0){
+						$arrAdds = $EmailBCC.Split(",");
+					}else{
+						$arrAdds = $EmailBCC.Split(";");
+					}
+					for ($intX = 0; $intX -lt $arrAdds.Count; $intX++){
+						$arrAdds[$intX] = $arrAdds[$intX].Trim();
+						if (($arrAdds[$intX] -ne "") -and ($arrAdds[$intX] -ne $null)){
+							$strRet = $objMessage.BccRecipients.Add($arrAdds[$intX]);
+						}
+					}
+				}else{
+					$strRet = $objMessage.BccRecipients.Add($EmailBCC);
+				}
+			}
+
+			#https://msdn.microsoft.com/en-us/library/office/hh532564(v=exchg.80).aspx
+			if (($EmailAttach -ne "") -and ($EmailAttach -ne $null)){
+				$strRet = $objMessage.Attachments.AddFileAttachment($EmailAttach.Split("\")[-1], $EmailAttach);
+				#$strRet = $objMessage.Attachments.AddFileAttachment($EmailAttach, $EmailAttach);		#This works just fine too.
+				#$objMessage.Attachments[0].IsInline = $True;
+				#$objMessage.Attachments(0).ContentId = $EmailAttach.Split("\")[-1];
+			}
+
+			if ($Error){
+			}else{
+				if ($EmailFrom.Contains(($env:username + "@"))){
+					#Send the message and save a copy in the Sent Items folder.
+					$strRet = $objMessage.SendAndSaveCopy();
+					#Send the message and DO NOT save a copy in the Sent Items folder.  Can NOT be used by an account without a mailbox.
+					#$strRet = $objMessage.Send();
+				}else{
+					$strRet = $objMessage.SendAndSaveCopy("SentItems");
+				}
+			}
+
+			if ($Error){
+				$objReturn.Results = $False;
+				$objReturn.Message = "Error composing and sending message. `r`n" + $Error;
+			}else{
+				$objReturn.Results = $True;
+				$objReturn.Message = "Success";
+				$objReturn.Returns = $objMessage;
+			}
+		}else{
+			$objReturn.Results = $False;
+			$objReturn.Message = "Error, EWS dll is not installed.";
+		}
+
+		return $objReturn;
+	}
+
+	function SendEmailPS{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$EmailTo, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$EmailFrom, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$EmailSubject, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$EmailBody, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$SMTPServer
+		)
+		#This should work, but I am having issues with it.  Use SendEmailEWS(), as it does work.
 
 		#Send an email from PowerShell, via SMTP:
 		#https://4sysops.com/archives/send-email-with-powershell/
 		#http://blogs.msdn.com/b/rkramesh/archive/2012/03/16/sending-email-using-powershell-script.aspx
 		#http://www.philerb.com/2011/11/sending-mail-with-powershell/
 
+		if (($SMTPServer -eq "") -or ($SMTPServer -eq $null)){
+			$SMTPServer = "NAWESDNIXM05V.nmci-isf.com";
+		}
+
 		#PS ver 2.0+
 		#$PSEmailServer = "";
 		#Send-MailMessage -to "henry.schade@nmci-isf.com" -from "PowerShell <power.shell@domain.com>" -Subject "Test" -body "Test for Send-MailMessage";
+		#Send-MailMessage -To $strTo -From $strFrom -Subject $strSub -Body $strBody -SmtpServer $strServer -Credential "SelectAnAccount";
 
-		Send-MailMessage -To $EmailTo -From $EmailFrom -Subject $EmailSubject -Body $EmailBody;
+		Send-MailMessage -To $EmailTo -From $EmailFrom -Subject $EmailSubject -Body $EmailBody -SmtpServer $SMTPServer;
 
 	}
 
@@ -1542,6 +1753,20 @@
 			if (($strServer -eq "R") -or ($strServer -eq "Random")){
 				$strServer = "Random"
 			}
+		}else{
+			if ($strServer.Length -eq 1){
+				switch ($strServer){
+					"R"{
+						$strServer = "Random";
+					}
+					"D"{
+						$strServer = "Default";
+					}
+					default{
+						$strServer = "Default";
+					}
+				}
+			}
 		}
 
 		if (($WhatSide -eq $null) -or ($WhatSide -eq "")){
@@ -1564,14 +1789,14 @@
 
 		if ($WhatSide -eq "e"){
 			#Write-Host "East it is";
-			if ($strServer -eq "Default"){
+			if (($strServer -eq "Default") -or ($strServer -eq "D")){
 				$strServer = "naeaNRFKxh01v.nadsusea.nads.navy.mil";
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 				#if ((Test-Connection -CN $strFQDN -buffersize 16 -Count 1 -ErrorAction 0 -quiet) -ne $True){
 					#Specify a new Server to connect to.
 				#}
 			}else{
-				if ($strServer -eq "Random"){
+				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
 					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsusea") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 
@@ -1589,11 +1814,11 @@
 		}
 		if ($WhatSide -eq "w"){
 			#Write-Host "West it is";
-			if ($strServer -eq "Default"){
+			if (($strServer -eq "Default") -or ($strServer -eq "D")){
 				$strServer = "naweSDNIxh01v.nadsuswe.nads.navy.mil";
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 			}else{
-				if ($strServer -eq "Random"){
+				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
 					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsuswe") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 
@@ -1611,11 +1836,11 @@
 		}
 		if ($WhatSide -eq "p"){
 			#Write-Host "Pacom it is";
-			if ($strServer -eq "Default"){
+			if (($strServer -eq "Default") -or ($strServer -eq "D")){
 				$strServer = "PADSPRLHXF01V.pads.pacom.mil";
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 			}else{
-				if ($strServer -eq "Random"){
+				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
 					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "pacom") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 

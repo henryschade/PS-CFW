@@ -1,8 +1,40 @@
 ###########################################
-# Updated Date:	17 July 2015
+# Updated Date:	2 October 2015
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 ##########################################
+
+
+	function SampleUsage{
+		$DomainName = "NMCI-ISF";
+
+		#To create a new blank user object:
+		Add-Type -AssemblyName System.DirectoryServices.AccountManagement;
+		#http://stackoverflow.com/questions/13688779/force-principalcontext-to-connect-to-a-specific-server
+		$PrincipalContext = New-Object System.DirectoryServices.AccountManagement.PrincipalContext("DOMAIN", $DomainName_or_DCName);  #$DomainName_or_DCName = the Domain the new account will be create on;
+		$NMCIUser = New-Object NMCI.AD.NMCIUserPrincipal($PrincipalContext);
+		#$NMCIUser will now contain all NMCI AD Schema Attribs.
+
+		#Write
+		$NMCIUser.l = "City";
+		$NMCIUser.City = "City";
+
+		#Read
+		foreach ($oPropInfo in $NMCIUser.GetType().GetProperties()){
+			#$oPropInfo.Name;
+			#$oPropInfo.GetValue($NMCIUser, $null);
+
+			$strName = $oPropInfo.Name;
+			$strValue = $oPropInfo.Attributes;
+			#$strValue = $oPropInfo.GetValue($NMCIUser, $null);
+			if (($strName -eq "") -or ($strName -eq $null)){
+				$oPropInfo;
+			}else{
+				Write-Host $strName " = " $strValue;
+			}
+		}
+
+	}
 
 	function TestRoutine{
 		#Some users are having issues that the command "(Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster" is NOT getting the RIDMaster, 
@@ -37,6 +69,431 @@
 		#$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
 	}
 
+
+	function ADSearchADO{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Username, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strFilter, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Array]$arrDesiredProps = @("name")
+		)
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters.
+			#$objReturn.Results		= # of objects found.
+			#$objReturn.Message		= A verbose message of the results (The error message).
+			#$objReturn.Returns		= The object(s) found.   (System.DirectoryServices.SearchResult)  or  (SearchResultCollection)
+		#$Username = The user name to search for, if $strFilter is NOT provided.
+		#$strDomain = The domain to search for $Username on/in.  i.e. "nadsuswe", or "DC=nadsusea,DC=nads,DC=navy,DC=mil"
+		#$strFilter = A custom LDAP search filter, instead of the default we use.
+		#$arrDesiredProps = A list of Properties you want returned instead of "name".  (adsPath is default w/ all options.)
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = 0
+			Message = "Success"
+			Returns = ""
+		}
+
+		#https://technet.microsoft.com/en-us/library/ff730967.aspx
+
+		$Error.Clear();
+		#Can we use "rootDSE" with PS?
+		if (($strDomain -eq "") -or ($strDomain -eq $null)){
+			#$strDomain = "nadsuswe";
+			#$objDomain = New-Object System.DirectoryServices.DirectoryEntry;
+			$strDomain = "LDAP://rootDSE";											#Looking like this does NOT work.
+
+			#Maybe this will work.
+			$strDomain = ([ADSI]"LDAP://RootDse").configurationNamingContext;		#Looking like this does NOT work either.
+		}else{
+			#$objDomain = New-Object System.DirectoryServices.DirectoryEntry("LDAP://DC=nads,DC=navy,DC=mil");
+			if ($strDomain.IndexOf("DC=") -eq 0){
+				$strDomain = "DC=" + $strDomain + ",DC=nads,DC=navy,DC=mil";
+			}
+			$strDomain = "LDAP://" + $strDomain;
+		}
+		#$objDomain = New-Object System.DirectoryServices.DirectoryEntry("LDAP://DC=" + $strDomain + ",DC=nads,DC=navy,DC=mil");
+		$objDomain = New-Object System.DirectoryServices.DirectoryEntry($strDomain);
+
+		if (($strFilter -eq "") -or ($strFilter -eq $null)){
+			#$strFilter = "(&(objectCategory=person))";
+			# same results as:
+				#$strFilter = "(&(objectCategory=user))";
+			#$strFilter = "(&(objectCategory=user)(proxyAddresses=*))";
+			#$strFilter = "(&(objectCategory=user)(mail=*" + $Username + "*))";
+			$strFilter = "(&(objectCategory=user)(name=*" + $Username + "*))";
+			#$strFilter = "(&(name=*" + $Username + "*))";
+		}
+
+		$objSearcher = New-Object System.DirectoryServices.DirectorySearcher;
+		$objSearcher.SearchRoot = $objDomain;
+		$objSearcher.PageSize = 1000;
+		$objSearcher.Filter = $strFilter;
+		$objSearcher.SearchScope = "Subtree";
+
+		#$arrDesiredProps = "name", "proxyAddresses";
+		foreach ($i in $colPropList){$strResults = $objSearcher.PropertiesToLoad.Add($i)};
+
+		$colResults = $objSearcher.FindAll();
+
+		if ($Error){
+			$objReturn.Message = "Error" + "`r`n" + $Error;
+		}else{
+			$objReturn.Message = "Success";
+			$objReturn.Results = $colResults.Count;
+			if ($colResults.Count -gt 0){
+				$objReturn.Returns = $colResults;
+			}
+		}
+
+		return $objReturn;
+	}
+
+	function AssignDevPerms{
+		#https://social.technet.microsoft.com/Forums/windowsserver/en-US/df3bfd33-c070-4a9c-be98-c4da6e591a0a/forum-faq-using-powershell-to-assign-permissions-on-active-directory-objects?forum=winserverpowershell
+		#http://blogs.technet.com/b/joec/archive/2013/04/25/active-directory-delegation-via-powershell.aspx
+		#http://blogs.msdn.com/b/adpowershell/archive/2009/10/13/add-object-specific-aces-using-active-directory-powershell.aspx
+
+		#https://social.technet.microsoft.com/Forums/windowsserver/en-US/f7855fb7-99e9-43fe-9852-93e97011df5f/adsicomitchanges-a-constraint-violation-occurred?forum=winserverpowershell
+		#https://msdn.microsoft.com/en-us/library/system.security.accesscontrol.objectaccessrule(v=vs.110).aspx
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strCompDN, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strDelegateSID, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomainOrDC
+		)
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters.
+			#$objReturn.Results		= True or False (Were there Errors).
+			#$objReturn.Message		= A verbose message of the results (The error message).
+			#$objReturn.Returns		= The Computer object that was updated, or $null.
+		#$strCompDN = The AD objects DistinguishedName to grant permissions on for $strDelegateSID.  (i.e. CN=WLNRFK390tst,OU=COMPUTERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil  or  CN=DDALNT000032,OU=COMPUTERS,OU=ALNT,OU=ONR,DC=nadsusea,DC=nads,DC=navy,DC=mil)
+		#$strDelegateSID = The SID of the AD object to grant permissions over $strCompDN.
+		#$strDomainOrDC = Domain or DC to do the work on.
+			#Sample call:
+			#$strUserName = "redirect.test";
+			#$strUserName = "michael.j.rogers.dev";
+			#$objRet = AssignDevPerms ((FindComputer "WLNRFK390TST").DistinguishedName) ((FindUser $strUserName).SID.Value);
+			#$objRet = AssignDevPerms ((FindComputer "DLCHLK085463").DistinguishedName) ((FindUser $strUserName).SID.Value);
+			#$objRet.Returns
+			#$objRet.Returns.ObjectSecurity.Access | Where-Object {$_.IdentityReference -Match $strUserName};
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $False
+			Message = "Error"
+			Returns = $null
+		}
+
+		if (($strDomainOrDC -eq "") -or ($strDomainOrDC -eq $null)){
+			$strDomain = $strCompDN.SubString($strCompDN.IndexOf("DC=") + 3);
+			$strDomain = $strDomain.SubString(0, $strDomain.IndexOf(","));
+
+			$InitializeDefaultDrives=$False;
+			if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
+
+			#$strDomainOrDC = "DC=" + [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).Name.Replace(".", ",DC=")
+			$strDomainOrDC = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
+		}
+
+		#Chris's idea:
+		#Read in the DACL, and then append the following to the DACL, then save/comit changes.
+		#(OA;;RPWP;e48d0154-bcf8-11d1-8702-00c04fb96050;;$strDelegateSID)(OA;;WP;4c164200-20c0-11d0-a768-00aa006e0529;;$strDelegateSID)(OA;;SW;f3a64788-5306-11d1-a9c5-0000f80367c1;;$strDelegateSID)(OA;;SW;72e39547-7b18-11d1-adef-00c04fd8d5cd;;$strDelegateSID)(OA;;CR;00299570-246d-11d0-a768-00aa006e0529;;$strDelegateSID)
+
+		if (($strDomain -eq "") -or ($strDomain -eq $null)){
+			$objReturn.Message = "Error, need a full DN.  Could not parse a domain out of the supplied DN.";
+		}else{
+			$objTarget = $null;
+			$Error.Clear();
+			#$objAcl = Get-Acl $objTarget;
+			if (($strDomainOrDC -eq "") -or ($strDomainOrDC -eq $null)){
+				$objTarget = [ADSI]("LDAP://" + $strCompDN);
+			}else{
+				$objTarget = [ADSI]("LDAP://" + $strDomainOrDC + "/" + $strCompDN);
+			}
+
+			if (($objTarget -eq "") -or ($objTarget -eq $null) -or ($Error) -or ($objTarget.Path -eq "") -or ($objTarget.Path -eq $null)){
+				$objReturn.Message = "Error, Could not find a Target AD object that matched the DN provided.";
+			}else{
+				#To get the GUIDs from the Network:
+				#$rootdse = Get-ADRootDSE;
+				#$guidmap = @{};
+				#Get-ADObject -SearchBase ($rootdse.SchemaNamingContext) -LDAPFilter "(schemaidguid=*)" -Properties lDAPDisplayName,schemaIDGUID | % {$guidmap[$_.lDAPDisplayName]=[System.GUID]$_.schemaIDGUID}
+				#$extendedrightsmap = @{};
+				#Get-ADObject -SearchBase ($rootdse.ConfigurationNamingContext) -LDAPFilter "(&(objectclass=controlAccessRight)(rightsguid=*))" -Properties displayName,rightsGuid | % {$extendedrightsmap[$_.displayName]=[System.GUID]$_.rightsGuid};
+
+				#Read current ACLs
+				#https://social.technet.microsoft.com/Forums/windowsserver/en-US/df3bfd33-c070-4a9c-be98-c4da6e591a0a/forum-faq-using-powershell-to-assign-permissions-on-active-directory-objects?forum=winserverpowershell
+				<#
+					#DLCHLK085463 = $strCompDN = "CN=DLCHLK085463,OU=COMPUTERS,OU=CHLK,OU=NAVAIR,DC=nadsuswe,DC=nads,DC=navy,DC=mil";
+					GetACLs $strCompDN;
+					$objTarget = [ADSI]("LDAP://CN=......");
+					$objTarget = [ADSI]("LDAP://" + $strCompDN);
+					$objACL = $objTarget.psbase.ObjectSecurity;
+					$objACLList = $objACL.GetAccessRules($True, $True, [System.Security.Principal.SecurityIdentifier]);
+					foreach($acl in $objACLList){
+						$acl;
+						Write-Host "`r`n";
+					}
+				#>
+
+				#Variables common to all
+				#$objIdentityReference = New-Object System.Security.Principal.SecurityIdentifier($strDelegateSID);
+				$objSID = [System.Security.Principal.SecurityIdentifier] $strDelegateSID;
+				$objIdentityReference = [System.Security.Principal.IdentityReference] $objSID;
+				$objAccessControlType = [System.Security.AccessControl.AccessControlType] "Allow";
+				$objInheritanceType = [System.DirectoryServices.ActiveDirectorySecurityInheritance] "None";
+				$objInheritedObjectType = New-Object Guid "bf967aba-0de6-11d0-a285-00aa003049e2";			#the schemaIDGuid for user;
+				<#
+					#the syntax of "New-ObjectSystem.DirectoryServices.ActiveDirectoryAccessRule":
+					#[sid of the object who is either getting or losing permissions],
+					#[the permission i'm allowing/denying],
+					#[whether i'm allowing or denying],
+					#[rightsguid of the property i'm allowing/denying],
+					#[type of inheritance],
+					#[guid of the class of the object i'm allowing/denying permissions ON]
+
+					#michael.j.rogers.dev  =  $strDelegateSID = "S-1-5-21-283434708-1855628083-519896044-1430629";
+					#redirect.test  =  $strDelegateSID = "S-1-5-21-1801674531-2146617017-725345543-4178497";
+					#DLCHLK085463 = $strCompDN = "CN=DLCHLK085463,OU=COMPUTERS,OU=CHLK,OU=NAVAIR,DC=nadsuswe,DC=nads,DC=navy,DC=mil";
+				#>
+
+				$Error.Clear();
+				#VALIDATED_SPN = "{F3A64788-5306-11D1-A9C5-0000F80367C1}"  --  Validated Write Service Principle Name
+				<#
+					ActiveDirectoryRights : Self
+					InheritanceType       : None
+					ObjectType            : f3a64788-5306-11d1-a9c5-0000f80367c1
+					InheritedObjectType   : 00000000-0000-0000-0000-000000000000
+					ObjectFlags           : ObjectAceTypePresent
+					AccessControlType     : Allow
+					IdentityReference     : S-1-5-21-1801674531-2146617017-725345543-4178497
+					IsInherited           : False
+					InheritanceFlags      : None
+					PropagationFlags      : None
+				#>
+				$objActiveDirectoryRights = [System.DirectoryServices.ActiveDirectoryRights] "Self";
+				$objObjectType = New-Object Guid "F3A64788-5306-11D1-A9C5-0000F80367C1";
+				$objAce1 = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $objIdentityReference, $objActiveDirectoryRights, $objAccessControlType, $objObjectType, $objInheritanceType, $objInheritedObjectType;
+				#$objAce1 = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $objIdentityReference, "Self", "Allow", "F3A64788-5306-11D1-A9C5-0000F80367C1", "None", "F3A64788-5306-11D1-A9C5-0000F80367C1";
+
+				$Error.Clear();
+				#VALIDATED_DNS_HOST_NAME = "{72E39547-7B18-11D1-ADEF-00C04FD8D5CD}"  --  Validated Write dNSHostName
+				<#
+					ActiveDirectoryRights : Self
+					InheritanceType       : None
+					ObjectType            : 72e39547-7b18-11d1-adef-00c04fd8d5cd
+					InheritedObjectType   : 00000000-0000-0000-0000-000000000000
+					ObjectFlags           : ObjectAceTypePresent
+					AccessControlType     : Allow
+					IdentityReference     : S-1-5-21-1801674531-2146617017-725345543-4178497
+					IsInherited           : False
+					InheritanceFlags      : None
+					PropagationFlags      : None
+				#>
+				$objActiveDirectoryRights = [System.DirectoryServices.ActiveDirectoryRights] "Self";
+				$objObjectType = New-Object Guid "72E39547-7B18-11D1-ADEF-00C04FD8D5CD";
+				$objAce2 = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $objIdentityReference, $objActiveDirectoryRights, $objAccessControlType, $objObjectType, $objInheritanceType, $objInheritedObjectType;
+				#$objAce2 = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $objIdentityReference, "Self", "Allow", "72E39547-7B18-11D1-ADEF-00C04FD8D5CD", "None", "72E39547-7B18-11D1-ADEF-00C04FD8D5CD";
+
+				$Error.Clear();
+				#USER_ACCOUNT_RESTRICTIONS = "{4C164200-20C0-11D0-A768-00AA006E0529}"  --  Write Account Restrictions
+				<#
+					ActiveDirectoryRights : WriteProperty
+					InheritanceType       : None
+					ObjectType            : 4c164200-20c0-11d0-a768-00aa006e0529
+					InheritedObjectType   : 00000000-0000-0000-0000-000000000000
+					ObjectFlags           : ObjectAceTypePresent
+					AccessControlType     : Allow
+					IdentityReference     : S-1-5-21-1801674531-2146617017-725345543-4178497
+					IsInherited           : False
+					InheritanceFlags      : None
+					PropagationFlags      : None
+				#>
+				$objActiveDirectoryRights = [System.DirectoryServices.ActiveDirectoryRights] "WriteProperty";
+				$objObjectType = New-Object Guid "4C164200-20C0-11D0-A768-00AA006E0529";
+				$objAce3 = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $objIdentityReference, $objActiveDirectoryRights, $objAccessControlType, $objObjectType, $objInheritanceType, $objInheritedObjectType;
+				#$objAce3 = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $objIdentityReference, "WriteProperty", "Allow", "4C164200-20C0-11D0-A768-00AA006E0529", "None", "4C164200-20C0-11D0-A768-00AA006E0529";
+
+				$Error.Clear();
+				#RESET_PASSWORD_GUID = "{00299570-246D-11D0-A768-00AA006E0529}"  --  Reset Password
+				<#
+					ActiveDirectoryRights : ExtendedRight
+					InheritanceType       : None
+					ObjectType            : 00299570-246d-11d0-a768-00aa006e0529
+					InheritedObjectType   : 00000000-0000-0000-0000-000000000000
+					ObjectFlags           : ObjectAceTypePresent
+					AccessControlType     : Allow
+					IdentityReference     : S-1-5-21-1801674531-2146617017-725345543-4178497
+					IsInherited           : False
+					InheritanceFlags      : None
+					PropagationFlags      : None
+				#>
+				$objActiveDirectoryRights = [System.DirectoryServices.ActiveDirectoryRights] "ExtendedRight";
+				$objObjectType = New-Object Guid "00299570-246D-11D0-A768-00AA006E0529";
+				$objAce4 = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $objIdentityReference, $objActiveDirectoryRights, $objAccessControlType, $objObjectType, $objInheritanceType, $objInheritedObjectType;
+				#$objAce4 = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $objIdentityReference, "ExtendedRight", "Allow", "00299570-246D-11D0-A768-00AA006E0529", "None", "bf967aba-0de6-11d0-a285-00aa003049e2";
+
+				#Still not sure why the next 2 commands make things work, but Jason had them in his code sample, and they help here.
+				$SecOptions = [System.DirectoryServices.DirectoryEntryConfiguration]$objTarget.get_Options();
+				#$objTarget.get_Options(); returns -->  Owner, Group, Dacl
+				$SecOptions.SecurityMasks = [System.DirectoryServices.SecurityMasks]'Dacl';
+				#Doint the above fixes the "Exception calling "CommitChanges" with "0" argument(s): "A constraint violation occurred."" error, 
+
+				$objRet = $objTarget.get_ObjectSecurity().AddAccessRule($objAce1);
+				$objRet = $objTarget.get_ObjectSecurity().AddAccessRule($objAce2);
+				$objRet = $objTarget.get_ObjectSecurity().AddAccessRule($objAce3);
+				$objRet = $objTarget.get_ObjectSecurity().AddAccessRule($objAce4);
+
+				$Error.Clear();
+				$objRet = $objTarget.CommitChanges();
+				if ($Error){
+					$objReturn.Message = $objReturn.Message + "`r`n" + "setInfo: " + $Error;
+				}
+			}
+		}
+
+		$objReturn.Returns = $objTarget;
+		if ($objReturn.Message -eq "Error"){
+			#No Errors happened/found/reported
+			$objReturn.Message = "Success";
+			$objReturn.Results = $True;
+		}
+		#To verify permissions are set (?on local ver only?)
+		#$objTarget.ObjectSecurity.Access;
+		#$objRet.Returns.ObjectSecurity.Access | Where-Object {$_.IdentityReference -Match "michael.j.rogers.dev"};
+
+		return $objReturn;
+	}
+
+	function BuildDisplayName{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$LastName, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$FirstName, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$MI = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Rank, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Dep, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Office, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Company = "USN", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$KnownBy = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Gen = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$FNcc = "US"
+		)
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters.
+			#$objReturn.Results		= $True or $False.  Were there errors?
+			#$objReturn.Message		= A verbose message of the results (The error message).
+			#$objReturn.Returns		= The Display Name.
+		#$LastName = Last Name.
+		#$FirstName = First Name.
+		#$MI = Middle Initial.
+		#$Rank = Rank.  NOT E/O Grade.
+		#$Dep = Department.
+		#$Office = Office.
+		#$Company = The company (USN, USMC, etc).  Used to determine the exact format of things.
+		#$KnownBy = KnownBy Name.  i.e. Tony for Anthony.
+		#$Gen = Generation.  i.e. Jr, Sr, etc.
+		#$FNcc = Foreign National Country Code.  i.e. FR, GE.
+
+		#Display Names - per NMCI Naming Standards (D400 11939.01 section 3.9.4.1)
+		#Navy --> Last, First[or KnownBy] MI [Generation] [FORNATL-cc] Rank Department [or GalCMD], Office [or GalOff]
+			#The Standards say to use "http://www.nima.mil/gns/html/fips_10_digraphs.html" for CC values, but it is dead.
+			#SRM uses "http://www.state.gov/s/inr/rls/4250.htm".
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $False
+			Message = "Error"
+			Returns = ""
+		}
+
+		$Error.Clear();
+		#BuildDisplayName
+		$strDisplayName = "";
+		#Display Names done per NMCI Naming Standards (D400 11939.01 section 3.9.4.1)
+		if ($Company -eq "USN"){
+			#USN Display Name
+				#Last, First[or KnownBy] MI Gen FORNATL-cc Rank GalCMD [or Department], GalOff [or Office]
+			#Last, First[or KnownBy]
+			if (($KnownBy -ne "") -and ($KnownBy -ne $null)){
+				$strDisplayName = $LastName + ", " + $KnownBy + " ";
+			}else{
+				$strDisplayName = $LastName + ", " + $FirstName + " ";
+			}
+			#Middle
+			if (($MI -ne "") -and ($MI -ne $null)){
+				if ($MI.Trim().Length -gt 1){
+					$MI = $MI.Trim();
+					$MI = $MI.SubString(0, 1);
+				}
+				$strDisplayName = $strDisplayName + $MI + " ";
+			}
+			#Gen
+			if (($Gen -ne "") -and ($Gen -ne $null)){
+				$strDisplayName = $strDisplayName + $Gen + " ";
+			}
+			#Rank
+			if (($Rank -ne "") -and ($Rank -ne $null)){
+				$strDisplayName = $strDisplayName + $Rank + " ";
+			}
+			#CC / FORNATL
+			if (($FNcc -ne "US") -and ($FNcc -ne "") -and ($FNcc -ne $null)){
+				if ($FNcc.Trim().Length -gt 2){
+					$FNcc = $FNcc.Trim();
+					$FNcc = $FNcc.SubString(0, 2);
+				}
+				$strDisplayName = $strDisplayName + "FORNATL-" + $FNcc + " ";
+			}
+			#GALCmd / Department
+			if (($Dep -ne "") -and ($Dep -ne $null)){
+				$strDisplayName = $strDisplayName + $Dep;
+			}
+			#GALOffice / Office
+			if (($Office -ne "") -and ($Office -ne $null)){
+				$strDisplayName = $strDisplayName.Trim() + ", " + $Office;
+			}
+		}
+
+		if ($Error){
+			$objReturn.Results = $False;
+			$objReturn.Message = $Error;
+		}else{
+			$objReturn.Results = $True;
+			$objReturn.Message = "Success";
+		}
+		$objReturn.Returns = $strDisplayName;
+
+		return $objReturn;
+	}
 
 	function CreateADComputer{
 		#Note: If the SAMAccountName string provided, does not end with a '$', one will be appended (by powershell) if needed.
@@ -73,7 +530,6 @@
 			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
 			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
 		}
-		#$strTemp = "CreateADComputer(" + $strTemp.Trim() + ")";
 		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
 		$objReturn = New-Object PSObject -Property @{
 			Name = $strTemp
@@ -99,28 +555,35 @@
 			#Make sure the OU exists.
 			$objResults = Check4OU $strOU $strDomain;
 			if ($objResults.Results -gt 0){
-				#$strDomain = $objResults.Returns[0];
-				if ($objResults.Results -gt 1){
-					#"The OU was found on multiple Domains."
-					$bMatch = $False;
-					for ($intX = 1; $intX -lt $objResults.Results; $intX++){
-						#$strTemp = $strTemp + ", " + $objResults.Returns[$intX];
-						if (($strDomain -eq $objResults.Returns[$intX])){
-							#One of the domains found matches the requested domain.
-							$bMatch = $True;
-							break;
-						}
-					}
-					if ($bMatch -eq $False){
-						$objReturn.Message = "OU found on multiple domains, but none of them match the domain supplied.";
-						$strDomain = "";
-					}
-				}else{
-					if (!($strDomain -eq $objResults.Returns[0])){
-						$objReturn.Message = "OU found, but the domain it was found on does NOT match the supplied domain.";
-						$strDomain = "";
-					}
-				}
+			#	#$strDomain = $objResults.Returns[0];
+			#	if ($objResults.Results -gt 1){
+			#		#"The OU was found on multiple Domains."
+			#		$bMatch = $False;
+			#		if (($objResults.Returns -Contains $strDomain) -eq $False){
+			#			#$strDomain = $strDomain;
+			#			$bMatch = $True;
+			#		}else{
+			#			for ($intX = 1; $intX -lt $objResults.Results; $intX++){
+			#				#$strTemp = $strTemp + ", " + $objResults.Returns[$intX];
+
+			#				if ((($strDomain -eq $objResults.Returns[$intX])) -or (($objResults.Returns[$intX] -Contains $strDomain))){
+			#					#One of the domains found matches the requested domain.
+			#					$bMatch = $True;
+			#					break;
+			#				}
+			#			}
+			#		}
+
+			#		if ($bMatch -eq $False){
+			#			$objReturn.Message = "OU found on multiple domains, but none of them match the domain supplied.";
+			#			$strDomain = "";
+			#		}
+			#	}else{
+			#		if (!($strDomain -eq $objResults.Returns[0])){
+			#			$objReturn.Message = "OU found, but the domain it was found on does NOT match the supplied domain.";
+			#			$strDomain = "";
+			#		}
+			#	}
 
 				if (!(($objReturn.Message -ne "") -and ($objReturn.Message -ne $null))){
 					$InitializeDefaultDrives=$False;
@@ -295,7 +758,6 @@
 			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
 			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
 		}
-		#$strTemp = "Check4OU(" + $strTemp.Trim() + ")";
 		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
 		$objReturn = New-Object PSObject -Property @{
 			Name = $strTemp
@@ -312,10 +774,14 @@
 		#Need to get Domains.  GetDomains() requires "PS-AD-Routines.ps1".
 		if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
 			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-			if ((Test-Path ($ScriptDir + "\PS-AD-Routines.ps1"))){
-				. ($ScriptDir + "\PS-AD-Routines.ps1")
+			if ((Test-Path ($ScriptDir + "\AD-Routines.ps1"))){
+				. ($ScriptDir + "\AD-Routines.ps1")
 			}
 		}
+
+		#if (($RequiredDomain -Contains ".") -or ($RequiredDomain -Match ".")){
+		#	$RequiredDomain = $RequiredDomain.SubString(0, $RequiredDomain.IndexOf("."));
+		#}
 		[System.Collections.ArrayList]$arrDomains = GetDomains $False $False;
 		if (($RequiredDomain -ne "") -and ($RequiredDomain -ne $null) -and (!($arrDomains -Contains $RequiredDomain))){
 			#if the data has a domain not in the list, add it
@@ -650,6 +1116,170 @@
 		return $objUser;
 	}
 
+	function GetACLs{
+		#https://social.technet.microsoft.com/Forums/windowsserver/en-US/df3bfd33-c070-4a9c-be98-c4da6e591a0a/forum-faq-using-powershell-to-assign-permissions-on-active-directory-objects?forum=winserverpowershell
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strDistName, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolTranslate = $True
+		)
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters.
+			#$objReturn.Results		= True or False (Were there Errors).
+			#$objReturn.Message		= A verbose message of the results (The error message).
+			#$objReturn.Returns		= $null, or an array/list of the ACLs.
+		#$strDistName = The AD objects DistinguishedName to get ACL's of.  (i.e. CN=WLNRFK390tst,OU=COMPUTERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil  or  CN=DDALNT000032,OU=COMPUTERS,OU=ALNT,OU=ONR,DC=nadsusea,DC=nads,DC=navy,DC=mil)
+		#$bolTranslate = $True or $False. Translate the GUID's into meaningful names.  (i.e. F3A64788-5306-11D1-A9C5-0000F80367C1 = "Validated Write Service Principle Name")
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $True
+			Message = "Success"
+			Returns = $null
+		}
+
+		#Sample usage:
+		<#
+			$objRet = GetACLs "CN=john.alusik,OU=USERS,OU=NRFK,DC=nmci-isf,DC=com";
+			foreach ($strEntry in $objRet.Returns){
+				#if ($strEntry.NTAccount -eq "NT AUTHORITY\SELF"){
+				if ($strEntry.NTAccount -eq "UnKnown"){
+					$strEntry;
+				}
+			}
+		#>
+
+		$InitializeDefaultDrives=$False;
+		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
+
+		$objRootDSE = Get-ADRootDSE;
+		$guidmap = @{};				#Hashtable
+		Get-ADObject -SearchBase ($objRootDSE.SchemaNamingContext) -LDAPFilter "(schemaidguid=*)" -Properties lDAPDisplayName,schemaIDGUID | % {$guidmap[$_.lDAPDisplayName]=[System.GUID]$_.schemaIDGUID};
+		$extendedrightsmap = @{};	#Hashtable
+		Get-ADObject -SearchBase ($objRootDSE.ConfigurationNamingContext) -LDAPFilter "(&(objectclass=controlAccessRight)(rightsguid=*))" -Properties displayName,rightsGuid | % {$extendedrightsmap[$_.displayName]=[System.GUID]$_.rightsGuid};
+
+		if (($strDC -eq "") -or ($strDC -eq $null)){
+			$strDomain = $strDistName.SubString($strDistName.IndexOf("DC=") + 3);
+			$strDomain = $strDomain.SubString(0, $strDomain.IndexOf(","));
+
+			$strDC = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
+		}
+
+		#Read current ACLs
+		if (($strDC -eq "") -or ($strDC -eq $null)){
+			$objTarget = [ADSI]("LDAP://" + $strDistName);
+		}else{
+			$objTarget = [ADSI]("LDAP://" + $strDC + "/" + $strDistName);
+		}
+		$objACL = $objTarget.psbase.ObjectSecurity;
+		$objACLList = $objACL.GetAccessRules($True, $True, [System.Security.Principal.SecurityIdentifier]);
+		$arrReturn=@();
+		foreach($acl in $objACLList){
+			#$acl;
+			#Write-Host "`r`n";
+
+			$Error.Clear();
+			$strAccount = $null;
+			$objSID = New-Object System.Security.Principal.SecurityIdentifier($acl.IdentityReference);
+			$strAccount = $objSID.Translate([System.Security.Principal.NTAccount]);
+			if ($Error){
+				#The following SIDs are not Translating.
+					#S-1-5-32-548 = Account Operators
+					#S-1-5-32-560 = BUILTIN\Windows Authorization Access Group
+					#S-1-5-32-561 = BUILTIN\Terminal Server License Servers
+					#S-1-5-32-554 = BUILTIN\Pre-Windows 2000 Compatible Access
+				#https://support.microsoft.com/en-us/kb/243330
+				switch ($acl.IdentityReference){
+					"S-1-5-32-548"{
+						$strAccount = "Account Operators";
+						break;
+					}
+					"S-1-5-32-554"{
+						$strAccount = "BUILTIN\Pre-Windows 2000 Compatible Access";
+						break;
+					}
+					"S-1-5-32-560"{
+						$strAccount = "BUILTIN\Windows Authorization Access Group";
+						break;
+					}
+					"S-1-5-32-561"{
+						$strAccount = "BUILTIN\Terminal Server License Servers";
+						break;
+					}
+					default{
+						$objReturn.Message = $objReturn.Message + "`r`n" + $objSID + ": " + $Error;
+						#$strAccount = $acl.IdentityReference;
+						$strAccount = "UnKnown";
+						break;
+					}
+				}
+			}
+			$objGUID1 = $acl.ObjectType;
+			$objGUID2 = $acl.InheritedObjectType;
+			if (($bolTranslate -eq $True) -and ($objGUID1 -ne "00000000-0000-0000-0000-000000000000") -and ($objGUID2 -ne "00000000-0000-0000-0000-000000000000")){
+				$bolFound1 = $False;
+				$bolFound2 = $False;
+				foreach ($strKey in $guidmap.Keys){
+					if (($guidmap[$strKey] -eq $objGUID1) -and ($bolFound1 -eq $False)){
+						$objGUID1 = $strKey;
+						$bolFound1 = $True;
+					}
+					if (($guidmap[$strKey] -eq $objGUID2) -and ($bolFound2 -eq $False)){
+						$objGUID2 = $strKey;
+						$bolFound2 = $True;
+					}
+					if (($bolFound2 -eq $True) -and ($bolFound1 -eq $True)){
+						break;
+					}
+				}
+				if (($bolFound2 -eq $False) -or ($bolFound1 -eq $False)){
+					foreach ($strKey in $extendedrightsmap.Keys){
+						if (($extendedrightsmap[$strKey] -eq $objGUID1) -and ($bolFound1 -eq $False)){
+							$objGUID1 = $strKey;
+							$bolFound1 = $True;
+						}
+						if (($extendedrightsmap[$strKey] -eq $objGUID2) -and ($bolFound2 -eq $False)){
+							$objGUID2 = $strKey;
+							$bolFound2 = $True;
+						}
+						if (($bolFound2 -eq $True) -and ($bolFound1 -eq $True)){
+							break;
+						}
+					}
+				}
+			}
+
+			$info = @{
+				'ActiveDirectoryRights' = $acl.ActiveDirectoryRights;
+				'InheritanceType' = $acl.InheritanceType;
+				'ObjectType' = $objGUID1;
+				'InheritedObjectType' = $objGUID2;
+				'ObjectFlags' = $acl.ObjectFlags;
+				'AccessControlType' = $acl.AccessControlType;
+				'IdentityReference' = $acl.IdentityReference;
+				'NTAccount' = $strAccount;
+				'IsInherited' = $acl.IsInherited;
+				'InheritanceFlags' = $acl.InheritanceFlags;
+				'PropagationFlags' = $acl.PropagationFlags;
+			}
+			$obj = New-Object -TypeName PSObject -Property $info;
+			$arrReturn += $obj;
+		}
+
+		$objReturn.Returns = $arrReturn;
+
+		return $objReturn;
+	}
+
 	function GetDomains{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolFQDN = $False, 
@@ -928,6 +1558,27 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strUserDN, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Property
 		)
+		#$strUserDN = The DistinguishedName of the account. (i.e. CN=redirect.test,OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil)
+		#$Property = What TS Property to get. (blank or $null returns all) "allowLogon", "TerminalServicesHomeDirectory", "TerminalServicesHomeDrive", "TerminalServicesProfilePath"
+
+		<#
+		#Setup a PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $False
+			Message = "Error"
+			Returns = "";
+		}
+		#>
 
 		$InitializeDefaultDrives=$False;
 		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
@@ -935,26 +1586,39 @@
 		[System.Collections.ArrayList]$arrValues = @();
 		#$arrValues = @();
 
+		$Error.Clear();
 		#Prep to interact with Term Serv Attributes.
 		$arrTSProperties = "allowLogon","TerminalServicesHomeDirectory","TerminalServicesHomeDrive","TerminalServicesProfilePath";
-		$strLDAP = "LDAP://$($strUserDN.SubString($strUserDN.IndexOf(",") + 1))";						#"LDAP://OU=USERS,OU=SDNI,OU=COMPACFLT,DC=nadsuswe,DC=nads,DC=navy,DC=mil"
-		$strUserDN = $strUserDN.SubString(0, $strUserDN.IndexOf(","));									#"CN=redirect.test"
-		$objOU = [ADSI]$strLDAP;
-		$objADSIUser = $objOU.PSBase.get_children().find($strUserDN);
-		#READ Term Serv Attributes
-		foreach($strProperty in $arrTSProperties){
-			if (($Property -ne "") -and ($Property -ne $null)){
-				if ($Property -eq $($strProperty)){
-					$arrValues += $($objADSIUser.PSBase.InvokeGet($strProperty)).ToString();
+		if ($strUserDN.IndexOf(",") -gt 0){
+			$strLDAP = "LDAP://$($strUserDN.SubString($strUserDN.IndexOf(",") + 1))";						#"LDAP://OU=USERS,OU=SDNI,OU=COMPACFLT,DC=nadsuswe,DC=nads,DC=navy,DC=mil"
+			$strUserDN = $strUserDN.SubString(0, $strUserDN.IndexOf(","));									#"CN=redirect.test"
+			$objOU = [ADSI]$strLDAP;
+			$objADSIUser = $objOU.PSBase.get_children().find($strUserDN);
+
+			#READ Term Serv Attributes
+			if (!($Error)){
+				foreach($strProperty in $arrTSProperties){
+					if (($Property -ne "") -and ($Property -ne $null)){
+						if ($Property -eq $($strProperty)){
+							$arrValues += $($objADSIUser.PSBase.InvokeGet($strProperty)).ToString();
+						}
+					}else{
+						#$strMessage = "$($strProperty) value: $($objADSIUser.PSBase.InvokeGet($strProperty))";
+						#MsgBox $strMessage;
+						$arrValues += "$($strProperty) = $($objADSIUser.PSBase.InvokeGet($strProperty))";
+					}
 				}
+
+				#$objReturn.Results = $True;
+				#$objReturn.Message = "Success";
 			}else{
-				#$strMessage = "$($strProperty) value: $($objADSIUser.PSBase.InvokeGet($strProperty))";
-				#MsgBox $strMessage;
-				$arrValues += "$($strProperty) = $($objADSIUser.PSBase.InvokeGet($strProperty))";
+				#$objReturn.Message = "Error `r`n" + $Error;
 			}
 		}
 
 		return $arrValues;
+		#$objReturn.Returns = $arrValues;
+		#return $objReturn;
 	}
 
 	function TSSet{
@@ -963,23 +1627,40 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Attribute, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Value
 		)
+		#$strUserDN = The DistinguishedName of the account. (i.e. CN=redirect.test,OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil)
+		#$Attribute = What TS Property to update.  "allowLogon", "TerminalServicesHomeDirectory", "TerminalServicesHomeDrive", "TerminalServicesProfilePath"
+		#$Value = The Value to populate $Attribute with.
+
+		$bolSuccess = $False;
 
 		$InitializeDefaultDrives=$False;
 		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
 
 		#Prep to interact with Term Serv Attributes.
 		#$arrTSProperties = "allowLogon","TerminalServicesHomeDirectory","TerminalServicesHomeDrive","TerminalServicesProfilePath";
-		$strLDAP = "LDAP://$($strUserDN.SubString($strUserDN.IndexOf(",") + 1))";						#"LDAP://OU=USERS,OU=SDNI,OU=COMPACFLT,DC=nadsuswe,DC=nads,DC=navy,DC=mil"
-		$strUserDN = $strUserDN.SubString(0, $strUserDN.IndexOf(","));									#"CN=redirect.test"
-		$objOU = [ADSI]$strLDAP;
-		$objADSIUser = $objOU.PSBase.get_children().find($strUserDN);
-		#SET Term Serv Attributes
-		#$objADSIUser.PSBase.invokeSet("allowLogon", $Value);
-		#$objADSIUser.PSBase.invokeSet("TerminalServicesHomeDirectory", $Value);
-		#$objADSIUser.PSBase.invokeSet("TerminalServicesProfilePath", $Value);
-		#$objADSIUser.PSBase.invokeSet("TerminalServicesHomeDrive", $Value);
-		$objADSIUser.PSBase.invokeSet($Attribute, $Value);
-		$objADSIUser.setinfo();
+		if ($strUserDN.IndexOf(",") -gt 0){
+			$Error.Clear();
+			$strLDAP = "LDAP://$($strUserDN.SubString($strUserDN.IndexOf(",") + 1))";						#"LDAP://OU=USERS,OU=SDNI,OU=COMPACFLT,DC=nadsuswe,DC=nads,DC=navy,DC=mil"
+			$strUserDN = $strUserDN.SubString(0, $strUserDN.IndexOf(","));									#"CN=redirect.test"
+			$objOU = [ADSI]$strLDAP;
+			$objADSIUser = $objOU.PSBase.get_children().find($strUserDN);
+
+			#SET Term Serv Attributes
+			if (!($Error)){
+				#$objADSIUser.PSBase.invokeSet("allowLogon", $Value);
+				#$objADSIUser.PSBase.invokeSet("TerminalServicesHomeDirectory", $Value);
+				#$objADSIUser.PSBase.invokeSet("TerminalServicesProfilePath", $Value);
+				#$objADSIUser.PSBase.invokeSet("TerminalServicesHomeDrive", $Value);
+				$objADSIUser.PSBase.invokeSet($Attribute, $Value);
+				$objADSIUser.setinfo();
+
+				if (!($Error)){
+					$bolSuccess = $True;
+				}
+			}
+		}
+
+		return $bolSuccess;
 	}
 
 	function UpdateADField{
@@ -1045,63 +1726,6 @@
 				}
 			}
 		}
-	}
-
-	function SampleUsage{
-		$DomainName = "NMCI-ISF";
-
-		#To create a new blank user object:
-		Add-Type -AssemblyName System.DirectoryServices.AccountManagement;
-		#http://stackoverflow.com/questions/13688779/force-principalcontext-to-connect-to-a-specific-server
-		$PrincipalContext = New-Object System.DirectoryServices.AccountManagement.PrincipalContext("DOMAIN", $DomainName_or_DCName);  #$DomainName_or_DCName = the Domain the new account will be create on;
-		$NMCIUser = New-Object NMCI.AD.NMCIUserPrincipal($PrincipalContext);
-		#$NMCIUser will now contain all NMCI AD Schema Attribs.
-
-		#Write
-		$NMCIUser.l = "City";
-		$NMCIUser.City = "City";
-
-		#Read
-		foreach ($oPropInfo in $NMCIUser.GetType().GetProperties()){
-			#$oPropInfo;
-			<#
-				MemberType    : Property
-				Name          : PasswordNotRequired
-				DeclaringType : System.DirectoryServices.AccountManagement.AuthenticablePrincipal
-				ReflectedType : NMCI.AD.NMCIUserPrincipal
-				MetadataToken : 385876020
-				Module        : System.DirectoryServices.AccountManagement.dll
-				PropertyType  : System.Boolean
-				Attributes    : None
-				CanRead       : True
-				CanWrite      : True
-				IsSpecialName : False
-
-				MemberType    : Property
-				Name          : Title
-				DeclaringType : NMCI.AD.NMCIUserPrincipal
-				ReflectedType : NMCI.AD.NMCIUserPrincipal
-				MetadataToken : 385876028
-				Module        : hnsughcj.dll
-				PropertyType  : System.String
-				Attributes    : None
-				CanRead       : True
-				CanWrite      : True
-				IsSpecialName : False
-			#>
-			#$oPropInfo.Name;
-			#$oPropInfo.GetValue($NMCIUser, $null);
-
-			$strName = $oPropInfo.Name;
-			$strValue = $oPropInfo.Attributes;
-			#$strValue = $oPropInfo.GetValue($NMCIUser, $null);
-			if (($strName -eq "") -or ($strName -eq $null)){
-				$oPropInfo;
-			}else{
-				Write-Host $strName " = " $strValue;
-			}
-		}
-
 	}
 
 
