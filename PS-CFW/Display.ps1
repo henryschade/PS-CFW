@@ -284,7 +284,8 @@ $ConsoleCode = @'
 		#$DisSet = [cDisplaySettings]
 		trap {
 			if (($MyInvocation.MyCommand.Path -eq "") -or ($MyInvocation.MyCommand.Path -eq $null)){
-				$ScriptDir = "C:\SRM_Apps_N_Tools\PS-Scripts";
+				#$ScriptDir = "C:\SRM_Apps_N_Tools\PS-Scripts";
+				$ScriptDir = "C:\SRM_Apps_N_Tools\PS-CFW";
 			}else{
 				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;				#Gets the directory/path the Script was run from.
 			}
@@ -329,7 +330,8 @@ $ConsoleCode = @'
 		$ch = [ConsoleHelper]
 		trap {
 			if (($MyInvocation.MyCommand.Path -eq "") -or ($MyInvocation.MyCommand.Path -eq $null)){
-				$ScriptDir = "C:\SRM_Apps_N_Tools\PS-Scripts";
+				#$ScriptDir = "C:\SRM_Apps_N_Tools\PS-Scripts";
+				$ScriptDir = "C:\SRM_Apps_N_Tools\PS-CFW";
 			}else{
 				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;				#Gets the directory/path the Script was run from.
 			}
