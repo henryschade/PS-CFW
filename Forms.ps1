@@ -415,7 +415,7 @@
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFormFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strCodeFile, 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][Int]$intVarScope = 1
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$intVarScope = 1
 		)
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.

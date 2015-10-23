@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F5034706-568F-408A-B7B3-4D38C6DB8A32}") = "PS-CFW", "PS-CFW\PS-CFW.pssproj", "{6F326FCB-1EA1-4A8D-B0A1-A7336225B846}"
+Project("{F5034706-568F-408A-B7B3-4D38C6DB8A32}") = "PS-CFW", "PS-CFW.pssproj", "{6F326FCB-1EA1-4A8D-B0A1-A7336225B846}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
