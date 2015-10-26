@@ -424,7 +424,7 @@
 			#$objReturn.Returns		= The GUI/Interface object.
 		#$strFormFile = The full path to the XAML GUI file.  i.e. "C:\Projects\PS-Scripts\Testing\SourceCodeGUI.xaml";
 		#$strCodeFile = The full path to the file with all the functions/events.  i.e."C:\Projects\PS-Scripts\Testing\PS-SourceCodeGUI.ps1";
-		#$intVarScope = The Scope to create the GUI variables at. (0 through the number of scopes, where 0 is the current scope and 1 is its parent)
+		#$intVarScope = The Scope to create the GUI variables at. (0 through the number of scopes, where 0 is the current scope, and 1 is its parent)
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -471,11 +471,11 @@
 				$strLine = $strLine.Replace(" x:", " ");
 
 				#The Class entry is at the end of the line in all my samples so far.
-				if ($strLine.Contains("x:Class")){
-					$strLine = $strLine.SubString(0, ($strLine.IndexOf("x:Class") - 1));
-				}
 				if ($strLine.Contains("Class")){
 					$strLine = $strLine.SubString(0, ($strLine.IndexOf("Class") - 1));
+				}
+				if ($strLine.Contains("x:Class")){
+					$strLine = $strLine.SubString(0, ($strLine.IndexOf("x:Class") - 1));
 				}
 
 				if ($strLine.Contains("xmlns")){
@@ -536,13 +536,15 @@
 			#	$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
 			#	Stop-Process -Id $PID;
 			#}
-		}else{
+		}
+		else{
 			#Get the Form objects/elements, by name, and create PowerShell variables for them.
 			if ($objNS -eq $null){
 				#$objXAMLFile.SelectNodes("//*[@Name]") | %{Set-Variable -Name ($_.Name) -Value $objForm.FindName($_.Name)};
 				#$objNodes = $objXAMLFile.SelectNodes("//*[@Name]");
 				$objNodes = $objXAMLFile.SelectNodes("//*");
-			}else{
+			}
+			else{
 				#XmlNode book = doc.SelectSingleNode("//ab:book", nsmgr);
 				$objNodes = $objXAMLFile.SelectNodes("//ns:*", $objNS);
 			}
@@ -551,7 +553,7 @@
 			foreach ($objNode in $objNodes){
 				if (($objNode.Name -ne "") -and ($objNode.Name -ne $null) -and ($objNode.Name -ne "Grid")){
 					#Write-Host $objNode.Name;
-					#Create variables for each of the nodes/controlls. (for "-Scope",  0 is the current scope and 1 is its parent).
+					#Create variables for each of the nodes/controlls. (for "-Scope",  0 is the current scope, and 1 is its parent).
 					Set-Variable -Name ($objNode.Name) -Value $objForm.FindName($objNode.Name) -Scope $intVarScope;
 
 					#Add any events that we have defined to the Form Objects.
@@ -578,10 +580,15 @@
 									#Remove the function from the array.
 									$arrFunctionList.RemoveAt($intY);
 								}
+								else{
+									$strMessage = $strMessage + "`r`n" + "Error adding " + $arrFunctionList[$intY] + " " + $Error;
+								}
 
-								break;
+								#Don't want to break, incase a control has multiple events.
+								#break;
 							}
-						}else{
+						}
+						else{
 							if ($arrFunctionList[$intY] -eq ""){
 								$arrFunctionList.RemoveAt($intY);
 							}
@@ -592,6 +599,7 @@
 			}
 			$objReturn.Message = $strMessage;
 
+			#List and functions that were not added.
 			if ($arrFunctionList.Count -gt 0){
 				#$objReturn.Message = $objReturn.Message.Replace("Successfully ", "Error, But ");
 				$objReturn.Message = $objReturn.Message + "`r`n`r`n" + "Failed to add the following events: `r`n";
