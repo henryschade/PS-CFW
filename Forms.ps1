@@ -413,7 +413,7 @@
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFormFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strCodeFile, 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][Int]$intVarScope = 1
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$intVarScope = 1
 		)
 		#$strFormFile = The full path to the XAML GUI file.  i.e. "C:\Projects\PS-Scripts\Testing\SourceCodeGUI.xaml";
 		#$strCodeFile = The full path to the file with all the functions/events.  i.e."C:\Projects\PS-Scripts\Testing\PS-SourceCodeGUI.ps1";
