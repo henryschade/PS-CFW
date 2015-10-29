@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	2 October 2015
+# Updated Date:	27 October 2015
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 ##########################################
@@ -42,7 +42,7 @@
 		#In talking w/ Chris he suggested the .NET methods instead.
 		#http://mikefrobbins.com/2013/04/18/powershell-function-to-determine-the-active-directory-fsmo-role-holders-via-the-net-framework/
 
-		#. "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\PS-Scripts\PS-AD-Routines.ps1"
+		#. "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\PS-Scripts\AD-Routines.ps1"
 
 		$InitializeDefaultDrives=$False;
 		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
@@ -771,13 +771,13 @@
 
 		#Get network Domain(s), and trusted domains, from the Network.
 		#$arrDomains = GetDomains;
-		#Need to get Domains.  GetDomains() requires "PS-AD-Routines.ps1".
-		if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
-			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-			if ((Test-Path ($ScriptDir + "\AD-Routines.ps1"))){
-				. ($ScriptDir + "\AD-Routines.ps1")
-			}
-		}
+		##Need to get Domains.  GetDomains() requires "AD-Routines.ps1".
+		#if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
+		#	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+		#	if ((Test-Path ($ScriptDir + "\AD-Routines.ps1"))){
+		#		. ($ScriptDir + "\AD-Routines.ps1")
+		#	}
+		#}
 
 		#if (($RequiredDomain -Contains ".") -or ($RequiredDomain -Match ".")){
 		#	$RequiredDomain = $RequiredDomain.SubString(0, $RequiredDomain.IndexOf("."));
@@ -975,13 +975,13 @@
 				$ComputerName = $ComputerName.Split("\")[-1];
 			}
 		}else{
-			#Need to get Domains.  GetDomains() requires "PS-AD-Routines.ps1".
-			if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
-				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-				if ((Test-Path ($ScriptDir + "\PS-AD-Routines.ps1"))){
-					. ($ScriptDir + "\PS-AD-Routines.ps1")
-				}
-			}
+			##Need to get Domains.  GetDomains() requires "AD-Routines.ps1".
+			#if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
+			#	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+			#	if ((Test-Path ($ScriptDir + "\AD-Routines.ps1"))){
+			#		. ($ScriptDir + "\AD-Routines.ps1")
+			#	}
+			#}
 			$arrDomains = GetDomains $False $False;
 			##----------------------------------------GetDomains----------------------------------------
 			#$objForest = [System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest();
@@ -1053,33 +1053,14 @@
 				$Username = $Username.Split("\")[-1];
 			}
 		}else{
-			#Need to get Domains.  GetDomains() requires "PS-AD-Routines.ps1".
-			if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
-				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-				if ((Test-Path ($ScriptDir + "\PS-AD-Routines.ps1"))){
-					. ($ScriptDir + "\PS-AD-Routines.ps1")
-				}
-			}
+			##Need to get Domains.  GetDomains() is in "AD-Routines.ps1".
+			#if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
+			#	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+			#	if ((Test-Path ($ScriptDir + "\AD-Routines.ps1"))){
+			#		. ($ScriptDir + "\AD-Routines.ps1")
+			#	}
+			#}
 			$arrDomains = GetDomains $False $False;
-			##----------------------------------------GetDomains----------------------------------------
-			#$objForest = [System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest();
-			#$DomainList = @($objForest.Domains | Select-Object Name);
-			#$arrDomains = @($DomainList | foreach {($_.Name).split(".")[0]});
-			##Does NOT accomodate FQDN Domain names.
-			#[array] $ADDomainTrusts = Get-ADObject -Filter "ObjectClass -eq 'TrustedDomain'" -Properties CN, flatName, Name;
-			#foreach ($strDomain in $ADDomainTrusts){
-			#	if (($strDomain -ne $null) -and ($strDomain -ne "")){
-			#		if ($arrDomains -NotContains $strDomain.flatName){
-			#			$arrDomains += $strDomain.flatName;
-			#		}
-			#	}
-			#}
-			#foreach ($strDomain in @("pads", "nadsusea", "nadsuswe", "nmci-isf")){
-			#	if ($arrDomains -NotContains $strDomain){
-			#		$arrDomains += $strDomain;
-			#	}
-			#}
-			##----------------------------------------GetDomains----------------------------------------
 		}
 
 		$strDomain = "";

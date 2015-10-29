@@ -1,6 +1,7 @@
 ###########################################
 # Updated Date:	28 August 2015
 # Purpose:		Background Job and RunSpace Functions.
+# Requirements: none
 #				All this code is based on info from the following URLs:
 #				#http://technet.microsoft.com/en-US/library/hh847783.aspx
 #				#http://msdn.microsoft.com/en-us/library/dd878288(v=vs.85).aspx
@@ -8,7 +9,6 @@
 #				#http://stackoverflow.com/questions/7162090/how-do-i-start-a-job-of-a-function-i-just-defined
 #				#http://stackoverflow.com/questions/8750813/powershell-start-job-scriptblock-cannot-recognize-the-function-defined-in-the-s
 #
-# Require -version 2.0
 #				#http://www.nivot.org/post/2009/01/22/CTP3TheRunspaceFactoryAndPowerShellAccelerators
 #				#http://msdn.microsoft.com/en-us/library/system.management.automation.runspaces.runspacefactory.createrunspacepool(v=vs.85).aspx
 #				#http://thesurlyadmin.com/2013/02/11/multithreading-powershell-scripts/

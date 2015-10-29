@@ -1,11 +1,11 @@
 ###########################################
-# Updated Date:	20 October 2015
+# Updated Date:	27 October 2015
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
 
 	function SampleUsage{
-		. C:\Projects\PS-Scripts\PS-DB-Routines.ps1
+		. C:\Projects\PS-Scripts\DB-Routines.ps1
 
 		$arrDBInfo = GetDBInfo "SRMDB";
 		$strSQL = "SELECT UpdatedDate, ChangeLog, DisableOld FROM AppChanges WHERE AppInitials='CA'";

@@ -6,7 +6,7 @@
 	##How to include/use this file in other projects:
 	##Include following Scripts/Files.
 	#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-	#. ($ScriptDir + "\PS-Common.ps1")
+	#. ($ScriptDir + "\Common.ps1")
 
 	function isADInstalled{
 		Param(

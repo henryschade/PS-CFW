@@ -1,6 +1,7 @@
 ###########################################
-# Updated Date:	22 October 2015
+# Updated Date:	27 September 2015
 # Purpose:		My functions to create PS Forms and Controls
+# Requirements: None
 # Web sites that helped me:
 #				http://bytecookie.wordpress.com/2011/07/17/gui-creation-with-powershell-the-basics/
 #				http://blogs.technet.com/b/heyscriptingguy/archive/2011/07/24/create-a-simple-graphical-interface-for-a-powershell-script.aspx
@@ -17,16 +18,13 @@
 #					List an objects Properties/Events/Methods/etc:  -  http://stackoverflow.com/questions/7377959/how-to-find-properties-of-an-object
 ##########################################
 
-	#See PS-SourceCodeGUI.ps1 for more sample of how to use GetXAMLGUI().
+	#See PS-SourceCodeGUI.ps1 for a sample of how to use GetXAMLGUI().
 		#$strCodeFile1 = "C:\Projects\PS-Scripts\Testing\PS-SourceCodeGUI.ps1";
 		#$strFormFile1 = "C:\Projects\PS-Scripts\Testing\SourceCodeGUI.xaml";
 		#$objRet = GetXAMLGUI $strFormFile1 $strCodeFile1;
 		#$objRet.Returns.ShowDialog() | Out-Null;
 		#$txbSrcChanges.Text = "Changed";
 		#$objRet.Returns.Close();
-
-	#Import the necessary libraries.
-	#Add-Type -AssemblyName System.Windows.Forms;
 
 	#loading the necessary .net libraries (using void to suppress output)
 	[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms");
@@ -415,16 +413,11 @@
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFormFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strCodeFile, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$intVarScope = 1
+			[ValidateNotNull()][Parameter(Mandatory=$True)][Int]$intVarScope = 1
 		)
-		#Returns a PowerShell object.
-			#$objReturn.Name		= Name of this process, with paramaters passed in.
-			#$objReturn.Results		= $True or $False.  Was the routine successful.
-			#$objReturn.Message		= "Success" or the error message.
-			#$objReturn.Returns		= The GUI/Interface object.
 		#$strFormFile = The full path to the XAML GUI file.  i.e. "C:\Projects\PS-Scripts\Testing\SourceCodeGUI.xaml";
 		#$strCodeFile = The full path to the file with all the functions/events.  i.e."C:\Projects\PS-Scripts\Testing\PS-SourceCodeGUI.ps1";
-		#$intVarScope = The Scope to create the GUI variables at. (0 through the number of scopes, where 0 is the current scope, and 1 is its parent)
+		#$intVarScope = The Scope to create the GUI variables at. (0 through the number of scopes, where 0 is the current scope and 1 is its parent)
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -471,11 +464,11 @@
 				$strLine = $strLine.Replace(" x:", " ");
 
 				#The Class entry is at the end of the line in all my samples so far.
-				if ($strLine.Contains("Class")){
-					$strLine = $strLine.SubString(0, ($strLine.IndexOf("Class") - 1));
-				}
 				if ($strLine.Contains("x:Class")){
 					$strLine = $strLine.SubString(0, ($strLine.IndexOf("x:Class") - 1));
+				}
+				if ($strLine.Contains("Class")){
+					$strLine = $strLine.SubString(0, ($strLine.IndexOf("Class") - 1));
 				}
 
 				if ($strLine.Contains("xmlns")){
@@ -536,15 +529,13 @@
 			#	$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
 			#	Stop-Process -Id $PID;
 			#}
-		}
-		else{
+		}else{
 			#Get the Form objects/elements, by name, and create PowerShell variables for them.
 			if ($objNS -eq $null){
 				#$objXAMLFile.SelectNodes("//*[@Name]") | %{Set-Variable -Name ($_.Name) -Value $objForm.FindName($_.Name)};
 				#$objNodes = $objXAMLFile.SelectNodes("//*[@Name]");
 				$objNodes = $objXAMLFile.SelectNodes("//*");
-			}
-			else{
+			}else{
 				#XmlNode book = doc.SelectSingleNode("//ab:book", nsmgr);
 				$objNodes = $objXAMLFile.SelectNodes("//ns:*", $objNS);
 			}
@@ -553,7 +544,7 @@
 			foreach ($objNode in $objNodes){
 				if (($objNode.Name -ne "") -and ($objNode.Name -ne $null) -and ($objNode.Name -ne "Grid")){
 					#Write-Host $objNode.Name;
-					#Create variables for each of the nodes/controlls. (for "-Scope",  0 is the current scope, and 1 is its parent).
+					#Create variables for each of the nodes/controlls. (for "-Scope",  0 is the current scope and 1 is its parent).
 					Set-Variable -Name ($objNode.Name) -Value $objForm.FindName($objNode.Name) -Scope $intVarScope;
 
 					#Add any events that we have defined to the Form Objects.
@@ -580,15 +571,10 @@
 									#Remove the function from the array.
 									$arrFunctionList.RemoveAt($intY);
 								}
-								else{
-									$strMessage = $strMessage + "`r`n" + "Error adding " + $arrFunctionList[$intY] + " " + $Error;
-								}
 
-								#Don't want to break, incase a control has multiple events.
-								#break;
+								break;
 							}
-						}
-						else{
+						}else{
 							if ($arrFunctionList[$intY] -eq ""){
 								$arrFunctionList.RemoveAt($intY);
 							}
@@ -599,7 +585,6 @@
 			}
 			$objReturn.Message = $strMessage;
 
-			#List and functions that were not added.
 			if ($arrFunctionList.Count -gt 0){
 				#$objReturn.Message = $objReturn.Message.Replace("Successfully ", "Error, But ");
 				$objReturn.Message = $objReturn.Message + "`r`n`r`n" + "Failed to add the following events: `r`n";
@@ -664,7 +649,7 @@
 		#Sample usage:
 		#[System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms");
 		#$objForm = CreateForm "frmTestingForm" "Testing Form" 225 280 "" "";
-		#C:\..Path..\PS-Forms.ps1 $objForm Events
+		#C:\..Path..\Forms.ps1 $objForm Events
 
 		if(($strWantWhat -eq $null) -or ($strWantWhat -eq "")){
 			$strWantWhat = "";
@@ -680,105 +665,18 @@
 	}
 
 
-
-	# All the code below here is for my WinForms testing.
-	Function btnButton1_Click{
-		$objTextBox3.TEXT = "";
-		#frmTestingForm
-		$objTxbResults = $Window | Get-ChildControl txbResults;
-
-		$strFirstName=$objTextBox1.TEXT;
-		$strLastName=$objTextBox2.TEXT;
-
-		#Write-Host txbFirst.TEXT ~ txbLast.TEXT;
-		$Username = $strFirstName + "." + $strLastName;
-		#Write-Host $Username;
-		$objTextBox3.TEXT = $Username;
-
-		##"C:\Users\hschade\Desktop\"
-		#$strTest = dir $objTextBox1.TEXT;
-		#$strTest2 = "";
-		#foreach ($line in $strTest) {
-		#	#$strTest2.Appendtext($line + [char]13 + [char]10);
-		#	$strTest2 = $strTest2 + $line + [char]13 + [char]10;
-		#}
-		#Write-Host $strTest2;
-
-		#<#
-		if (($Username -ne "") -and ($Username -ne $null) -and ($Username -ne ".")){
-			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path
-			#$ScriptDir = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\";
-			. ($ScriptDir + "\PS-ExchConn.ps1")
-
-			SetupConn "w"
-			$strTest = Get-MailboxStatistics $Username | Select DisplayName, TotalItemSize, ItemCount, TotalDeletedItemSize, StorageLimitStatus, ServerName, DatabaseName;
-			CleanUpConn
-
-			#Write-Host $strTest;
-			$objTextBox3.TEXT = $objTextBox3.TEXT + "`r`n`r`n" + $strTest;
-		}
-		#>
-	}
-
-	Function btnButton2_Click{
-		#Close the Form
-		$objForm.Close();
-		#Kill the Form
-		$objForm.Dispose();
-	}
-
-	Function MyTestForm{
-		$intLeft1 = 10;
-		$intLeft2 = 120;
-		$intTop1 = 10;
-		$intTop2 = 30;
-		$intTabIndex = 0;
-
-		$objForm = CreateForm "frmTestingForm" "Testing Form" 225 280 "" "";
-
-		$objLabel1 = AddControl $objForm "Label" "lblFirst" 80 15 "First Name" $intLeft1 $intTop1;
-		$objTextBox1 = AddControl $objForm "TextBox" "txbFirst" 80 20 "" $intLeft1 $intTop2 $intTabIndex;
-		$intTabIndex += 1;
-
-		$objLabel2 = AddControl $objForm "Label" "lblLast" 80 15 "Last Name" $intLeft2 $intTop1;
-		$objTextBox2 = AddControl $objForm "TextBox" "txbLast" 80 20 "" $intLeft2 $intTop2 $intTabIndex;
-		$intTabIndex += 1;
-
-		$objButtonClick = {btnButton1_Click};
-		$objButton1 = AddControl $objForm "Button" "btnButton1" 90 20 "Get Mail Size" $intLeft1 55 $intTabIndex $objButtonClick;
-		$intTabIndex += 1;
-
-		$objButtonClick = {btnButton2_Click};
-		$objButton2 = AddControl $objForm "Button" "btnButton2" 80 20 "Close" $intLeft2 55 $intTabIndex $objButtonClick;
-		$intTabIndex += 1;
-
-		$objLabel3 = AddControl $objForm "Label" "lblResults" 80 15 "Results" $intLeft1 80;
-		$objTextBox3 = AddControl $objForm "TextBox" "txbResults" 190 135 "" $intLeft1 95 "" "" "" "" $True;
-
-		#Show the Form
-		#$objForm.ShowDialog()| Out-Null;
-		[void] $objForm.ShowDialog();
-	}
-
-	if ($args[0] -eq "Form"){
-		MyTestForm;
-
-		#Write-Host "Done";
+	if ($args[0] -eq "Calendar"){
+		Calendar "Date" 2;
 	}else{
-		if ($args[0] -eq "Calendar"){
-			Calendar "Date" 2;
-		}else{
-			if ($args[0] -ne $null){
-				#Sample usage:
-				#[System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms");
-				#$objForm = CreateForm "frmTestingForm" "Testing Form" 225 280 "" "";
-				#C:\..Path..\PS-Forms.ps1 $objForm Events
+		if ($args[0] -ne $null){
+			#Sample usage:
+			#[System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms");
+			#$objForm = CreateForm "frmTestingForm" "Testing Form" 225 280 "" "";
+			#C:\..Path..\Forms.ps1 $objForm Events
 
-				ObjectInfo $args[0] $args[1];
-			}
+			ObjectInfo $args[0] $args[1];
 		}
 	}
 
-	#Write-Host ""
 	#Write-Host "Press any key to continue ..."
 	#$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
