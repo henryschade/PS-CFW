@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	27 September 2015
+# Updated Date:	29 September 2015
 # Purpose:		My functions to create PS Forms and Controls
 # Requirements: None
 # Web sites that helped me:
@@ -415,9 +415,14 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strCodeFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$intVarScope = 1
 		)
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters passed in.
+			#$objReturn.Results		= $True or $False.  Was the routine successful.
+			#$objReturn.Message		= "Success" or the error message.
+			#$objReturn.Returns		= The GUI/Interface object.
 		#$strFormFile = The full path to the XAML GUI file.  i.e. "C:\Projects\PS-Scripts\Testing\SourceCodeGUI.xaml";
 		#$strCodeFile = The full path to the file with all the functions/events.  i.e."C:\Projects\PS-Scripts\Testing\PS-SourceCodeGUI.ps1";
-		#$intVarScope = The Scope to create the GUI variables at. (0 through the number of scopes, where 0 is the current scope and 1 is its parent)
+		#$intVarScope = The Scope to create the GUI variables at. (0 through the number of scopes, where 0 is the current scope, and 1 is its parent)
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -484,7 +489,6 @@
 		[xml]$objXAMLFile = $objXAMLFile;
 
 		#If the XAML includes a default namespace, you must add a prefix and namespace URI.
-		#if (($objXAMLFile.DocumentElement.NamespaceURI -ne "") -and ($objXAMLFile.DocumentElement.NamespaceURI -ne $null)){
 		if ($objNS -eq $True){
 			#XmlNamespaceManager nsmgr = new XmlNamespaceManager(doc.NameTable);
 			$objNS = New-Object System.Xml.XmlNamespaceManager($objXAMLFile.NameTable);
@@ -505,7 +509,8 @@
 			$strMessage = "Unable to load Windows.Markup.XamlReader.";
 			if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne "STA"){
 				$strMessage = $strMessage + "`r`n" + "The PowerShell environment needs to be in 'STA' mode.";
-			}else{
+			}
+			else{
 				$strMessage = $strMessage + "`r`n" + "The .NET Framework could be missing and/or Invalid XAML code was encountered.";
 			}
 			$objReturn.Message = $strMessage + "`r`n`r`n" + $Error;
@@ -529,13 +534,15 @@
 			#	$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
 			#	Stop-Process -Id $PID;
 			#}
-		}else{
+		}
+		else{
 			#Get the Form objects/elements, by name, and create PowerShell variables for them.
 			if ($objNS -eq $null){
 				#$objXAMLFile.SelectNodes("//*[@Name]") | %{Set-Variable -Name ($_.Name) -Value $objForm.FindName($_.Name)};
 				#$objNodes = $objXAMLFile.SelectNodes("//*[@Name]");
 				$objNodes = $objXAMLFile.SelectNodes("//*");
-			}else{
+			}
+			else{
 				#XmlNode book = doc.SelectSingleNode("//ab:book", nsmgr);
 				$objNodes = $objXAMLFile.SelectNodes("//ns:*", $objNS);
 			}
@@ -543,7 +550,6 @@
 			$strMessage = "Error";
 			foreach ($objNode in $objNodes){
 				if (($objNode.Name -ne "") -and ($objNode.Name -ne $null) -and ($objNode.Name -ne "Grid")){
-					#Write-Host $objNode.Name;
 					#Create variables for each of the nodes/controlls. (for "-Scope",  0 is the current scope and 1 is its parent).
 					Set-Variable -Name ($objNode.Name) -Value $objForm.FindName($objNode.Name) -Scope $intVarScope;
 
@@ -554,27 +560,28 @@
 						if (($arrFunctionList[$intY] -ne $null) -and ($arrFunctionList[$intY] -ne "")){
 							$bCheck = [boolean]($arrFunctionList[$intY] -match $objNode.Name);
 							if ($bCheck -eq $True){
-								#$frmExchGUI.Add_ResizeBegin({frmExchGUI_ResizeBegin});
 								$arrSplit = $arrFunctionList[$intY].Split('_');
 								$strAddMe = "$" + $arrSplit[0] + ".Add_" + $arrSplit[1] + "({" + $arrFunctionList[$intY] + "});";
 								$Error.Clear();
 								$strResults = try{Invoke-Expression $strAddMe}catch{$null};
 
-								#if ($objReturn.Message -eq "Error"){
 								if ($strMessage -eq "Error"){
-									#$objReturn.Message = "Success, Added the following events:";
 									$strMessage = "Successfully Added the following events:";
 								}
 								if (!($Error)){
-									#$objReturn.Message = $objReturn.Message + "`r`n" + $arrFunctionList[$intY];
 									$strMessage = $strMessage + "`r`n" + $arrFunctionList[$intY];
 									#Remove the function from the array.
 									$arrFunctionList.RemoveAt($intY);
 								}
-
-								break;
+								else{
+									$strMessage = $strMessage + "`r`n" + "Error adding " + $arrFunctionList[$intY] + " " + $Error;
+								}
+ 
+								#Don't want to break, incase a control has multiple events.
+								#break;
 							}
-						}else{
+						}
+						else{
 							if ($arrFunctionList[$intY] -eq ""){
 								$arrFunctionList.RemoveAt($intY);
 							}
@@ -586,7 +593,6 @@
 			$objReturn.Message = $strMessage;
 
 			if ($arrFunctionList.Count -gt 0){
-				#$objReturn.Message = $objReturn.Message.Replace("Successfully ", "Error, But ");
 				$objReturn.Message = $objReturn.Message + "`r`n`r`n" + "Failed to add the following events: `r`n";
 				$objReturn.Message = $objReturn.Message + ($arrFunctionList -join "`r`n");
 			}
@@ -630,7 +636,8 @@
 
 			[System.Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic') | Out-Null;
 			$strReturn = [Microsoft.VisualBasic.Interaction]::InputBox($strMessage, $strTitle, $strDefault);
-		}else{
+		}
+		else{
 			$strReturn = [System.Windows.Forms.MessageBox]::Show($strMessage, $strTitle, $intButtons);
 		}
 
@@ -654,7 +661,8 @@
 		if(($strWantWhat -eq $null) -or ($strWantWhat -eq "")){
 			$strWantWhat = "";
 			$strResults = $objObject | Get-Member | Format-Table -AutoSize -Property MemberType, Name;
-		}else{
+		}
+		else{
 			$strResults = $objObject | Get-Member | Where {$_.MemberType -Match $strWantWhat} | Format-Table -AutoSize -Property MemberType, Name;
 		}
 
@@ -667,7 +675,8 @@
 
 	if ($args[0] -eq "Calendar"){
 		Calendar "Date" 2;
-	}else{
+	}
+	else{
 		if ($args[0] -ne $null){
 			#Sample usage:
 			#[System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms");
