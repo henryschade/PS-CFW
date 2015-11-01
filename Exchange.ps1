@@ -1,9 +1,10 @@
 ###########################################
-# Updated Date:	24 September 2015
+# Updated Date:	1 November 2015
 # Purpose:		Exchange routines.
-# Requires:		.\EWS-Files.txt  ($strEWSFiles)
-#				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process, and the following need to be defined/setup: $global:objJobs, and $global:objExchPool.
-#				UpdateResults() is a routine in AScII and Exchange-GUI.
+# Requirements:	.\EWS-Files.txt  ($strEWSFiles)
+#				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process, 
+#					and the following need to be defined/setup: $global:objJobs, and $global:objExchPool.
+#				CreateMailBox() uses a routine UpdateResults() that is in the calling project (AScII and Exchange-GUI).
 ##########################################
 	#https://msdn.microsoft.com/en-us/library/office/jj900166(v=exchg.150).aspx
 	#https://msdn.microsoft.com/en-us/library/dn567668(v=exchg.150).aspx
@@ -13,15 +14,15 @@
 	#EWS v2.0  -->  http://www.microsoft.com/en-us/download/details.aspx?id=35371
 	#EWS v2.2  -->  http://go.microsoft.com/fwlink/?LinkId=255472
 
+	##To Include this Script/File.
+	#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+	#. ($ScriptDir + "\Exchange.ps1")
+
 	$strEWSFiles = "EWS-Files.txt";
 	$strThisFileDir = "";
 	if (($MyInvocation.MyCommand.Path -ne "") -and ($MyInvocation.MyCommand.Path -ne $null)){
 		$strThisFileDir = Split-Path $MyInvocation.MyCommand.Path;
 	}
-
-	##To Include this Script/File.
-	#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-	#. ($ScriptDir + "\Exchange.ps1")
 
 	#URL's from initial Data searching:
 	<#
@@ -1737,6 +1738,7 @@
 			[Parameter(Mandatory=$False)][String]$WhatSide, 
 			[Parameter(Mandatory=$False)][String]$strServer
 		);
+		#Returns a list of all the PowerShell commandlets imported.
 		#$WhatSide = $args[0];
 		#$strServer = "Default", "Random", "naeaNRFKxh01v"
 
@@ -1744,6 +1746,19 @@
 		#Clear-Host;
 
 		CleanUpConn;
+
+		if (($WhatSide -eq $null) -or ($WhatSide -eq "")){
+			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom)';
+		}
+		if ($WhatSide.Length -gt 1){
+			$WhatSide.substring(0, 1)
+		}
+		if (($WhatSide -ne "e") -and ($WhatSide -ne "w") -and ($WhatSide -ne "p")){
+			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom)';
+		}
+		if ($WhatSide.Length -gt 1){
+			$WhatSide.substring(0, 1)
+		}
 
 		if (($strServer -eq $null) -or ($strServer -eq "")){
 			$strServer = Read-Host 'What Server? ([D]efault, [R]andom, or Exch Svr Name [i.e. naeaNRFKxh01v])';
@@ -1753,7 +1768,8 @@
 			if (($strServer -eq "R") -or ($strServer -eq "Random")){
 				$strServer = "Random"
 			}
-		}else{
+		}
+		else{
 			if ($strServer.Length -eq 1){
 				switch ($strServer){
 					"R"{
@@ -1769,19 +1785,6 @@
 			}
 		}
 
-		if (($WhatSide -eq $null) -or ($WhatSide -eq "")){
-			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom)';
-		}
-		if ($WhatSide.Length -gt 1){
-			$WhatSide.substring(0, 1)
-		}
-		if (($WhatSide -ne "e") -and ($WhatSide -ne "w") -and ($WhatSide -ne "p")){
-			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom)';
-		}
-		if ($WhatSide.Length -gt 1){
-			$WhatSide.substring(0, 1)
-		}
-
 		$InitializeDefaultDrives=$False;
 		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
 
@@ -1789,13 +1792,15 @@
 
 		if ($WhatSide -eq "e"){
 			#Write-Host "East it is";
+			$strDomain = "nadsusea";
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
 				$strServer = "naeaNRFKxh01v.nadsusea.nads.navy.mil";
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 				#if ((Test-Connection -CN $strFQDN -buffersize 16 -Count 1 -ErrorAction 0 -quiet) -ne $True){
 					#Specify a new Server to connect to.
 				#}
-			}else{
+			}
+			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
 					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsusea") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
@@ -1809,15 +1814,16 @@
 					}
 				}
 			}
-			$strDomain = "nadsusea";
 			$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
 		}
 		if ($WhatSide -eq "w"){
 			#Write-Host "West it is";
+			$strDomain = "nadsuswe";
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
 				$strServer = "naweSDNIxh01v.nadsuswe.nads.navy.mil";
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
-			}else{
+			}
+			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
 					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsuswe") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
@@ -1831,15 +1837,16 @@
 					}
 				}
 			}
-			$strDomain = "nadsuswe";
 			$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
 		}
 		if ($WhatSide -eq "p"){
 			#Write-Host "Pacom it is";
+			$strDomain = "pads";
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
 				$strServer = "PADSPRLHXF01V.pads.pacom.mil";
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
-			}else{
+			}
+			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
 					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "pacom") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
@@ -1853,7 +1860,6 @@
 					}
 				}
 			}
-			$strDomain = "pads";
 			$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
 		}
 		$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri "http://$strServer/PowerShell/" -Authentication Kerberos;
@@ -1883,7 +1889,8 @@
 					}
 				#}
 				return $strModule;
-			}else{
+			}
+			else{
 				Write-Host "";
 				Write-Host "An error occurred trying to import the Exchange PowerShell CommandLets.";
 				Write-Host "";
@@ -1929,12 +1936,17 @@
 			$strPSCmds = $strPSCmds.Replace("}", "");
 
 			return $strPSCmds;
-		}else{
-			SetupConn;
+		}
+		else{
+			if (($args[1] -ne "") -and ($args[1] -ne $null) -and ($args[2] -ne "") -and ($args[2] -ne $null)){
+				SetupConn $args[1] $args[2];
+			}
+			else{
+				SetupConn;
+			}
 		}
 	}
 	if ($args[0] -eq "CleanUp"){
 		#Write-Host "Args is: " $args[0];
 		CleanUpConn;
 	}
-

@@ -2,10 +2,10 @@
 # Updated Date:	1 November 2015
 # Purpose:		Code to interact w/ Documents.
 # Requirements: None
-#
-# Code from following URL, but modified for my use.
-# http://mypowershell.webnode.sk/news/create-or-open-excel-file-in-powershell/
 ##########################################
+
+	# The Excel Code is from following URL, but modified for my use.
+	# http://mypowershell.webnode.sk/news/create-or-open-excel-file-in-powershell/
 
 	#$ExcelFilePath = "c:\temp\MyExcelFile2.xlsx"
 	#data 'raz, 'dva', 'tri' will be inserted to excel sheet 'Data'
@@ -59,7 +59,6 @@
 		#Clean up Excel object
 		[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objExcel) | Out-Null;
 	}
-
 
 
 	function ExcelCreateOpenFile(){
@@ -164,6 +163,7 @@
 		#$application.Quit();
 	}
 
+
 	function ZipCreateFile{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$ZipFile, 
@@ -244,5 +244,37 @@
 		}
 
 		return $objReturn;
+	}
+
+
+	function URLSaveFile{
+		Param(
+			[Parameter(Mandatory=$True)][String]$strUrl,
+			[Parameter(Mandatory=$True)][String]$strDestFolder
+		)
+ 
+		$objResponse = $null;
+		$Error.Clear();
+		$objResponse = Invoke-WebRequest -Uri $strUrl
+		if ((!($Error)) -and ($objResponse -ne "") -and ($objResponse -ne $null)){
+			$strFilename = [System.IO.Path]::GetFileName($objResponse.BaseResponse.ResponseUri.OriginalString)
+			$strFilename = $strFilename.Replace("%20", " ")
+			$objFilepath = [System.IO.Path]::Combine($strDestFolder, $strFilename)
+			try{
+				$Error.Clear();
+				$objFilename = [System.IO.File]::Create($objFilepath)
+				if ($Error){
+					$objFilepath = [System.IO.Path]::Combine($strDestFolder, ((([System.DateTime]::Now).Ticks).ToString()))
+					$objFilename = [System.IO.File]::Create($objFilepath)
+				}
+				$objResponse.RawContentStream.WriteTo($objFilename)
+				$objFilename.Close()
+			}
+			finally{
+				if ($objFilename){
+					$objFilename.Dispose();
+				}
+			}
+		}
 	}
 

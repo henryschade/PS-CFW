@@ -1,6 +1,6 @@
 ###########################################
 # Updated Date:	1 November 2015
-# Purpose:		Common routines to all/most other projects.
+# Purpose:		Common routines to all/most projects.
 # Requirements: Documents.ps1 for the CreateZipFile() routine.
 ##########################################
 
@@ -9,8 +9,8 @@
 	#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 	#. ($ScriptDir + "\Common.ps1")
 
+	#Place holder function for legacy code.
 	function CreateZipFile{
-		#Place holder function for legacy code.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Zip file path to create.")][String]$ZipFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Array of file path (full) to add.")][Array]$Files
