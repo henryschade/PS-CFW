@@ -1,12 +1,35 @@
 ###########################################
-# Updated Date:	13 October 2015
+# Updated Date:	1 November 2015
 # Purpose:		Common routines to all/most other projects.
+# Requirements: Documents.ps1 for the CreateZipFile() routine.
 ##########################################
 
 	##How to include/use this file in other projects:
 	##Include following Scripts/Files.
 	#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 	#. ($ScriptDir + "\Common.ps1")
+
+	function CreateZipFile{
+		#Place holder function for legacy code.
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Zip file path to create.")][String]$ZipFile, 
+			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Array of file path (full) to add.")][Array]$Files
+		)
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters passed in.
+			#$objReturn.Results		= $True or $False.  Was a zip file created.
+			#$objReturn.Message		= "Success" or the error message.
+			#$objReturn.Returns		= The full path annd file name of the file created.
+		#$ZipFile = The zip file to create. (Full path) [i.e. "c:\path\file.zip"]
+		#$Files = An array of the files to add to the zip file. (Full paths) [i.e. @("c:\path\file.one", "c:\path\file.two")]
+
+		$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+		. ($ScriptDir + "\Documents.ps1")
+
+		$objReturn = ZipCreateFile $ZipFile $Files;
+
+		return $objReturn;
+	}
 
 	function isADInstalled{
 		Param(
@@ -114,7 +137,8 @@
 	}
 
 	function CleanDir{
-		#Cleans files out of directories based on the DateLastModified, checks the NumDays2KeepLogs entry in MiscSettings.txt file.
+		#Cleans files out of directories based on the DateLastModified.  
+		#Checks the "NumDays2KeepLogs" entry in MiscSettings.txt file, if $HowOld is -2, blank, or null.
 		#   (180 days) if error reading NumDays2KeepLogs.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Directory, 
@@ -144,12 +168,12 @@
 					}
 				}
 			}
+
 			##http://stackoverflow.com/questions/10928030/in-powershell-how-can-i-test-if-a-variable-holds-a-numeric-value
 			#Add-Type -Assembly Microsoft.VisualBasic;
 			#if (!([Microsoft.VisualBasic.Information]::IsNumeric($HowOld))){
 			#	$HowOld = 180;
 			#}
-
 			#I have since wrote a PS equivelent of the VB IsNumeric() routine.  (Part of Common.ps1)
 			if ((IsNumeric $HowOld) -ne $True){
 				$HowOld = 180;
@@ -207,88 +231,6 @@
 				}
 			}
 		}
-	}
-
-	function CreateZipFile{
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$ZipFile, 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][Array]$Files
-		)
-		#Returns a PowerShell object.
-			#$objReturn.Name		= Name of this process, with paramaters passed in.
-			#$objReturn.Results		= $True or $False.  Was a zip file created.
-			#$objReturn.Message		= "Success" or the error message.
-			#$objReturn.Returns		= The full path annd file name of the file created.
-		#$ZipFile = The zip file to create. (Full path) [i.e. "c:\path\file.zip"]
-		#$Files = An array of the files to add to the zip file. (Full paths) [i.e. @("c:\path\file.one", "c:\path\file.two")]
-
-		#Setup the PSObject to return.
-		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
-		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
-		$ParameterList = (Get-Command -Name $CommandName).Parameters;
-		$strTemp = "";
-		foreach ($key in $ParameterList.keys){
-			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
-			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
-		}
-		#$strTemp = "CreateZipFile(" + $strTemp.Trim() + ")";
-		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
-		$objReturn = New-Object PSObject -Property @{
-			Name = $strTemp
-			Results = $False
-			Message = "Error"
-			Returns = "";
-		}
-
-		if ((Test-Path -Path $ZipFile)){
-			#File exists, so delete it.
-			Remove-Item $ZipFile;
-		}
-
-		if (!(Test-Path -Path $ZipFile)){
-			$Error.Clear();
-			#http://www.adminarsenal.com/admin-arsenal-blog/powershell-zip-up-files-using-.net-and-add-type
-			#Above link is for Powershell 3 and .NET 4.5.
-
-			#http://stackoverflow.com/questions/1153126/how-to-create-a-zip-archive-with-powershell
-			#This is adding an "extra" xml file, but do I care?
-			#Load assemblys.
-			$Results = [System.Reflection.Assembly]::Load("WindowsBase, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35");
-			#Create the zip file.
-			$objZip = [System.IO.Packaging.ZipPackage]::Open($ZipFile, [System.IO.FileMode]"OpenOrCreate", [System.IO.FileAccess]"ReadWrite");
-			#Setup the Array of files to loop through.
-			#$arrFiles = @("c:\file.one", "c:\file.two");
-			#$arrFiles = $Files -Replace "C:", "" -Replace "\\", "/";
-			$arrFiles = $Files;
-			foreach ($objFile in $arrFiles){
-				#For each file you want to add, we must extract the bytes and add them to a part of the zip file.
-				#$partName = New-Object System.Uri($objFile, [System.UriKind]"Relative");
-				$partName = New-Object System.Uri(($objFile -Replace "C:", "" -Replace "\\", "/"), [System.UriKind]"Relative");
-				#$partName = New-Object System.Uri($objFile, [System.UriKind]"Absolute");
-				#$partName = New-Object System.Uri(($objFile -Replace "C:", "" -Replace "\\", "/"), [System.UriKind]"Absolute");
-				#Create each part. 
-				$part = $objZip.CreatePart($partName, "application/zip", [System.IO.Packaging.CompressionOption]"Maximum");
-				#$bytes = [System.IO.File]::ReadAllBytes($objFile) | out-null;
-				$bytes = [System.IO.File]::ReadAllBytes($objFile);
-				$stream = $part.GetStream();
-				$stream.Write($bytes, 0, $bytes.Length);
-				$stream.Close();
-			}
-			#Close the zip file when we're done.
-			$objZip.Close();
-
-			if ((Test-Path -Path $ZipFile) -and (!$Error)){
-				$objReturn.Results = $True
-				$objReturn.Message = "Success";
-				$objReturn.Returns = $ZipFile;
-			}else{
-				$objReturn.Message = "Error `r`n" + $Error;
-			}
-		}else{
-			$objReturn.Message = "Error, File exists already.";
-		}
-
-		return $objReturn;
 	}
 
 	function EnableDotNet4{

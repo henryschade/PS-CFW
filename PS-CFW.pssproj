@@ -35,7 +35,7 @@
     <Compile Include="DB-Routines.ps1" />
     <Compile Include="Display.ps1" />
     <Compile Include="EWS-Files.txt" />
-    <Compile Include="Excel.ps1" />
+    <Compile Include="Documents.ps1" />
     <Compile Include="Exchange.ps1" />
     <Compile Include="FileOperations.ps1" />
     <Compile Include="Forms.ps1" />
