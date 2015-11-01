@@ -39,7 +39,6 @@
     <Compile Include="Exchange.ps1" />
     <Compile Include="FileOperations.ps1" />
     <Compile Include="Forms.ps1" />
-    <Compile Include="Groups.ps1" />
     <Compile Include="Jobs.ps1" />
     <Compile Include="Machine.ps1" />
   </ItemGroup>
