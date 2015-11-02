@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	1 November 2015
+# Updated Date:	2 November 2015
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process, 
@@ -48,6 +48,22 @@
 		#Exchange Impersonation
 		#http://www.thesoftwaregorilla.com/2010/06/exchange-web-services-example-part-3-exchange-impersonation/
 	#>
+
+	function SampleSendEmail{
+		#Send email with EWS
+		$strTo = "henry.schade@nmci-isf.com; andrew.k.freeman@nmci-isf.com; henry.schade@hpe.com";
+		#$strTo = "henry.schade@nmci-isf.com";
+		$strFrom = "henry.schade@nmci-isf.com";
+		$strSub = "Test eMail from PS EWS";
+		$strBody = "Test eMail from PS EWS";
+		$strFile = "C:\Users\henry.schade\Desktop\ps command issue.txt";
+
+		#$objRet = SendEmailEWS $strTo $strFrom $strSub $strBody;
+		$objRet = SendEmailEWS $strTo $strFrom $strSub $strBody -EmailAttach $strFile;
+		if ($objRet.Results -ne $True){
+			Write-Host $objRet.Message;
+		}
+	}
 
 	function TestMe{
 
@@ -149,10 +165,8 @@
 
 
 
-
 		#Get all ITEMS from Folders and Sub-folders (of PublicFolders)
 		#http://stackoverflow.com/questions/13877629/how-to-get-all-items-from-folders-and-sub-folders-of-publicfolders-using-ews-man
-
 
 
 
@@ -212,7 +226,6 @@
 
 
 
-
 		#To open a specific email:
 		#. C:\SRM_Apps_N_Tools\PS-Scripts\Exchange.ps1;
 		#$strID = "AAMkADE4MDAyMmZjLTM5OTAtNGRmOC1hYTAxLTEzMzQ3MmEwYjRjOQBGAAAAAAAvrFUL8mFTTY8vHRCWCfoYBwAhDPj33Z4iQZV9S7BKG8SJAAAAYmR6AACuTYmN9cQLRbE2n73/sFJrAAAy2iVdAAA=";
@@ -223,25 +236,6 @@
 		##$objMessage = [Microsoft.Exchange.WebServices.Data.EmailMessage]::Bind($objService, $objItemId, $psPropertySet);
 		#$objMessage = [Microsoft.Exchange.WebServices.Data.EmailMessage]::Bind($objService, $objItemId);
 		#$objMessage;
-
-
-
-
-
-		#Send email with EWS
-		<#
-			$strTo = "henry.schade@nmci-isf.com; andrew.k.freeman@nmci-isf.com; henry.schade@hpe.com";
-			$strTo = "henry.schade@nmci-isf.com";
-			$strFrom = "henry.schade@nmci-isf.com";
-			$strSub = "Test #3 eMail from PS EWS";
-			$strBody = "Test eMail from PS EWS";
-			$strFile = "C:\Users\henry.schade\Desktop\ps command issue.txt";
-			$objRet = SendEmailEWS $strTo $strFrom $strSub $strBody;
-			#$objRet = SendEmailEWS $strTo $strFrom $strSub $strBody -bolAutoSend $False;
-			#$objRet.Returns.Display;
-		#>
-
-
 
 
 
@@ -312,6 +306,7 @@
 		#>
 
 	}
+
 
 	function CleanUpConn{
 		#From PS-ExchConn.ps1.
