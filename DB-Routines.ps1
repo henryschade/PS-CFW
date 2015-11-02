@@ -70,8 +70,8 @@
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strWhatSystem
 		)
-		#Sets the typical DB variables (DBType, DBServer, DBName, LoginR, PassR, LoginW, PassW), and returns an array.
-		#strWhatDB = The DB info we are after.
+		#Sets the DB variables (DBType, DBServer, DBName, LoginR, PassR, LoginW, PassW), and returns an array.
+		#strWhatSystem = The DB info we are after.
 			#Current values coded for are: "Score", "Sites" (Server Farm LookUp), "SRMDB", "CDR", "ECMD"
 
 		#Set some defaults
@@ -170,6 +170,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strToolName, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strQuoteNum
 		)
+		#Returns the SQL command that should be used.
+			#Needs to be updated to use the SP Andrew created.
 		#Should pass in the above with info.
 		#strCOI = Domain/Network.
 		#strSource = The source that is initiating this work.  i.e "Ticket", "Email"
