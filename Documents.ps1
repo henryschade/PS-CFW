@@ -1,17 +1,19 @@
 ###########################################
-# Updated Date:	1 November 2015
-# Purpose:		Code to interact w/ Documents.
+# Updated Date:	2 November 2015
+# Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
 
-	# The Excel Code is from following URL, but modified for my use.
-	# http://mypowershell.webnode.sk/news/create-or-open-excel-file-in-powershell/
-
-	#$ExcelFilePath = "c:\temp\MyExcelFile2.xlsx"
-	#data 'raz, 'dva', 'tri' will be inserted to excel sheet 'Data'
-	#ExcelWriteData -InputData @{"raz", "dva", "tri") -ExcelFilePath $ExcelFilePath
-
 	function ExcelSampleUsage{
+		# The Excel Code is from following URL, but modified for my use.
+		# http://mypowershell.webnode.sk/news/create-or-open-excel-file-in-powershell/
+
+		#$ExcelFilePath = "c:\temp\MyExcelFile2.xlsx"
+		#data 'raz, 'dva', 'tri' will be inserted to excel sheet 'Data'
+		#ExcelWriteData -InputData @{"raz", "dva", "tri") -ExcelFilePath $ExcelFilePath
+
+
+
 		#What file to open/create
 		$strFilePath = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\BackUpLocation\USN_Server_Farms-Testing.xls";
 
@@ -58,6 +60,61 @@
 		$objExcel.Quit();
 		#Clean up Excel object
 		[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objExcel) | Out-Null;
+	}
+
+	function SampleEncodeDecode{
+		#From a PowerShell window run one of the following commands:
+		. "C:\Projects\PS-Scripts\Documents.ps1"
+
+		EncodeFile "C:\Settings.txt" "C:\EncSet.txt"
+		EncodeFile "C:\Settings.txt" "Display"
+
+		DeCodeFile "....JUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gT......" "C:\Settings.txt"
+		DeCodeFile "....JUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gT......" "Display"
+
+		$strEncode = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTc1VkFcU1E3NVZBSU5TVDAxDQpzdHJEQk5hbWUgPSBTaXRlQ29kZXMNCnN0ckRCTG9naW5SID0gS0J1c2VyDQpzdHJEQlBhc3NSID0ga2M1JHNxMDI=";
+		DeCodeFile $strEncode "C:\Users\henry.schade\Desktop\SQL.txt"
+		DeCodeFile $strEncode "Display"
+		EncodeFile "C:\Users\henry.schade\Desktop\SQL.txt" "C:\Users\henry.schade\Desktop\EncSet.txt"
+	}
+
+
+	function DeCodeFile{
+		Param(
+			[Parameter(Mandatory=$True)][String]$strBase64String, 
+			[Parameter(Mandatory=$False)][String]$strOutPut
+		);
+
+		#$Content = [System.Convert]::FromBase64String($Base64)
+		#Set-Content -Path $env:temp\AM.dll -Value $Content -Encoding Byte
+
+		$strContent = [System.Convert]::FromBase64String($strBase64String);
+		if (($strOutPut -ne "") -and ($strOutPut -ne $null) -and ($strOutPut -ne "Display")){
+			Set-Content -Path $strOutPut -Value $strContent -Encoding Byte;
+		}else{
+			#Write-Host $strContent;
+			$strContent = [System.Text.Encoding]::ASCII.GetString($strContent);
+			Write-Host $strContent;
+		}
+	}
+
+	function EncodeFile{
+		Param(
+			[Parameter(Mandatory=$True)][String]$strFile, 
+			[Parameter(Mandatory=$False)][String]$strOutPut
+		);
+
+		#$Content = Get-Content -Path C:\AM\AM.dll -Encoding Byte
+		#$Base64 = [System.Convert]::ToBase64String($Content)
+		#$Base64 | Out-File c:\AM\encoded.txt 
+
+		$strContent = Get-Content -Path $strFile -Encoding Byte;
+		$strBase64 = [System.Convert]::ToBase64String($strContent);
+		if (($strOutPut -ne "") -and ($strOutPut -ne $null) -and ($strOutPut -ne "Display")){
+			$strBase64 | Out-File $strOutPut;
+		}else{
+			Write-Host $strBase64;
+		}
 	}
 
 
@@ -164,6 +221,38 @@
 	}
 
 
+	function URLSaveFile{
+		Param(
+			[Parameter(Mandatory=$True)][String]$strUrl,
+			[Parameter(Mandatory=$True)][String]$strDestFolder
+		)
+ 
+		$objResponse = $null;
+		$Error.Clear();
+		$objResponse = Invoke-WebRequest -Uri $strUrl
+		if ((!($Error)) -and ($objResponse -ne "") -and ($objResponse -ne $null)){
+			$strFilename = [System.IO.Path]::GetFileName($objResponse.BaseResponse.ResponseUri.OriginalString)
+			$strFilename = $strFilename.Replace("%20", " ")
+			$objFilepath = [System.IO.Path]::Combine($strDestFolder, $strFilename)
+			try{
+				$Error.Clear();
+				$objFilename = [System.IO.File]::Create($objFilepath)
+				if ($Error){
+					$objFilepath = [System.IO.Path]::Combine($strDestFolder, ((([System.DateTime]::Now).Ticks).ToString()))
+					$objFilename = [System.IO.File]::Create($objFilepath)
+				}
+				$objResponse.RawContentStream.WriteTo($objFilename)
+				$objFilename.Close()
+			}
+			finally{
+				if ($objFilename){
+					$objFilename.Dispose();
+				}
+			}
+		}
+	}
+
+
 	function ZipCreateFile{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$ZipFile, 
@@ -243,37 +332,5 @@
 		}
 
 		return $objReturn;
-	}
-
-
-	function URLSaveFile{
-		Param(
-			[Parameter(Mandatory=$True)][String]$strUrl,
-			[Parameter(Mandatory=$True)][String]$strDestFolder
-		)
- 
-		$objResponse = $null;
-		$Error.Clear();
-		$objResponse = Invoke-WebRequest -Uri $strUrl
-		if ((!($Error)) -and ($objResponse -ne "") -and ($objResponse -ne $null)){
-			$strFilename = [System.IO.Path]::GetFileName($objResponse.BaseResponse.ResponseUri.OriginalString)
-			$strFilename = $strFilename.Replace("%20", " ")
-			$objFilepath = [System.IO.Path]::Combine($strDestFolder, $strFilename)
-			try{
-				$Error.Clear();
-				$objFilename = [System.IO.File]::Create($objFilepath)
-				if ($Error){
-					$objFilepath = [System.IO.Path]::Combine($strDestFolder, ((([System.DateTime]::Now).Ticks).ToString()))
-					$objFilename = [System.IO.File]::Create($objFilepath)
-				}
-				$objResponse.RawContentStream.WriteTo($objFilename)
-				$objFilename.Close()
-			}
-			finally{
-				if ($objFilename){
-					$objFilename.Dispose();
-				}
-			}
-		}
 	}
 
