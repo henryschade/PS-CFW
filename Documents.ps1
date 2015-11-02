@@ -186,7 +186,6 @@
 			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
 			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
 		}
-		#$strTemp = "ZipCreateFile(" + $strTemp.Trim() + ")";
 		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
 		$objReturn = New-Object PSObject -Property @{
 			Name = $strTemp
