@@ -2,8 +2,8 @@
 PowerShell-CommonFrameWork
 
 # Basic process / usage.
----=== Short version ===---
- 1) Open PowerShell (NOT as admin).
+---=== Short version ===---<BR>
+ 1) Open PowerShell (NOT as admin).<BR>
  2) Close all web browsing sessions.
  3) $objWebClient = New-Object System.Net.WebClient;
  4) $objCreds = Get-Credential;
