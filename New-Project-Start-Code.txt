@@ -1,17 +1,18 @@
 #Requires -Version 2.0
 ###########################################
 # Updated Date:	6 November 2015
-# Purpose:		Provide a PS GUI for _______ Process.
+# Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
 
-	$strCodeFile = "WILE.ps1";
-	$strGUIFile = "WILE_GUI\MainWindow.xaml";
+	$strProjName = "WILE";
 	$strVer = "beta 0.1";
-
+	$strCodeFile = $strProjName + ".ps1";
+	$strGUIFile = $strProjName + "_GUI\MainWindow.xaml";
+	$strLogFile = $strProjName + ".log";
 	$strLogDirS = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Logs\";
 	$strLogDirL = "C:\ITSS-Tools\Logs\";
-	$strLogFile = "WILE.log";
+
 	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 
 	#Make sure the log directories exist.
@@ -36,7 +37,7 @@
 	#WriteLogFile() is a function to Do Log File Writes.
 	#It Must be defined before we can use it.
 	. ($ScriptDir + "\..\PS-CFW\" + "Common.ps1")
-	$strMessage = "Starting WILE.  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
+	$strMessage = "Starting " + $strProjName + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
 	Write-Host $strMessage;
 	WriteLogFile $strMessage $strLogDirS $strLogFile;
 
@@ -72,16 +73,16 @@
 	[ConsoleHelper]::HideConsole();									#Hide the PowerShell Console.
 	$objTimer = $null;
 
-	# ---=== Start Add code functions here ===---
+	# ---=== Start Add project code functions here ===---
 	function btnGetValidated_Click{
-	  #Code for  the Button Click event
+	  #Code for the Button Click event
 	}
 
 	function btnSubmit_Click{
 		#Code for the Button Click event
 
 	}
-	# ---=== End Add code functions here ===---
+	# ---=== End Add project code functions here ===---
 
 	# ---=== Start Code to do Just before show GUI. ===---
 	$bolAsAdmin = $False;
