@@ -1,0 +1,39 @@
+Starting a PowerShell project from scratch, for use with PS-CFW (and a GUI).
+
+---=== Create initial project/solution ===---
+ 1) Open Visual Studio (2013+).
+ 2) "File" -> "New" -> "Project..."
+ 3) "PowerShell" -> "PowerShell Script Project".
+ 4) Provide a project Name.
+ 5) Make sure Location is correct. ( C:\Projects\ )
+ 6) Make sure both check boxes are checked. "Create directory for solution" and "Create new Git repository"
+ 7) Click "OK".
+ 8) "File" -> "Close Solution".
+ 9) Browse to project directory.
+10) Cut all files in C:\Projects\<Project.Name>\<Project.Name>.
+11) Move all the files up a directory, into <Project.Name>.
+12) Delete the now empty directory of <Project.Name>.
+13) "File" -> "Open" -> "Project/Solution...".
+14) Browse to project directory.
+15) Double click the <Project.Name>.pssproj file.
+16) Right click the "Script.ps1" file, "Rename".
+17) Change the name to <Project.Name>.
+
+---=== Add a GUI ===---
+18) Right click the Solution, "Add" -> "New Project...".
+19) "Visual C#" -> "WPF Application".
+20) Make the name: <Project.Name>_GUI
+21) Leave location at default.
+22) Click "OK".
+
+---=== Add PS-CFW, for referance ===---
+23) Right click the Solution, "Add" -> "Existing Project...".
+24) Browse to <PS-CFW>, select the PS-CFW.pssproj file.
+25) In the PS-CFW directory, open the file "New-Project-Start-Code.txt".
+26) CTRL+A, then CRTL+C.
+27) Double click the <Project.Name>.ps1 file.
+28) CTRL+A, then CTRL+P.
+29) Update all the approperiate variables.
+
+30) Start coding.
+ 
