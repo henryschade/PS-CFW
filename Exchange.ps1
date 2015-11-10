@@ -511,7 +511,12 @@
 							Add-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False | Out-Null;
 							#Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $True;
 						}
+
 						$Error.Clear();
+						#Hide the email in the GAL.
+						if ($strUserName.EndsWith(".nnpi", 1)){		#the 1 makes it case-insensitive.
+							$strResults = Set-Mailbox -Identity $strUserName -DomainController $strDC -HiddenFromAddressListsEnabled $True;
+						}
 
 						$strMessage = "Successfully Created MailBox for '" + $strUserName + "' (Alias: " + $strAlias + ") on '" + $strExchServer + "\";
 						if (($strExchStore -eq "") -or ($strExchStore -eq $null)){
