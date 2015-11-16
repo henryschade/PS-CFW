@@ -35,5 +35,18 @@ Starting a PowerShell project from scratch, for use with PS-CFW (and a GUI).
 28) CTRL+A, then CTRL+P.
 29) Update all the approperiate variables.
 
-30) Start coding.
+30) Save the whole solution.
+31) Open "https://github.com/"
+32) Create a new repository.
+    a) Do NOT check "Initialize this repository with a README".
+    b) Populate "Repository name" with the <Project.Name>.
+    c) Populate "Description" if desired.
+    d) Select "Public" or "Private" as approperiate.
+33) Copy the HTTPS url.
+34) In VS open the "Team Explorer" window.
+35) Click the "Connect to team projects" button.
+36) ?Click "Clone" and enter the URL from GitHub.?
+37) ?Click "Clone".?
+
+38) Start coding.
  
