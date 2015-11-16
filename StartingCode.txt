@@ -1,6 +1,6 @@
 #Requires -Version 2.0
 ###########################################
-# Updated Date:	6 November 2015
+# Updated Date:	16 November 2015
 # Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
@@ -15,6 +15,10 @@
 
 	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 
+	#WriteLogFile() is a function to Do Log File Writes.
+	#It Must be defined before we can use it.
+	. ($ScriptDir + "\..\PS-CFW\" + "Common.ps1")
+
 	#Make sure the log directories exist.
 	if (!(Test-Path -Path $strLogDirL)){
 		#Need to create the directory
@@ -28,15 +32,11 @@
 			$strResults = mkdir $strLogDirS;
 		}
 	}
-
 	#Set local logging if no network path
 	if (!(Test-Path -Path $strLogDirS)){
 		$strLogDirS = $strLogDirL;
 	}
 
-	#WriteLogFile() is a function to Do Log File Writes.
-	#It Must be defined before we can use it.
-	. ($ScriptDir + "\..\PS-CFW\" + "Common.ps1")
 	$strMessage = "Starting " + $strProjName + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
 	Write-Host $strMessage;
 	WriteLogFile $strMessage $strLogDirS $strLogFile;
