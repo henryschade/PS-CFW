@@ -16,7 +16,7 @@ The following is based loosly off of the instructions found at:
  5) Click "Connect to Team Projects".
  6) click "Clone".
 	a) HTTPS URL to Repository.				("https://github.com/henryschade/PS-CFW.git")
-	b) Local path to new Project/Developement space.	("C:\Projects\PS-CFW")
+	b) Local path to new Project/Developement space.	("C:\Projects\")
  7) Click Clone button.
  8) Home button in Team Explorer.
  9) Click "Unsynced Commits".
