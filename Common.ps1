@@ -114,6 +114,7 @@
 		return [System.TimeZone]::CurrentTimeZone.ToLocalTime($strTime);
 	}
 
+	#Should use ZipCreateFile() from Documents.ps1.
 	function CreateZipFile{
 		#Should use ZipCreateFile() in Documents.ps1.
 		Param(
@@ -143,8 +144,8 @@
 		)
 		#$bISE2 = $True or $False.  Create the "*\powershell_ise.exe.config" files along with the "*\powershell.exe.config" files.
 
-		#Returns $True if created config files (at least tried to).
-		#Returns $False if Config Files did NOT have to be created (.NET 4.x already enabled).
+		#Returns $True if created config files.
+		#Returns $False if Config Files did NOT have to be created (.NET 4.x already enabled), or failed.
 
 		$bReturn = $False;
 
@@ -202,16 +203,16 @@
 		return $bReturn;
 	}
 
-	function GetFolderPathing{
+	function GetPathing{
 		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$sName
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$sName = "all"
 		)
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
 			#$objReturn.Results		= $True or $False.  Was a path found/gotten.
 			#$objReturn.Message		= "Success" or the error message.
 			#$objReturn.Returns		= A DataTable of Path(s).
-		#$sName = The name of the path(s) to get.
+		#$sName = The name of the path(s) to get, (All of them by default).
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -230,14 +231,214 @@
 			Returns = "";
 		}
 
-		#1) Look for a local config file.
+		#Write-Host "Calling routine is: " (Get-PSCallStack)[1].Command;
+
+		#1) Look for a config file.
 		#2) Read the desired path out of the file.
 		#3) If path not exist, query DB for path info.
-		#4) Update local config file.
-		#5) Return the path info.
-		
-		#Andrew wants to do step in this order instead:
-		# 3, 1, 2, 4, 5
+		#4) If both fail use a hard coded default.
+		#5) Update Share config file (used by apps/tools NOT PowerShell).
+			#Probably NOT going to do step 5.
+		#6) Return the path info.
+
+
+		$strConfigFile = "MiscSettings.txt";
+		$arrDefaults = @{};
+		#DB Info
+		$arrDefaults.Add("AgentActivity", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkFcU1E3MlZBSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==");
+		$arrDefaults.Add("CDR", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAyDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h");
+		$arrDefaults.Add("ECMD", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTUzXFNRNTNJTlNUMDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==");
+		$arrDefaults.Add("Score", $arrDefaults.AgentActivity);
+		$arrDefaults.Add("Sites", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTc1VkFcU1E3NVZBSU5TVDAxDQpzdHJEQk5hbWUgPSBTaXRlQ29kZXMNCnN0ckRCTG9naW5SID0gS0J1c2VyDQpzdHJEQlBhc3NSID0ga2M1JHNxMDI=");
+		$arrDefaults.Add("SRMDB", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBTUk1fQXBwc19Ub29scw0Kc3RyREJMb2dpblIgPSBTUk1fQXBwc19Ub29sc19XRk0NCnN0ckRCUGFzc1IgPSAhU1JNX0FwcHNfVG9vbHNfV0ZNNjkNCnN0ckRCTG9naW5XID0gU1JNX0FwcHNfVG9vbHMNCnN0ckRCUGFzc1cgPSAhU1JNX0FwcHNfVG9vbHM2OQ==");
+
+		#File Share Info ( MUST end in \ )
+		$arrDefaults.Add("Beta", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Beta\");
+		$arrDefaults.Add("ITSS-Tools", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF-SDCP-HELPDESK\ITSS-Tools\");
+		$arrDefaults.Add("Local", "C:\ITSS-Tools\");
+		$arrDefaults.Add("Logs", "\\NAWESPSCFS101V.NADSUSWE.NADS.NAVY.MIL\ISF-IOS$\IOS-LOGS\");
+		$arrDefaults.Add("Reports", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Reports\");
+		$arrDefaults.Add("Root", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\");
+		$arrDefaults.Add("SupportFiles", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\SupportFiles\");
+
+		<#
+		#Set the $ScriptDir variable.
+		#This sets the location of the "config.txt" file that is relative to the application (relative to Common.ps1 really).
+		if ($MyInvocation.MyCommand.Path -eq $null){
+			$ScriptDir = ".";
+		}
+		else{
+			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+		}
+		$strConfigFile = $ScriptDir + "\" + $strConfigFile;
+		#>
+		$strConfigFile = $arrDefaults.SupportFiles + $strConfigFile;
+
+		#Check if the config file exist.
+		if (Test-Path -Path $strConfigFile){
+			#Config file exists
+
+			#Create the DataTable to return
+			$objTable = New-Object System.Data.DataTable;
+			$col1 = New-Object System.Data.DataColumn Name,([String]);
+			$col2 = New-Object System.Data.DataColumn Path,([String]);
+			$col3 = New-Object System.Data.DataColumn Description,([String]);
+			$objTable.columns.add($col1);
+			$objTable.columns.add($col2);
+			$objTable.columns.add($col3);
+
+			$Error.Clear();
+			foreach ($strLine in [System.IO.File]::ReadAllLines($strConfigFile)){
+				if (($strLine.StartsWith($sName)) -or ($sName -eq "all")){
+					#Need to accomodate commented lines, especially for when $sName is "all".
+					if (!($strLine.StartsWith("--"))){
+						$strRawName = $strLine.SubString(0, $strLine.IndexOf("=") - 1).Trim();
+						$strRawPath = $strLine.SubString($strLine.IndexOf("=") + 1).Trim();
+
+						$row = $objTable.NewRow();
+						$row.Name = $strRawName;
+						$row.Path = $strRawPath;
+						$row.Description = $null;
+						$objTable.Rows.Add($row);
+					}
+				}
+			}
+
+			if ($objTable.Rows.Count -gt 0){
+				$objReturn.Message = "Success";
+				$objReturn.Results = $True;
+			}
+		}
+
+		if (($objReturn.Results -ne $True) -and ((Get-PSCallStack)[1].Command -ne "GetDBInfo")){
+			#No config file, or no entry, so check DB.
+			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
+			if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
+				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+				if ((Test-Path ($ScriptDir + "\DB-Routines.ps1"))){
+					. ($ScriptDir + "\DB-Routines.ps1")
+				}
+			}
+
+			#Query DB.
+			$arrDBInfo = GetDBInfo "AgentActivity";
+			#$strSQL = "SELECT * FROM NetPath WHERE Name like '" + $sName + "'";
+			$strSQL = "GetSP_spGetNetPath '" + $sName + "';";
+			$objTable = $null;
+			$Error.Clear();
+			$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
+
+			<#
+			if (($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -eq 0)){
+				#Error getting DB info.
+				$strSQL = "GetSP_spGetNetPath;";
+				$objTable = $null;
+				$Error.Clear();
+				$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
+			}
+			#>
+
+			if (!(($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -eq 0))){
+				$objReturn.Message = "Success";
+				$objReturn.Results = $True;
+			}
+		}
+
+		#Check if File and DB failed.
+		if ($objReturn.Results -ne $True){
+			#Both the Config file and the DB process failed, so return the default hard coded values.
+			<#
+			Switch ($sName){
+				#DB info
+				"AgentActivity"{
+					#Same as "Score".
+					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkFcU1E3MlZBSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==";
+				}
+				"CDR"{
+					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAyDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h";
+				}
+				"ECMD"{
+					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTUzXFNRNTNJTlNUMDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==";
+				}
+				"Score"{
+					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkFcU1E3MlZBSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==";
+				}
+				"Sites"{
+					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTc1VkFcU1E3NVZBSU5TVDAxDQpzdHJEQk5hbWUgPSBTaXRlQ29kZXMNCnN0ckRCTG9naW5SID0gS0J1c2VyDQpzdHJEQlBhc3NSID0ga2M1JHNxMDI=";
+				}
+				"SRMDB"{
+					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBTUk1fQXBwc19Ub29scw0Kc3RyREJMb2dpblIgPSBTUk1fQXBwc19Ub29sc19XRk0NCnN0ckRCUGFzc1IgPSAhU1JNX0FwcHNfVG9vbHNfV0ZNNjkNCnN0ckRCTG9naW5XID0gU1JNX0FwcHNfVG9vbHMNCnN0ckRCUGFzc1cgPSAhU1JNX0FwcHNfVG9vbHM2OQ==";
+				}
+
+				#File Share Info ( MUST end in \ )
+				"Beta"{
+					$strRawPath = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Beta\";
+				}
+				"ITSS-Tools"{
+					$strRawPath = "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF-SDCP-HELPDESK\ITSS-Tools\";
+				}
+				"Local"{
+					$strRawPath = "C:\ITSS-Tools\";
+				}
+				"Logs"{
+					$strRawPath = "\\NAWESPSCFS101V.NADSUSWE.NADS.NAVY.MIL\ISF-IOS$\IOS-LOGS\";
+				}
+				"Reports"{
+					$strRawPath = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Reports\";
+				}
+				"Root"{
+					$strRawPath = "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\";
+				}
+				"SupportFiles"{
+					$strRawPath = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\SupportFiles\";
+				}
+
+				default{
+					$strRawPath = $null;
+				}
+			}
+			#>
+
+			#Create the DataTable to return
+			$objTable = New-Object System.Data.DataTable;
+			$col1 = New-Object System.Data.DataColumn Name,([String]);
+			$col2 = New-Object System.Data.DataColumn Path,([String]);
+			$col3 = New-Object System.Data.DataColumn Description,([String]);
+			$objTable.columns.add($col1);
+			$objTable.columns.add($col2);
+			$objTable.columns.add($col3);
+
+			if ($arrDefaults.ContainsKey($sName)){
+				#Populate the DataTable, if we have the desired info.
+				$row = $objTable.NewRow();
+				$row.Name = $sName;
+				#$row.Path = $strRawPath;
+				$row.Path = $arrDefaults."$sName";
+				$row.Description = "HardCoded Value.";
+				$objTable.Rows.Add($row);
+
+				$objReturn.Message = "Success";
+				$objReturn.Results = $True;
+			}
+			else{
+				if ($sName -eq "all"){
+					foreach ($strEntry in $arrDefaults.Keys){
+						$row = $objTable.NewRow();
+						$row.Name = $strEntry;
+						$row.Path = $arrDefaults."$strEntry";
+						$row.Description = "HardCoded Value.";
+						$objTable.Rows.Add($row);
+					}
+
+					$objReturn.Message = "Success";
+					$objReturn.Results = $True;
+				}
+			}
+		}
+
+		$objReturn.Returns = $objTable;
+
+		return $objReturn;
 
 	}
 
