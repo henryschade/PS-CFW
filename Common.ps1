@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	1 November 2015
+# Updated Date:	18 November 2015
 # Purpose:		Common routines to all/most projects.
 # Requirements: Documents.ps1 for the CreateZipFile() routine.
 ##########################################
@@ -106,6 +106,14 @@
 		}
 	}
 
+	function ConvertUTCToLocal{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "UTC / GMT time to convert to Local time.")][String]$strTime
+		)
+
+		return [System.TimeZone]::CurrentTimeZone.ToLocalTime($strTime);
+	}
+
 	function CreateZipFile{
 		#Should use ZipCreateFile() in Documents.ps1.
 		Param(
@@ -162,6 +170,8 @@
 				$arrConfigFiles += "C:\Windows\System32\WindowsPowerShell\v1.0\powershell_ise.exe.config";
 				$arrConfigFiles += "C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell_ise.exe.config";
 			}
+
+			$Error.Clear();
 			#The following may have issues creating/copying the files due to permissions.
 			foreach ($strConfigFile in $arrConfigFiles){
 				if (Test-Path -Path ($strConfigFile + ".bak")){
@@ -182,6 +192,10 @@
 						$strXML | Out-File ($strConfigFile);
 					}
 				}
+			}
+
+			if ($Error){
+				$bReturn = $False;
 			}
 		}
 
@@ -225,6 +239,14 @@
 		#Andrew wants to do step in this order instead:
 		# 3, 1, 2, 4, 5
 
+	}
+
+	function GetUTC{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Local time to convert to UTC / GMT time.")][String]$strTime
+		)
+
+		return ((Get-Date $strTime).ToUniversalTime()).ToString();
 	}
 
 	function isADInstalled{
