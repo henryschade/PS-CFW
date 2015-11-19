@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	18 November 2015
+# Updated Date:	19 November 2015
 # Purpose:		Common routines to all/most projects.
 # Requirements: Documents.ps1 for the CreateZipFile() routine.
 ##########################################
@@ -8,6 +8,31 @@
 	##Include following Scripts/Files.
 	#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 	#. ($ScriptDir + "\Common.ps1")
+
+	function AsAdmin{
+		$bolAsAdmin = $False;
+
+		#Next little block is based off the info found in the following URL:
+			#http://blogs.msdn.com/b/virtual_pc_guy/archive/2010/09/23/a-self-elevating-powershell-script.aspx
+
+		# Get the ID and security principal of the current user account
+		$myWindowsID = [System.Security.Principal.WindowsIdentity]::GetCurrent();
+		$myWindowsPrincipal = new-object System.Security.Principal.WindowsPrincipal($myWindowsID);
+
+		# Get the security principal for the Administrator role
+		$adminRole=[System.Security.Principal.WindowsBuiltInRole]::Administrator;
+
+		# Check to see if we are currently running "as Administrator"
+		if ($myWindowsPrincipal.IsInRole($adminRole)){
+			#Write-Host "Your Admin";
+			$bolAsAdmin = $True;
+		}else{
+			#Write-Host "NOT Admin";
+			$bolAsAdmin = $False;
+		}
+
+		return $bolAsAdmin;
+	}
 
 	function CleanDir{
 		#Cleans files out of directories based on the DateLastModified.  
@@ -144,13 +169,50 @@
 		)
 		#$bISE2 = $True or $False.  Create the "*\powershell_ise.exe.config" files along with the "*\powershell.exe.config" files.
 
-		#Returns $True if created config files.
-		#Returns $False if Config Files did NOT have to be created (.NET 4.x already enabled), or failed.
+		#Returns $True if created config files, or .NET 4.x already enabled.
+		#Returns $False if Config Files were NOT created.
 
 		$bReturn = $False;
+		$bolAsAdmin = $False;
 
 		if ($PSVersionTable.CLRVersion.Major -lt 4){
 			$bReturn = $True;
+			$bolAsAdmin = AsAdmin;
+			if ($bolAsAdmin -ne $True){
+				$strMessage = "You should run this PS Script with admin permissions." + "`r`n" + "Want us to restart this PS Script for you?";
+				if ((!(Get-Command "MsgBox" -ErrorAction SilentlyContinue))){
+					#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+					#if ((Test-Path ($ScriptDir + "\Forms.ps1"))){
+					#	. ($ScriptDir + "\Forms.ps1")
+					#}
+
+					Write-Host "`r`n$strMessage ([Y]es, [N]o)";
+					#Write-Host "Press any key to continue ..."
+					$strResponse = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
+				}
+				else{
+					$strResponse = MsgBox $strMessage "Not running with Admin perms" 4;
+				}
+
+				if (($strResponse -eq "yes") -or ($strResponse -eq "y") -or ($strResponse -eq "Y")){
+					$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
+
+					$strMessage = "Restarting as Admin.";
+					WriteLogFile $strMessage $strLogDirL $strLogFile;
+
+					#method 1.  Uses Windows UAC to get creds.
+					#Start-Process $PSHOME\powershell.exe -verb runas -Wait -ArgumentList "-Command $strCommand";				#When I use " -Wait" kicks "Access Denied" error.
+					Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-ExecutionPolicy ByPass -Command $strCommand";
+					#Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
+					exit;
+
+					#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
+					$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
+					Stop-Process -Id $PID;
+				}else{
+					$bolAsAdmin = $True;
+				}
+			}
 
 			#http://tfl09.blogspot.com/2010/08/using-newer-versions-of-net-with.html
 			#http://w3facility.org/question/powershell-load-dll-got-error-add-type-could-not-load-file-or-assembly-webdriver-dll-or-one-of-its-dependencies-operation-is-not-supported/
@@ -198,6 +260,9 @@
 			if ($Error){
 				$bReturn = $False;
 			}
+		}
+		else{
+			$bReturn = $True;
 		}
 
 		return $bReturn;

@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	29 September 2015
+# Updated Date:	19 November 2015
 # Purpose:		My functions to create PS Forms and Controls
 # Requirements: None
 # Web sites that helped me:
@@ -441,166 +441,177 @@
 			Returns = "";
 		}
 
-		#[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework');
-		Add-Type -AssemblyName presentationframework;
-		if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -eq "STA"){
-			#PowerShell.exe –sta doesn’t load up WPF’s assemblies, so need these two as well.
-			Add-Type -AssemblyName PresentationCore;
-			Add-Type -AssemblyName WindowsBase;
-		}
-
-		$objNS = $null;
-
-		#Get the list of functions.
-		[Array]$arrFunctionList = Get-Content $strCodeFile | Where-Object {(($_ -like "*function *") -and ($_ -like "*{") -and ($_ -like "*_*") -and (!($_ -like "*#*")))};
-		[System.Collections.ArrayList]$arrFunctionList = $arrFunctionList;
-		for ($intX = 0; $intX -lt $arrFunctionList.Count; $intX++){
-			$arrFunctionList[$intX] = $arrFunctionList[$intX] -Replace "function ", "";		#This uses Regular expressions
-			$arrFunctionList[$intX] = $arrFunctionList[$intX] -Replace "\{", "";			#This uses Regular expressions
-			$arrFunctionList[$intX] = $arrFunctionList[$intX].Trim();
-		}
-
-		#Get and Prep the XAML file.
-		#[xml]$objXAMLFile = [System.IO.File]::ReadAllLines($strFormFile);
-		#If the XAML has a [ x:Class="xxxxxxxx"] block need to remove it.
-		[string]$objXAMLFile = "";
-		foreach ($strLine in [System.IO.File]::ReadAllLines($strFormFile)){
-			if (($strLine -ne $null) -and ($strLine -ne "")){
-				$strLine = $strLine.Replace(" x:", " ");
-
-				#The Class entry is at the end of the line in all my samples so far.
-				if ($strLine.Contains("x:Class")){
-					$strLine = $strLine.SubString(0, ($strLine.IndexOf("x:Class") - 1));
-				}
-				if ($strLine.Contains("Class")){
-					$strLine = $strLine.SubString(0, ($strLine.IndexOf("Class") - 1));
-				}
-
-				if ($strLine.Contains("xmlns")){
-					#http://blogs.technet.com/b/georgewallace/archive/2014/11/13/using-selectsinglenode-in-powershell-with-xml-namespace-azure-vnetconfig.aspx
-					#If the XML (XAML) includes a default namespace, you must add a prefix and namespace URI.
-					#https://msdn.microsoft.com/en-us/library/h0hw012b(v=vs.110).aspx
-					$objNS = $True;
-				}
-			}
-
-			$objXAMLFile = $objXAMLFile + $strLine;
-		}
-		[xml]$objXAMLFile = $objXAMLFile;
-
-		#If the XAML includes a default namespace, you must add a prefix and namespace URI.
-		if ($objNS -eq $True){
-			#XmlNamespaceManager nsmgr = new XmlNamespaceManager(doc.NameTable);
-			$objNS = New-Object System.Xml.XmlNamespaceManager($objXAMLFile.NameTable);
-			#nsmgr.AddNamespace("ab", "http://www.lucernepublishing.com");
-			$objNS.AddNamespace("ns", $objXAMLFile.DocumentElement.NamespaceURI);
-		}
-
-		#Read in the XAML.
-		$objReader = (New-Object System.Xml.XmlNodeReader $objXAMLFile);
-		$Error.Clear();
-		#PowerShell needs to run in STA mode to display Windows Presentation Foundation (WPF) windows.
-			#$host.Runspace.ApartmentState;
-			#[System.Threading.Thread]::CurrentThread.GetApartmentState();
-		#For info about STA vs. MTA:
-		#http://stackoverflow.com/questions/127188/could-you-explain-sta-and-mta
-		$objForm = [Windows.Markup.XamlReader]::Load($objReader);
-		if ($Error){
-			$strMessage = "Unable to load Windows.Markup.XamlReader.";
-			if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne "STA"){
-				$strMessage = $strMessage + "`r`n" + "The PowerShell environment needs to be in 'STA' mode.";
-			}
-			else{
-				$strMessage = $strMessage + "`r`n" + "The .NET Framework could be missing and/or Invalid XAML code was encountered.";
-			}
+		if ($PSVersionTable.CLRVersion.Major -lt 4){
+			$strMessage = $strMessage + "`r`n" + ".NET 4.x+ Framework is required.";
 			$objReturn.Message = $strMessage + "`r`n`r`n" + $Error;
-
-			##http://powershell.com/cs/blogs/tips/archive/2011/01/17/checking-sta-mode.aspx
-			#if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne "STA"){
-			#	#Get Script path and name.
-			#	$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
-
-			#	$strMessage = "The PowerShell environment needs to be in 'STA' mode, so restarting.";
-			#	#WriteLogFile $strMessage $strLogDirL $strLogFile;
-			#	Write-Host $strMessage -foregroundcolor Green -background blue;
-			#	Write-Host "Press any key to continue ..." -foregroundcolor red;
-			#	$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
-
-			#	#Launch script in a separate PowerShell process with STA enabled.
-			#	Start-Process ($PSHOME + "\powershell.exe") -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
-			#	exit;
-
-			#	#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
-			#	$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
-			#	Stop-Process -Id $PID;
-			#}
 		}
 		else{
-			#Get the Form objects/elements, by name, and create PowerShell variables for them.
-			if ($objNS -eq $null){
-				#$objXAMLFile.SelectNodes("//*[@Name]") | %{Set-Variable -Name ($_.Name) -Value $objForm.FindName($_.Name)};
-				#$objNodes = $objXAMLFile.SelectNodes("//*[@Name]");
-				$objNodes = $objXAMLFile.SelectNodes("//*");
+			#[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework');
+			Add-Type -AssemblyName presentationframework;
+			if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -eq "STA"){
+				#PowerShell.exe –sta doesn’t load up WPF’s assemblies, so need these two as well.
+				Add-Type -AssemblyName PresentationCore;
+				Add-Type -AssemblyName WindowsBase;
+			}
+
+			$objNS = $null;
+
+			#Get the list of functions.
+			[Array]$arrFunctionList = Get-Content $strCodeFile | Where-Object {(($_ -like "*function *") -and ($_ -like "*{") -and ($_ -like "*_*") -and (!($_ -like "*#*")))};
+			[System.Collections.ArrayList]$arrFunctionList = $arrFunctionList;
+			for ($intX = 0; $intX -lt $arrFunctionList.Count; $intX++){
+				$arrFunctionList[$intX] = $arrFunctionList[$intX] -Replace "function ", "";		#This uses Regular expressions
+				$arrFunctionList[$intX] = $arrFunctionList[$intX] -Replace "\{", "";			#This uses Regular expressions
+				$arrFunctionList[$intX] = $arrFunctionList[$intX].Trim();
+			}
+
+			#Get and Prep the XAML file.
+			#[xml]$objXAMLFile = [System.IO.File]::ReadAllLines($strFormFile);
+			#If the XAML has a [ x:Class="xxxxxxxx"] block need to remove it.
+			[string]$objXAMLFile = "";
+			foreach ($strLine in [System.IO.File]::ReadAllLines($strFormFile)){
+				if (($strLine -ne $null) -and ($strLine -ne "")){
+					$strLine = $strLine.Replace(" x:", " ");
+
+					#The Class entry is at the end of the line in all my samples so far.
+					if ($strLine.Contains("x:Class")){
+						$strLine = $strLine.SubString(0, ($strLine.IndexOf("x:Class") - 1));
+					}
+					if ($strLine.Contains("Class")){
+						$strLine = $strLine.SubString(0, ($strLine.IndexOf("Class") - 1));
+					}
+
+					if ($strLine.Contains("xmlns")){
+						#http://blogs.technet.com/b/georgewallace/archive/2014/11/13/using-selectsinglenode-in-powershell-with-xml-namespace-azure-vnetconfig.aspx
+						#If the XML (XAML) includes a default namespace, you must add a prefix and namespace URI.
+						#https://msdn.microsoft.com/en-us/library/h0hw012b(v=vs.110).aspx
+						$objNS = $True;
+					}
+				}
+
+				$objXAMLFile = $objXAMLFile + $strLine;
+			}
+			[xml]$objXAMLFile = $objXAMLFile;
+
+			#If the XAML includes a default namespace, you must add a prefix and namespace URI.
+			if ($objNS -eq $True){
+				#XmlNamespaceManager nsmgr = new XmlNamespaceManager(doc.NameTable);
+				$objNS = New-Object System.Xml.XmlNamespaceManager($objXAMLFile.NameTable);
+				#nsmgr.AddNamespace("ab", "http://www.lucernepublishing.com");
+				$objNS.AddNamespace("ns", $objXAMLFile.DocumentElement.NamespaceURI);
+			}
+
+			#Read in the XAML.
+			$objReader = (New-Object System.Xml.XmlNodeReader $objXAMLFile);
+			$Error.Clear();
+			#PowerShell needs to run in STA mode to display Windows Presentation Foundation (WPF) windows.
+				#$host.Runspace.ApartmentState;
+				#[System.Threading.Thread]::CurrentThread.GetApartmentState();
+			#For info about STA vs. MTA:
+			#http://stackoverflow.com/questions/127188/could-you-explain-sta-and-mta
+			$objForm = [Windows.Markup.XamlReader]::Load($objReader);
+			if ($Error){
+				$strMessage = "Unable to load Windows.Markup.XamlReader.";
+				if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne "STA"){
+					$strMessage = $strMessage + "`r`n" + "The PowerShell environment needs to be in 'STA' mode.";
+				}
+				else{
+					if ($PSVersionTable.CLRVersion.Major -lt 4){
+						$strMessage = $strMessage + "`r`n" + ".NET 4.x+ Framework is required.";
+					}
+					else{
+						$strMessage = $strMessage + "`r`n" + "Invalid XAML code was encountered.";
+					}
+				}
+				$objReturn.Message = $strMessage + "`r`n`r`n" + $Error;
+
+				##http://powershell.com/cs/blogs/tips/archive/2011/01/17/checking-sta-mode.aspx
+				#if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne "STA"){
+				#	#Get Script path and name.
+				#	$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
+
+				#	$strMessage = "The PowerShell environment needs to be in 'STA' mode, so restarting.";
+				#	#WriteLogFile $strMessage $strLogDirL $strLogFile;
+				#	Write-Host $strMessage -foregroundcolor Green -background blue;
+				#	Write-Host "Press any key to continue ..." -foregroundcolor red;
+				#	$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
+
+				#	#Launch script in a separate PowerShell process with STA enabled.
+				#	Start-Process ($PSHOME + "\powershell.exe") -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
+				#	exit;
+
+				#	#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
+				#	$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
+				#	Stop-Process -Id $PID;
+				#}
 			}
 			else{
-				#XmlNode book = doc.SelectSingleNode("//ab:book", nsmgr);
-				$objNodes = $objXAMLFile.SelectNodes("//ns:*", $objNS);
-			}
+				#Get the Form objects/elements, by name, and create PowerShell variables for them.
+				if ($objNS -eq $null){
+					#$objXAMLFile.SelectNodes("//*[@Name]") | %{Set-Variable -Name ($_.Name) -Value $objForm.FindName($_.Name)};
+					#$objNodes = $objXAMLFile.SelectNodes("//*[@Name]");
+					$objNodes = $objXAMLFile.SelectNodes("//*");
+				}
+				else{
+					#XmlNode book = doc.SelectSingleNode("//ab:book", nsmgr);
+					$objNodes = $objXAMLFile.SelectNodes("//ns:*", $objNS);
+				}
 
-			$strMessage = "Error";
-			foreach ($objNode in $objNodes){
-				if (($objNode.Name -ne "") -and ($objNode.Name -ne $null) -and ($objNode.Name -ne "Grid")){
-					#Create variables for each of the nodes/controlls. (for "-Scope",  0 is the current scope and 1 is its parent).
-					Set-Variable -Name ($objNode.Name) -Value $objForm.FindName($objNode.Name) -Scope $intVarScope;
+				$strMessage = "Error";
+				foreach ($objNode in $objNodes){
+					if (($objNode.Name -ne "") -and ($objNode.Name -ne $null) -and ($objNode.Name -ne "Grid")){
+						#Create variables for each of the nodes/controlls. (for "-Scope",  0 is the current scope and 1 is its parent).
+						Set-Variable -Name ($objNode.Name) -Value $objForm.FindName($objNode.Name) -Scope $intVarScope;
 
-					#Add any events that we have defined to the Form Objects.
-					#$btnExit.Add_Click({$form.Close()});
-					$intY = $arrFunctionList.Count;
-					do{
-						if (($arrFunctionList[$intY] -ne $null) -and ($arrFunctionList[$intY] -ne "")){
-							$bCheck = [boolean]($arrFunctionList[$intY] -match $objNode.Name);
-							if ($bCheck -eq $True){
-								$arrSplit = $arrFunctionList[$intY].Split('_');
-								$strAddMe = "$" + $arrSplit[0] + ".Add_" + $arrSplit[1] + "({" + $arrFunctionList[$intY] + "});";
-								$Error.Clear();
-								$strResults = try{Invoke-Expression $strAddMe}catch{$null};
+						#Add any events that we have defined to the Form Objects.
+						#$btnExit.Add_Click({$form.Close()});
+						$intY = $arrFunctionList.Count;
+						do{
+							if (($arrFunctionList[$intY] -ne $null) -and ($arrFunctionList[$intY] -ne "")){
+								$bCheck = [boolean]($arrFunctionList[$intY] -match $objNode.Name);
+								if ($bCheck -eq $True){
+									$arrSplit = $arrFunctionList[$intY].Split('_');
+									$strAddMe = "$" + $arrSplit[0] + ".Add_" + $arrSplit[1] + "({" + $arrFunctionList[$intY] + "});";
+									$Error.Clear();
+									$strResults = try{Invoke-Expression $strAddMe}catch{$null};
 
-								if ($strMessage -eq "Error"){
-									$strMessage = "Successfully Added the following events:";
+									if ($strMessage -eq "Error"){
+										$strMessage = "Successfully Added the following events:";
+									}
+									if (!($Error)){
+										$strMessage = $strMessage + "`r`n" + $arrFunctionList[$intY];
+										#Remove the function from the array.
+										$arrFunctionList.RemoveAt($intY);
+									}
+									else{
+										$strMessage = $strMessage + "`r`n" + "Error adding " + $arrFunctionList[$intY] + " " + $Error;
+									}
+	 
+									#Don't want to break, incase a control has multiple events.
+									#break;
 								}
-								if (!($Error)){
-									$strMessage = $strMessage + "`r`n" + $arrFunctionList[$intY];
-									#Remove the function from the array.
+							}
+							else{
+								if ($arrFunctionList[$intY] -eq ""){
 									$arrFunctionList.RemoveAt($intY);
 								}
-								else{
-									$strMessage = $strMessage + "`r`n" + "Error adding " + $arrFunctionList[$intY] + " " + $Error;
-								}
- 
-								#Don't want to break, incase a control has multiple events.
-								#break;
 							}
-						}
-						else{
-							if ($arrFunctionList[$intY] -eq ""){
-								$arrFunctionList.RemoveAt($intY);
-							}
-						}
-						$intY--;
-					} while ($intY -gt -1)
+							$intY--;
+						} while ($intY -gt -1)
+					}
 				}
-			}
-			$objReturn.Message = $strMessage;
+				$objReturn.Message = $strMessage;
 
-			if ($arrFunctionList.Count -gt 0){
-				$objReturn.Message = $objReturn.Message + "`r`n`r`n" + "Failed to add the following events: `r`n";
-				$objReturn.Message = $objReturn.Message + ($arrFunctionList -join "`r`n");
-			}
-			$objReturn.Results = $True;
-			#$objReturn.Message = "Success";
-			$objReturn.Returns = $objForm;
+				if ($arrFunctionList.Count -gt 0){
+					$objReturn.Message = $objReturn.Message + "`r`n`r`n" + "Failed to add the following events: `r`n";
+					$objReturn.Message = $objReturn.Message + ($arrFunctionList -join "`r`n");
+				}
+				$objReturn.Results = $True;
+				#$objReturn.Message = "Success";
+				$objReturn.Returns = $objForm;
 
-			#$objForm.ShowDialog() | out-null;
+				#$objForm.ShowDialog() | out-null;
+			}
 		}
 
 		return $objReturn;
