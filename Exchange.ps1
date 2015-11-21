@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	2 November 2015
+# Updated Date:	20 November 2015
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process, 
@@ -446,13 +446,6 @@
 				#$bDoBackGround = $chkBackGrndMB.Checked;
 				if ($bDoBackGround -eq $False){
 					#Need Exchange commands from here on...
-					#if (!(Get-Command "Enable-Mailbox" -ErrorAction SilentlyContinue)){
-						#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-						#if ((Test-Path ($ScriptDir + "\Exchange.ps1"))){
-						#	. ($ScriptDir + "\Exchange.ps1")
-						#}
-					#}
-
 					if ((!(Get-PSSession)) -or (!(Get-Command "Enable-Mailbox" -ErrorAction SilentlyContinue)) -or (!(Get-Command "Remove-MailboxPermission" -ErrorAction SilentlyContinue))){
 						$strMessage = "  Importing Exchange commands.  " + ([System.DateTime]::Now).ToString() + "`r`n";
 						if ($bUpdateResults -eq $True){

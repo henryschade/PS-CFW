@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	19 November 2015
+# Updated Date:	20 November 2015
 # Purpose:		Common routines to all/most projects.
 # Requirements: Documents.ps1 for the CreateZipFile() routine.
 ##########################################
@@ -181,9 +181,11 @@
 			if ($bolAsAdmin -ne $True){
 				$strMessage = "You should run this PS Script with admin permissions." + "`r`n" + "Want us to restart this PS Script for you?";
 				if ((!(Get-Command "MsgBox" -ErrorAction SilentlyContinue))){
-					#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-					#if ((Test-Path ($ScriptDir + "\Forms.ps1"))){
-					#	. ($ScriptDir + "\Forms.ps1")
+					##$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+					##if ((Test-Path ($ScriptDir + "\Forms.ps1"))){
+					#if ((Test-Path (".\Forms.ps1"))){
+					##	. ($ScriptDir + "\Forms.ps1")
+					#	. (".\Forms.ps1")
 					#}
 
 					Write-Host "`r`n$strMessage ([Y]es, [N]o)";
@@ -274,7 +276,7 @@
 		)
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
-			#$objReturn.Results		= $True or $False.  Was a path found/gotten.
+			#$objReturn.Results		= # of Rows of data returning.
 			#$objReturn.Message		= "Success" or the error message.
 			#$objReturn.Returns		= A DataTable of Path(s).
 		#$sName = The name of the path(s) to get, (All of them by default).
@@ -291,7 +293,7 @@
 		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
 		$objReturn = New-Object PSObject -Property @{
 			Name = $strTemp
-			Results = $False
+			Results = 0
 			Message = "Error"
 			Returns = "";
 		}
@@ -319,9 +321,10 @@
 
 		#File Share Info ( MUST end in \ )
 		$arrDefaults.Add("Beta", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Beta\");
-		$arrDefaults.Add("ITSS-Tools", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF-SDCP-HELPDESK\ITSS-Tools\");
+		$arrDefaults.Add("ITSS-Tools", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\");
 		$arrDefaults.Add("Local", "C:\ITSS-Tools\");
 		$arrDefaults.Add("Logs", "\\NAWESPSCFS101V.NADSUSWE.NADS.NAVY.MIL\ISF-IOS$\IOS-LOGS\");
+		$arrDefaults.Add("Logs_ITSS", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Logs\");
 		$arrDefaults.Add("Reports", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Reports\");
 		$arrDefaults.Add("Root", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\");
 		$arrDefaults.Add("SupportFiles", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\SupportFiles\");
@@ -371,17 +374,19 @@
 
 			if ($objTable.Rows.Count -gt 0){
 				$objReturn.Message = "Success";
-				$objReturn.Results = $True;
+				$objReturn.Results = $objTable.Rows.Count;
 			}
 		}
 
-		if (($objReturn.Results -ne $True) -and ((Get-PSCallStack)[1].Command -ne "GetDBInfo")){
+		if ((($objReturn.Results -eq $False) -or ($objReturn.Results -lt 1)) -and ((Get-PSCallStack)[1].Command -ne "GetDBInfo")){
 			#No config file, or no entry, so check DB.
 			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
 			if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
-				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-				if ((Test-Path ($ScriptDir + "\DB-Routines.ps1"))){
-					. ($ScriptDir + "\DB-Routines.ps1")
+				#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+				#if ((Test-Path ($ScriptDir + "\DB-Routines.ps1"))){
+				if ((Test-Path (".\DB-Routines.ps1"))){
+					#. ($ScriptDir + "\DB-Routines.ps1")
+					. (".\DB-Routines.ps1")
 				}
 			}
 
@@ -405,12 +410,12 @@
 
 			if (!(($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -eq 0))){
 				$objReturn.Message = "Success";
-				$objReturn.Results = $True;
+				$objReturn.Results = $objTable.Rows.Count;
 			}
 		}
 
 		#Check if File and DB failed.
-		if ($objReturn.Results -ne $True){
+		if (($objReturn.Results -eq $False) -or ($objReturn.Results -lt 1)){
 			#Both the Config file and the DB process failed, so return the default hard coded values.
 			<#
 			Switch ($sName){
@@ -483,7 +488,7 @@
 				$objTable.Rows.Add($row);
 
 				$objReturn.Message = "Success";
-				$objReturn.Results = $True;
+				$objReturn.Results = $objTable.Rows.Count;
 			}
 			else{
 				if ($sName -eq "all"){
@@ -496,7 +501,7 @@
 					}
 
 					$objReturn.Message = "Success";
-					$objReturn.Results = $True;
+					$objReturn.Results = $objTable.Rows.Count;
 				}
 			}
 		}
