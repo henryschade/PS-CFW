@@ -1,6 +1,6 @@
 #Requires -Version 2.0
 ###########################################
-# Updated Date:	16 November 2015
+# Updated Date:	19 November 2015
 # Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
@@ -14,6 +14,9 @@
 	$strLogDirL = "C:\ITSS-Tools\Logs\";
 
 	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+
+	$strMessage = "Starting " + $strProjName + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
+	Write-Host $strMessage;
 
 	#WriteLogFile() is a function to Do Log File Writes.
 	#It Must be defined before we can use it.
@@ -37,8 +40,6 @@
 		$strLogDirS = $strLogDirL;
 	}
 
-	$strMessage = "Starting " + $strProjName + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
-	Write-Host $strMessage;
 	WriteLogFile $strMessage $strLogDirS $strLogFile;
 
 	#Include following Scripts/Files/modules.
@@ -50,28 +51,27 @@
 	}
 
 	#Ensure .NET 4.x support is "turned on".
-	$bResults = EnableDotNet4;
-	if ($bResults){
-		$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
+	if ($PSVersionTable.CLRVersion.Major -lt 4){
+		$bResults = EnableDotNet4;
+		if ($bResults){
+			$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
 
-		$strMessage = "The PowerShell config files for .NET 4.x support should have been created, so restarting.";
-		WriteLogFile $strMessage $strLogDirS $strLogFile;
+			$strMessage = "The PowerShell config files for .NET 4.x support should have been created, so restarting.";
+			WriteLogFile $strMessage $strLogDirS $strLogFile;
 
-		Write-Host $strMessage -foregroundcolor Green -background blue;
-		Write-Host "Press any key to continue ..." -foregroundcolor red;
-		$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
+			Write-Host $strMessage -foregroundcolor Green -background blue;
+			Write-Host "Press any key to continue ..." -foregroundcolor red;
+			$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
 
-		Start-Process ($PSHOME + "\powershell.exe") -ArgumentList "-ExecutionPolicy ByPass -Command $strCommand";
-		#Start-Process ($PSHOME + "\powershell.exe") -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
-		exit;
+			Start-Process ($PSHOME + "\powershell.exe") -ArgumentList "-ExecutionPolicy ByPass -Command $strCommand";
+			#Start-Process ($PSHOME + "\powershell.exe") -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
+			exit;
 
-		#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
-		$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
-		Stop-Process -Id $PID;
+			#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
+			$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
+			Stop-Process -Id $PID;
+		}
 	}
-
-	[ConsoleHelper]::HideConsole();									#Hide the PowerShell Console.
-	$objTimer = $null;
 
 	# ---=== Start Add project code functions here ===---
 	function btnGetValidated_Click{
@@ -125,6 +125,10 @@
 			$strMessage = "Starting Load of GUI.";
 			Write-Host $strMessage;
 			WriteLogFile $strMessage $strLogDirS $strLogFile;
+
+			#Hide the PowerShell Console.
+			[ConsoleHelper]::HideConsole();
+			$objTimer = $null;
 
 			$objRet = GetXAMLGUI ($ScriptDir + "\" + $strGUIFile) ($ScriptDir + "\" + $strCodeFile);
 			WriteLogFile ($objRet.Name) $strLogDirS $strLogFile;
