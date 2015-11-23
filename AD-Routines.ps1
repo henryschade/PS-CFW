@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	1 November 2015
+# Updated Date:	23 November 2015
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 ##########################################
@@ -2446,1214 +2446,1216 @@
 
 
 #All the code below here is the C Sharp User Class Chris did.
-$cs = @"
-using System;
-using System.Collections.Generic;
-using System.DirectoryServices;
-using System.DirectoryServices.AccountManagement;
-using System.DirectoryServices.ActiveDirectory;
-using System.Text;
-using System.Threading.Tasks;
+if ($PSVersionTable.CLRVersion.Major -lt 4){
+	$cs = @"
+	using System;
+	using System.Collections.Generic;
+	using System.DirectoryServices;
+	using System.DirectoryServices.AccountManagement;
+	using System.DirectoryServices.ActiveDirectory;
+	using System.Text;
+	using System.Threading.Tasks;
 
-namespace NMCI.AD
-{
-    [DirectoryRdnPrefix("CN")]
-    [DirectoryObjectClass("User")]
-    public class NMCIUserPrincipal : UserPrincipal
-    {
-        // Inplement the constructor using the base class constructor. 
-        public NMCIUserPrincipal(PrincipalContext context) : base(context)
-        {
-        }
-        // Implement the constructor with initialization parameters.    
-        public NMCIUserPrincipal(PrincipalContext context, 
-                             string samAccountName, 
-                             string password, 
-                             bool enabled)
-                             : base(context, 
-                                    samAccountName, 
-                                    password, 
-                                    enabled)
-        {
-        }
-       // Create the other home phone property.  
-        [DirectoryProperty("otherHomePhone")]
-        public string[] HomePhoneOther
-        {
-            get
-            {
-                int len = ExtensionGet("otherHomePhone").Length;
-                if (len == 0) return null;
-               string[] otherHomePhone = new string[len];
-                object[] otherHomePhoneRaw = ExtensionGet("otherHomePhone");
-               for (int i = 0; i < len; i++)
-                {
-                    otherHomePhone[i] = (string)otherHomePhoneRaw[i];
-                }
-                return otherHomePhone;
-            }
-            set
-            {
-                ExtensionSet("otherHomePhone", value);
-            }
-        }
-        // Create the logoncount property.    
-        [DirectoryProperty("LogonCount")]
-        public Nullable<int> LogonCount
-        {
-            get
-            {
-                if (ExtensionGet("LogonCount").Length != 1)
-                    return null;
-                return ((Nullable<int>)ExtensionGet("LogonCount")[0]);
-            }
-        }
-        // Create the assistant property.
-        [DirectoryProperty("assistant")]
-        public string Assistant
-        {
-            get
-            {
-                if (ExtensionGet("assistant").Length != 1)
-                    return null;
-                return (string)ExtensionGet("assistant")[0];
-            }
-            set
-            {
-                ExtensionSet("assistant", value);
-            }
-        }
-        // Create the base property.
-        [DirectoryProperty("base")]
-        public string Base
-        {
-            get
-            {
-                if (ExtensionGet("base").Length != 1)
-                    return null;
-                return (string)ExtensionGet("base")[0];
-            }
-            set
-            {
-                ExtensionSet("base", value);
-            }
-        }
-        // Create the building property.
-        [DirectoryProperty("building")]
-        public string Building
-        {
-            get
-            {
-                if (ExtensionGet("building").Length != 1)
-                    return null;
-                return (string)ExtensionGet("building")[0];
-            }
-            set
-            {
-                ExtensionSet("building", value);
-            }
-        }
-        // Create the citizenship property.
-        [DirectoryProperty("citizenship")]
-        public string Citizenship
-        {
-            get
-            {
-                if (ExtensionGet("citizenship").Length != 1)
-                    return null;
-                return (string)ExtensionGet("citizenship")[0];
-            }
-            set
-            {
-                ExtensionSet("citizenship", value);
-            }
-        }
-        // Create the CN property.		//hjs
-        [DirectoryProperty("CN")]
-        public string CN
-        {
-            get
-            {
-                if (ExtensionGet("CN").Length != 1)
-                    return null;
-                return (string)ExtensionGet("CN")[0];
-            }
-            set
-            {
-                ExtensionSet("CN", value);
-            }
-        }
-        // Create the co property.
-        [DirectoryProperty("co")]
-        public string Co
-        {
-            get
-            {
-                if (ExtensionGet("co").Length != 1)
-                    return null;
-                return (string)ExtensionGet("co")[0];
-            }
-            set
-            {
-                ExtensionSet("co", value);
-            }
-        }
-        // Create the company property.
-        [DirectoryProperty("company")]
-        public string Company
-        {
-            get
-            {
-                if (ExtensionGet("company").Length != 1)
-                    return null;
-                return (string)ExtensionGet("company")[0];
-            }
-            set
-            {
-                ExtensionSet("company", value);
-            }
-        }
-        // Create the department property.
-        [DirectoryProperty("department")]
-        public string Department
-        {
-            get
-            {
-                if (ExtensionGet("department").Length != 1)
-                    return null;
-                return (string)ExtensionGet("department")[0];
-            }
-            set
-            {
-                ExtensionSet("department", value);
-            }
-        }
-        //// Create the displayName property.
-        //[DirectoryProperty("displayName")]
-        //public string DisplayName
-        //{
-        //    get
-        //    {
-        //        if (ExtensionGet("displayName").Length != 1)
-        //            return null;
-        //        return (string)ExtensionGet("displayName")[0];
-        //    }
-        //    set
-        //    {
-        //        ExtensionSet("displayName", value);
-        //    }
-        //}
-        // Create the division property.
-        [DirectoryProperty("division")]
-        public string Division
-        {
-            get
-            {
-                if (ExtensionGet("division").Length != 1)
-                    return null;
-                return (string)ExtensionGet("division")[0];
-            }
-            set
-            {
-                ExtensionSet("division", value);
-            }
-        }
-        // Create the doduid property.
-        [DirectoryProperty("doduid")]
-        public string Doduid
-        {
-            get
-            {
-                if (ExtensionGet("doduid").Length != 1)
-                    return null;
-                return (string)ExtensionGet("doduid")[0];
-            }
-            set
-            {
-                ExtensionSet("doduid", value);
-            }
-        }
-        // Create the eDIPI property.
-        [DirectoryProperty("eDIPI")]
-        public string eDIPI
-        {
-            get
-            {
-                if (ExtensionGet("eDIPI").Length != 1)
-                    return null;
-                return (string)ExtensionGet("eDIPI")[0];
-            }
-            set
-            {
-                ExtensionSet("eDIPI", value);
-            }
-        }
-        // Create the extensionAttribute1 property.
-        [DirectoryProperty("extensionAttribute1")]
-        public string ExtensionAttribute1
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute1").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute1")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute1", value);
-            }
-        }
-        // Create the extensionAttribute2 property.
-        [DirectoryProperty("extensionAttribute2")]
-        public string ExtensionAttribute2
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute2").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute2")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute2", value);
-            }
-        }
-        // Create the extensionAttribute3 property.
-        [DirectoryProperty("extensionAttribute3")]
-        public string ExtensionAttribute3
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute3").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute3")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute3", value);
-            }
-        }
-        // Create the extensionAttribute4 property.
-        [DirectoryProperty("extensionAttribute4")]
-        public string ExtensionAttribute4
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute4").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute4")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute4", value);
-            }
-        }
-        // Create the extensionAttribute5 property.
-        [DirectoryProperty("extensionAttribute5")]
-        public string ExtensionAttribute5
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute5").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute5")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute5", value);
-            }
-        }
-        // Create the extensionAttribute6 property.
-        [DirectoryProperty("extensionAttribute6")]
-        public string ExtensionAttribute6
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute6").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute6")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute6", value);
-            }
-        }
-        // Create the extensionAttribute7 property.
-        [DirectoryProperty("extensionAttribute7")]
-        public string ExtensionAttribute7
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute7").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute7")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute7", value);
-            }
-        }
-        // Create the extensionAttribute8 property.
-        [DirectoryProperty("extensionAttribute8")]
-        public string ExtensionAttribute8
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute8").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute8")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute8", value);
-            }
-        }
-        // Create the extensionAttribute4 property.
-        [DirectoryProperty("extensionAttribute9")]
-        public string ExtensionAttribute9
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute9").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute9")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute9", value);
-            }
-        }
-        // Create the extensionAttribute10 property.
-        [DirectoryProperty("extensionAttribute10")]
-        public string ExtensionAttribute10
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute10").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute10")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute10", value);
-            }
-        }
-        // Create the extensionAttribute11 property.
-        [DirectoryProperty("extensionAttribute11")]
-        public string ExtensionAttribute11
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute11").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute11")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute11", value);
-            }
-        }
-        // Create the extensionAttribute12 property.
-        [DirectoryProperty("extensionAttribute12")]
-        public string ExtensionAttribute12
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute12").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute12")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute12", value);
-            }
-        }
-        // Create the extensionAttribute13 property.
-        [DirectoryProperty("extensionAttribute13")]
-        public string ExtensionAttribute13
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute13").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute13")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute13", value);
-            }
-        }
-        // Create the extensionAttribute14 property.
-        [DirectoryProperty("extensionAttribute14")]
-        public string ExtensionAttribute14
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute14").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute14")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute14", value);
-            }
-        }
-        // Create the extensionAttribute15 property.
-        [DirectoryProperty("extensionAttribute15")]
-        public string ExtensionAttribute15
-        {
-            get
-            {
-                if (ExtensionGet("extensionAttribute15").Length != 1)
-                    return null;
-                return (string)ExtensionGet("extensionAttribute15")[0];
-            }
-            set
-            {
-                ExtensionSet("extensionAttribute15", value);
-            }
-        }
-        // Create the facsimileTelephoneNumber property.
-        [DirectoryProperty("facsimileTelephoneNumber")]
-        public string FacsimileTelephoneNumber
-        {
-            get
-            {
-                if (ExtensionGet("facsimileTelephoneNumber").Length != 1)
-                    return null;
-                return (string)ExtensionGet("facsimileTelephoneNumber")[0];
-            }
-            set
-            {
-                ExtensionSet("facsimileTelephoneNumber", value);
-            }
-        }
-        // Create the floor property.
-        [DirectoryProperty("floor")]
-        public string Floor
-        {
-            get
-            {
-                if (ExtensionGet("floor").Length != 1)
-                    return null;
-                return (string)ExtensionGet("floor")[0];
-            }
-            set
-            {
-                ExtensionSet("floor", value);
-            }
-        }
-        // Create the generationQualifier property.
-        [DirectoryProperty("generationQualifier")]
-        public string GenerationQualifier
-        {
-            get
-            {
-                if (ExtensionGet("generationQualifier").Length != 1)
-                    return null;
-                return (string)ExtensionGet("generationQualifier")[0];
-            }
-            set
-            {
-                ExtensionSet("generationQualifier", value);
-            }
-        }
-        // Create the homeMDB property.
-        [DirectoryProperty("homeMDB")]
-        public string HomeMDB
-        {
-            get
-            {
-                if (ExtensionGet("homeMDB").Length != 1)
-                    return null;
-                return (string)ExtensionGet("homeMDB")[0];
-            }
-            set
-            {
-                ExtensionSet("homeMDB", value);
-            }
-        }
-        // Create the homeMTA property.
-        [DirectoryProperty("homeMTA")]
-        public string HomeMTA
-        {
-            get
-            {
-                if (ExtensionGet("homeMTA").Length != 1)
-                    return null;
-                return (string)ExtensionGet("homeMTA")[0];
-            }
-            set
-            {
-                ExtensionSet("homeMTA", value);
-            }
-        }
-        // Create the homeMTA property.
-        [DirectoryProperty("homePhone")]
-        public string HomePhone
-        {
-            get
-            {
-                if (ExtensionGet("homePhone").Length != 1)
-                    return null;
-                return (string)ExtensionGet("homePhone")[0];
-            }
-            set
-            {
-                ExtensionSet("homePhone", value);
-            }
-        }
-        // Create the info property.
-        [DirectoryProperty("info")]
-        public string Info
-        {
-            get
-            {
-                if (ExtensionGet("info").Length != 1)
-                    return null;
-                return (string)ExtensionGet("info")[0];
-            }
-            set
-            {
-                ExtensionSet("info", value);
-            }
-        }
-        // Create the sn property.
-        [DirectoryProperty("sn")]
-        public string sn
-        {
-            get
-            {
-                if (ExtensionGet("sn").Length != 1)
-                    return null;
-                return (string)ExtensionGet("sn")[0];
-            }
-            set
-            {
-                ExtensionSet("sn", value);
-            }
-        }
-        // Create the initials property.
-        [DirectoryProperty("initials")]
-        public string Initials
-        {
-            get
-            {
-                if (ExtensionGet("initials").Length != 1)
-                    return null;
-                return (string)ExtensionGet("initials")[0];
-            }
-            set
-            {
-                ExtensionSet("initials", value);
-            }
-        }
-        // Create the ipPhone property.
-        [DirectoryProperty("ipPhone")]
-        public string IPPhone
-        {
-            get
-            {
-                if (ExtensionGet("ipPhone").Length != 1)
-                    return null;
-                return (string)ExtensionGet("ipPhone")[0];
-            }
-            set
-            {
-                ExtensionSet("ipPhone", value);
-            }
-        }
-        // Create the l property.
-        [DirectoryProperty("l")]
-        public string City
-        {
-            get
-            {
-                if (ExtensionGet("l").Length != 1)
-                    return null;
-                return (string)ExtensionGet("l")[0];
-            }
-            set
-            {
-                ExtensionSet("l", value);
-            }
-        }
-        [DirectoryProperty("l")]		//hjs
-        public string l
-        {
-            get
-            {
-                if (ExtensionGet("l").Length != 1)
-                    return null;
-                return (string)ExtensionGet("l")[0];
-            }
-            set
-            {
-                ExtensionSet("l", value);
-            }
-        }
-        // Create the legacyExchangeDN property.
-        [DirectoryProperty("legacyExchangeDN")]
-        public string LegacyExchangeDN
-        {
-            get
-            {
-                if (ExtensionGet("legacyExchangeDN").Length != 1)
-                    return null;
-                return (string)ExtensionGet("legacyExchangeDN")[0];
-            }
-            set
-            {
-                ExtensionSet("legacyExchangeDN", value);
-            }
-        }
-        // Create the mailNickName property.		//hjs
-        [DirectoryProperty("mailNickName")]
-        public string MailNickName
-        {
-            get
-            {
-                if (ExtensionGet("mailNickName").Length != 1)
-                    return null;
-                return (string)ExtensionGet("mailNickName")[0];
-            }
-            set
-            {
-                ExtensionSet("mailNickName", value);
-            }
-        }
-        // Create the manager property.
-        [DirectoryProperty("manager")]
-        public string Manager
-        {
-            get
-            {
-                if (ExtensionGet("manager").Length != 1)
-                    return null;
-                return (string)ExtensionGet("manager")[0];
-            }
-            set
-            {
-                ExtensionSet("manager", value);
-            }
-        }
-        // Create the mAPIRecipient property.
-        [DirectoryProperty("mAPIRecipient")]
-        public string MAPIRecipient
-        {
-            get
-            {
-                if (ExtensionGet("mAPIRecipient").Length != 1)
-                    return null;
-                return (string)ExtensionGet("mAPIRecipient")[0];
-            }
-            set
-            {
-                ExtensionSet("mAPIRecipient", value);
-            }
-        }
-        // Create the mobile phone property.
-        [DirectoryProperty("mobile")]
-        public string MobilePhone
-        {
-            get
-            {
-                if (ExtensionGet("mobile").Length != 1)
-                    return null;
-                return (string)ExtensionGet("mobile")[0];
-            }
-            set
-            {
-                ExtensionSet("mobile", value);
-            }
-        }
-        // Create the telephoneNumber property.		//hjs
-        [DirectoryProperty("telephoneNumber")]
-        public string telephoneNumber
-        {
-            get
-            {
-                if (ExtensionGet("telephoneNumber").Length != 1)
-                    return null;
-                return (string)ExtensionGet("telephoneNumber")[0];
-            }
-            set
-            {
-                ExtensionSet("telephoneNumber", value);
-            }
-        }
-        // Create the AccountDisabled property.		//hjs - Adding this does not allow the checkbox to work, even if I use "AccountDisabled" as the name.
-        [DirectoryProperty("Enabled")]
-        public string AccountDisabled
-        {
-            get
-            {
-                if (ExtensionGet("Enabled").Length != 1)
-                    return null;
-                return (string)ExtensionGet("Enabled")[0];
-            }
-            set
-            {
-                ExtensionSet("Enabled", value);
-            }
-        }
-        [DirectoryProperty("mail")]		//hjs
-        public string mail
-        {
-            get
-            {
-                if (ExtensionGet("mail").Length != 1)
-                    return null;
-                return (string)ExtensionGet("mail")[0];
-            }
-            set
-            {
-                ExtensionSet("mail", value);
-            }
-        }
-        // Create the mDBUseDefaults property.		//hjs
-        [DirectoryProperty("mDBUseDefaults")]
-        public string mDBUseDefaults
-        {
-            get
-            {
-                if (ExtensionGet("mDBUseDefaults").Length != 1)
-                    return null;
-                return (string)ExtensionGet("mDBUseDefaults")[0];
-            }
-            set
-            {
-                ExtensionSet("mDBUseDefaults", value);
-            }
-        }
-        // Create the msExchAssistantName property.
-        [DirectoryProperty("msExchAssistantName")]
-        public string MSxchAssistantName
-        {
-            get
-            {
-                if (ExtensionGet("msExchAssistantName").Length != 1)
-                    return null;
-                return (string)ExtensionGet("msExchAssistantName")[0];
-            }
-            set
-            {
-                ExtensionSet("msExchAssistantName", value);
-            }
-        }
-        // Create the msExchExpansionServerName property.
-        [DirectoryProperty("msExchExpansionServerName")]
-        public string MSExchExpansionServerName
-        {
-            get
-            {
-                if (ExtensionGet("msExchExpansionServerName").Length != 1)
-                    return null;
-                return (string)ExtensionGet("msExchExpansionServerName")[0];
-            }
-            set
-            {
-                ExtensionSet("msExchExpansionServerName", value);
-            }
-        }
-        // Create the msExchHideFromAddressList property.
-        [DirectoryProperty("msExchHideFromAddressLists")]
-        public bool MSExchHideFromAddressLists
-        {
-            get
-            {
-                try
-                {
-                    return (bool)ExtensionGet("msExchHideFromAddressList")[0];
-                }
-                catch
-                {
-                    Console.WriteLine("Error querying msExchHideFromAddressList");
-                    return false;
-                }
-            }
-            set
-            {
-                ExtensionSet("msExchHideFromAddressList",  value);
-            }
-        }
-        // Create the msExchHomeServerName property.
-        [DirectoryProperty("msExchHomeServerName")]
-        public string MSExchHomeServerName
-        {
-            get
-            {
-                if (ExtensionGet("msExchHomeServerName").Length != 1)
-                    return null;
-                return (string)ExtensionGet("msExchHomeServerName")[0];
-            }
-            set
-            {
-                ExtensionSet("msExchHomeServerName", value);
-            }
-        }
-        // Create the msExchMasterAccountSid property.
-        [DirectoryProperty("msExchMasterAccountSid")]
-        public string MSExchMasterAccountSid
-        {
-            get
-            {
-                if (ExtensionGet("msExchMasterAccountSid").Length != 1)
-                    return null;
-                return (string)ExtensionGet("msExchMasterAccountSid")[0];
-            }
-            set
-            {
-                ExtensionSet("msExchMasterAccountSid", value);
-            }
-        }
-        // Create the other msExchOriginatingForest property.  
-        [DirectoryProperty("msExchOriginatingForest")]
-        public string[] MSExchOriginatingForest
-        {
-            get
-            {
-                int len = ExtensionGet("msExchOriginatingForest").Length;
-                if (len == 0) return null;
-                string[] msExchOriginatingForest = new string[len];
-                object[] msExchOriginatingForestRaw = ExtensionGet("msExchOriginatingForest");
-                for (int i = 0; i < len; i++)
-                {
-                    msExchOriginatingForest[i] = (string)msExchOriginatingForestRaw[i];
-                }
-                return msExchOriginatingForest;
-            }
-            set
-            {
-                ExtensionSet("msExchOriginatingForest", value);
-            }
-        }
-        // Create the nMCIAssetTag property.
-        [DirectoryProperty("nMCIAssetTag")]
-        public string NMCIAssetTag
-        {
-            get
-            {
-                if (ExtensionGet("nMCIAssetTag").Length != 1)
-                    return null;
-                return (string)ExtensionGet("nMCIAssetTag")[0];
-            }
-            set
-            {
-                ExtensionSet("nMCIAssetTag", value);
-            }
-        }
-        // Create the pager property.
-        [DirectoryProperty("pager")]
-        public string Pager
-        {
-            get
-            {
-                if (ExtensionGet("pager").Length != 1)
-                    return null;
-                return (string)ExtensionGet("pager")[0];
-            }
-            set
-            {
-                ExtensionSet("pager", value);
-            }
-        }
-        // Create the personalTitle property.
-        [DirectoryProperty("personalTitle")]
-        public string PersonalTitle
-        {
-            get
-            {
-                if (ExtensionGet("personalTitle").Length != 1)
-                    return null;
-                return (string)ExtensionGet("personalTitle")[0];
-            }
-            set
-            {
-                ExtensionSet("personalTitle", value);
-            }
-        }
-        // Create the physicalDeliveryOfficeName property.
-        [DirectoryProperty("physicalDeliveryOfficeName")]
-        public string PhysicalDeliveryOfficeName
-        {
-            get
-            {
-                if (ExtensionGet("physicalDeliveryOfficeName").Length != 1)
-                    return null;
-                return (string)ExtensionGet("physicalDeliveryOfficeName")[0];
-            }
-            set
-            {
-                ExtensionSet("physicalDeliveryOfficeName", value);
-            }
-        }
-        // Create the postalCode property.
-        [DirectoryProperty("postalCode")]
-        public string PostalCode
-        {
-            get
-            {
-                if (ExtensionGet("postalCode").Length != 1)
-                    return null;
-                return (string)ExtensionGet("postalCode")[0];
-            }
-            set
-            {
-                ExtensionSet("postalCode", value);
-            }
-        }
-        // Create the profilePath property.
-        [DirectoryProperty("profilePath")]
-        public string ProfilePath
-        {
-            get
-            {
-                if (ExtensionGet("profilePath").Length != 1)
-                    return null;
-                return (string)ExtensionGet("profilePath")[0];
-            }
-            set
-            {
-                ExtensionSet("profilePath", value);
-            }
-        }
-        // Create the roomCube property.
-        [DirectoryProperty("roomCube")]
-        public string RoomCube
-        {
-            get
-            {
-                if (ExtensionGet("roomCube").Length != 1)
-                    return null;
-                return (string)ExtensionGet("roomCube")[0];
-            }
-            set
-            {
-                ExtensionSet("roomCube", value);
-            }
-        }
-        // Create the other seeAlso property.  
-        [DirectoryProperty("seeAlso")]
-        public string[] SeeAlso
-        {
-            get
-            {
-                int len = ExtensionGet("seeAlso").Length;
-                if (len == 0) return null;
-                string[] seeAlso = new string[len];
-                object[] seeAlsoRaw = ExtensionGet("seeAlso");
-                for (int i = 0; i < len; i++)
-                {
-                    seeAlso[i] = (string)seeAlsoRaw[i];
-                }
-                return seeAlso;
-            }
-            set
-            {
-                ExtensionSet("seeAlso", value);
-            }
-        }
-        // Create the st property.
-        [DirectoryProperty("st")]
-        public string State
-        {
-            get
-            {
-                if (ExtensionGet("st").Length != 1)
-                    return null;
-                return (string)ExtensionGet("st")[0];
-            }
-            set
-            {
-                ExtensionSet("st", value);
-            }
-        }
-        [DirectoryProperty("st")]		//hjs
-        public string st
-        {
-            get
-            {
-                if (ExtensionGet("st").Length != 1)
-                    return null;
-                return (string)ExtensionGet("st")[0];
-            }
-            set
-            {
-                ExtensionSet("st", value);
-            }
-        }
-        // Create the streetAddress property.
-        [DirectoryProperty("streetAddress")]
-        public string StreetAddress
-        {
-            get
-            {
-                if (ExtensionGet("streetAddress").Length != 1)
-                    return null;
-                return (string)ExtensionGet("streetAddress")[0];
-            }
-            set
-            {
-                ExtensionSet("streetAddress", value);
-            }
-        }
-        // Create the terminalServer property.
-        [DirectoryProperty("terminalServer")]
-        public string TerminalServer
-        {
-            get
-            {
-                if (ExtensionGet("terminalServer").Length != 1)
-                    return null;
-                return (string)ExtensionGet("terminalServer")[0];
-            }
-            set
-            {
-                ExtensionSet("terminalServer", value);
-            }
-        }
-        // Create the title property.
-        [DirectoryProperty("title")]
-        public string Title
-        {
-            get
-            {
-                if (ExtensionGet("title").Length != 1)
-                    return null;
-                return (string)ExtensionGet("title")[0];
-            }
-            set
-            {
-                ExtensionSet("title", value);
-            }
-        }
-        // Create the uAITChanged property.
-        [DirectoryProperty("uAITChanged")]
-        public string UAITChanged
-        {
-            get
-            {
-                if (ExtensionGet("uAITChanged").Length != 1)
-                    return null;
-                return (string)ExtensionGet("uAITChanged")[0];
-            }
-            set
-            {
-                ExtensionSet("uAITChanged", value);
-            }
-        }
-        // Create the uIC property.
-        [DirectoryProperty("uIC")]
-        public string UIC
-        {
-            get
-            {
-                if (ExtensionGet("uIC").Length != 1)
-                    return null;
-                return (string)ExtensionGet("uIC")[0];
-            }
-            set
-            {
-                ExtensionSet("uIC", value);
-            }
-        }
-        // Create the unicodePwd property.
-        [DirectoryProperty("unicodePwd")]
-        public string UnicodePwd
-        {
-            get
-            {
-                if (ExtensionGet("unicodePwd").Length != 1)
-                    return null;
-                return (string)ExtensionGet("unicodePwd")[0];
-            }
-            set
-            {
-                ExtensionSet("unicodePwd", value);
-            }
-        }
-        // Create the userParameters property.
-        [DirectoryProperty("userParameters")]
-        public string UserParameters
-        {
-            get
-            {
-                if (ExtensionGet("userParameters").Length != 1)
-                    return null;
-                return (string)ExtensionGet("userParameters")[0];
-            }
-            set
-            {
-                ExtensionSet("userParameters", value);
-            }
-        }
-        // Create the primaryComputer property.
-        [DirectoryProperty("primaryComputer")]
-        public string primaryComputer
-        {
-            get
-            {
-                if (ExtensionGet("primaryComputer").Length != 1)
-                    return null;
-                return (string)ExtensionGet("primaryComputer")[0];
-            }
-            set
-            {
-                ExtensionSet("primaryComputer", value);
-            }
-        }
-        // Create the userWorkstations property.
-        [DirectoryProperty("userWorkstations")]
-        public string UserWorkstations
-        {
-            get
-            {
-                if (ExtensionGet("userWorkstations").Length != 1)
-                    return null;
-                return (string)ExtensionGet("userWorkstations")[0];
-            }
-            set
-            {
-                ExtensionSet("userWorkstations", value);
-            }
-        }
-        // Create the wWWHomePage property.
-        [DirectoryProperty("wWWHomePage")]
-        public string WWWHomePage
-        {
-            get
-            {
-                if (ExtensionGet("wWWHomePage").Length != 1)
-                    return null;
-                return (string)ExtensionGet("wWWHomePage")[0];
-            }
-            set
-            {
-                ExtensionSet("wWWHomePage", value);
-            }
-        }
-        // Implement the overloaded search method FindByIdentity.
-        public static new NMCIUserPrincipal FindByIdentity(PrincipalContext context,
-                                                       string identityValue)
-        {
-            return (NMCIUserPrincipal)FindByIdentityWithType(context,
-                                                         typeof(NMCIUserPrincipal),
-                                                         identityValue);
-        }
-        // Implement the overloaded search method FindByIdentity. 
-        public static new NMCIUserPrincipal FindByIdentity(PrincipalContext context,
-                                                       IdentityType identityType,
-                                                       string identityValue)
-        {
-            return (NMCIUserPrincipal)FindByIdentityWithType(context,
-                                                         typeof(NMCIUserPrincipal),
-                                                         identityType,
-                                                         identityValue);
-        }
-    }
-}
+	namespace NMCI.AD
+	{
+		[DirectoryRdnPrefix("CN")]
+		[DirectoryObjectClass("User")]
+		public class NMCIUserPrincipal : UserPrincipal
+		{
+			// Inplement the constructor using the base class constructor. 
+			public NMCIUserPrincipal(PrincipalContext context) : base(context)
+			{
+			}
+			// Implement the constructor with initialization parameters.    
+			public NMCIUserPrincipal(PrincipalContext context, 
+								 string samAccountName, 
+								 string password, 
+								 bool enabled)
+								 : base(context, 
+										samAccountName, 
+										password, 
+										enabled)
+			{
+			}
+		   // Create the other home phone property.  
+			[DirectoryProperty("otherHomePhone")]
+			public string[] HomePhoneOther
+			{
+				get
+				{
+					int len = ExtensionGet("otherHomePhone").Length;
+					if (len == 0) return null;
+				   string[] otherHomePhone = new string[len];
+					object[] otherHomePhoneRaw = ExtensionGet("otherHomePhone");
+				   for (int i = 0; i < len; i++)
+					{
+						otherHomePhone[i] = (string)otherHomePhoneRaw[i];
+					}
+					return otherHomePhone;
+				}
+				set
+				{
+					ExtensionSet("otherHomePhone", value);
+				}
+			}
+			// Create the logoncount property.    
+			[DirectoryProperty("LogonCount")]
+			public Nullable<int> LogonCount
+			{
+				get
+				{
+					if (ExtensionGet("LogonCount").Length != 1)
+						return null;
+					return ((Nullable<int>)ExtensionGet("LogonCount")[0]);
+				}
+			}
+			// Create the assistant property.
+			[DirectoryProperty("assistant")]
+			public string Assistant
+			{
+				get
+				{
+					if (ExtensionGet("assistant").Length != 1)
+						return null;
+					return (string)ExtensionGet("assistant")[0];
+				}
+				set
+				{
+					ExtensionSet("assistant", value);
+				}
+			}
+			// Create the base property.
+			[DirectoryProperty("base")]
+			public string Base
+			{
+				get
+				{
+					if (ExtensionGet("base").Length != 1)
+						return null;
+					return (string)ExtensionGet("base")[0];
+				}
+				set
+				{
+					ExtensionSet("base", value);
+				}
+			}
+			// Create the building property.
+			[DirectoryProperty("building")]
+			public string Building
+			{
+				get
+				{
+					if (ExtensionGet("building").Length != 1)
+						return null;
+					return (string)ExtensionGet("building")[0];
+				}
+				set
+				{
+					ExtensionSet("building", value);
+				}
+			}
+			// Create the citizenship property.
+			[DirectoryProperty("citizenship")]
+			public string Citizenship
+			{
+				get
+				{
+					if (ExtensionGet("citizenship").Length != 1)
+						return null;
+					return (string)ExtensionGet("citizenship")[0];
+				}
+				set
+				{
+					ExtensionSet("citizenship", value);
+				}
+			}
+			// Create the CN property.		//hjs
+			[DirectoryProperty("CN")]
+			public string CN
+			{
+				get
+				{
+					if (ExtensionGet("CN").Length != 1)
+						return null;
+					return (string)ExtensionGet("CN")[0];
+				}
+				set
+				{
+					ExtensionSet("CN", value);
+				}
+			}
+			// Create the co property.
+			[DirectoryProperty("co")]
+			public string Co
+			{
+				get
+				{
+					if (ExtensionGet("co").Length != 1)
+						return null;
+					return (string)ExtensionGet("co")[0];
+				}
+				set
+				{
+					ExtensionSet("co", value);
+				}
+			}
+			// Create the company property.
+			[DirectoryProperty("company")]
+			public string Company
+			{
+				get
+				{
+					if (ExtensionGet("company").Length != 1)
+						return null;
+					return (string)ExtensionGet("company")[0];
+				}
+				set
+				{
+					ExtensionSet("company", value);
+				}
+			}
+			// Create the department property.
+			[DirectoryProperty("department")]
+			public string Department
+			{
+				get
+				{
+					if (ExtensionGet("department").Length != 1)
+						return null;
+					return (string)ExtensionGet("department")[0];
+				}
+				set
+				{
+					ExtensionSet("department", value);
+				}
+			}
+			//// Create the displayName property.
+			//[DirectoryProperty("displayName")]
+			//public string DisplayName
+			//{
+			//    get
+			//    {
+			//        if (ExtensionGet("displayName").Length != 1)
+			//            return null;
+			//        return (string)ExtensionGet("displayName")[0];
+			//    }
+			//    set
+			//    {
+			//        ExtensionSet("displayName", value);
+			//    }
+			//}
+			// Create the division property.
+			[DirectoryProperty("division")]
+			public string Division
+			{
+				get
+				{
+					if (ExtensionGet("division").Length != 1)
+						return null;
+					return (string)ExtensionGet("division")[0];
+				}
+				set
+				{
+					ExtensionSet("division", value);
+				}
+			}
+			// Create the doduid property.
+			[DirectoryProperty("doduid")]
+			public string Doduid
+			{
+				get
+				{
+					if (ExtensionGet("doduid").Length != 1)
+						return null;
+					return (string)ExtensionGet("doduid")[0];
+				}
+				set
+				{
+					ExtensionSet("doduid", value);
+				}
+			}
+			// Create the eDIPI property.
+			[DirectoryProperty("eDIPI")]
+			public string eDIPI
+			{
+				get
+				{
+					if (ExtensionGet("eDIPI").Length != 1)
+						return null;
+					return (string)ExtensionGet("eDIPI")[0];
+				}
+				set
+				{
+					ExtensionSet("eDIPI", value);
+				}
+			}
+			// Create the extensionAttribute1 property.
+			[DirectoryProperty("extensionAttribute1")]
+			public string ExtensionAttribute1
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute1").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute1")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute1", value);
+				}
+			}
+			// Create the extensionAttribute2 property.
+			[DirectoryProperty("extensionAttribute2")]
+			public string ExtensionAttribute2
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute2").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute2")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute2", value);
+				}
+			}
+			// Create the extensionAttribute3 property.
+			[DirectoryProperty("extensionAttribute3")]
+			public string ExtensionAttribute3
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute3").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute3")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute3", value);
+				}
+			}
+			// Create the extensionAttribute4 property.
+			[DirectoryProperty("extensionAttribute4")]
+			public string ExtensionAttribute4
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute4").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute4")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute4", value);
+				}
+			}
+			// Create the extensionAttribute5 property.
+			[DirectoryProperty("extensionAttribute5")]
+			public string ExtensionAttribute5
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute5").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute5")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute5", value);
+				}
+			}
+			// Create the extensionAttribute6 property.
+			[DirectoryProperty("extensionAttribute6")]
+			public string ExtensionAttribute6
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute6").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute6")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute6", value);
+				}
+			}
+			// Create the extensionAttribute7 property.
+			[DirectoryProperty("extensionAttribute7")]
+			public string ExtensionAttribute7
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute7").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute7")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute7", value);
+				}
+			}
+			// Create the extensionAttribute8 property.
+			[DirectoryProperty("extensionAttribute8")]
+			public string ExtensionAttribute8
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute8").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute8")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute8", value);
+				}
+			}
+			// Create the extensionAttribute4 property.
+			[DirectoryProperty("extensionAttribute9")]
+			public string ExtensionAttribute9
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute9").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute9")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute9", value);
+				}
+			}
+			// Create the extensionAttribute10 property.
+			[DirectoryProperty("extensionAttribute10")]
+			public string ExtensionAttribute10
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute10").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute10")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute10", value);
+				}
+			}
+			// Create the extensionAttribute11 property.
+			[DirectoryProperty("extensionAttribute11")]
+			public string ExtensionAttribute11
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute11").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute11")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute11", value);
+				}
+			}
+			// Create the extensionAttribute12 property.
+			[DirectoryProperty("extensionAttribute12")]
+			public string ExtensionAttribute12
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute12").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute12")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute12", value);
+				}
+			}
+			// Create the extensionAttribute13 property.
+			[DirectoryProperty("extensionAttribute13")]
+			public string ExtensionAttribute13
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute13").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute13")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute13", value);
+				}
+			}
+			// Create the extensionAttribute14 property.
+			[DirectoryProperty("extensionAttribute14")]
+			public string ExtensionAttribute14
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute14").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute14")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute14", value);
+				}
+			}
+			// Create the extensionAttribute15 property.
+			[DirectoryProperty("extensionAttribute15")]
+			public string ExtensionAttribute15
+			{
+				get
+				{
+					if (ExtensionGet("extensionAttribute15").Length != 1)
+						return null;
+					return (string)ExtensionGet("extensionAttribute15")[0];
+				}
+				set
+				{
+					ExtensionSet("extensionAttribute15", value);
+				}
+			}
+			// Create the facsimileTelephoneNumber property.
+			[DirectoryProperty("facsimileTelephoneNumber")]
+			public string FacsimileTelephoneNumber
+			{
+				get
+				{
+					if (ExtensionGet("facsimileTelephoneNumber").Length != 1)
+						return null;
+					return (string)ExtensionGet("facsimileTelephoneNumber")[0];
+				}
+				set
+				{
+					ExtensionSet("facsimileTelephoneNumber", value);
+				}
+			}
+			// Create the floor property.
+			[DirectoryProperty("floor")]
+			public string Floor
+			{
+				get
+				{
+					if (ExtensionGet("floor").Length != 1)
+						return null;
+					return (string)ExtensionGet("floor")[0];
+				}
+				set
+				{
+					ExtensionSet("floor", value);
+				}
+			}
+			// Create the generationQualifier property.
+			[DirectoryProperty("generationQualifier")]
+			public string GenerationQualifier
+			{
+				get
+				{
+					if (ExtensionGet("generationQualifier").Length != 1)
+						return null;
+					return (string)ExtensionGet("generationQualifier")[0];
+				}
+				set
+				{
+					ExtensionSet("generationQualifier", value);
+				}
+			}
+			// Create the homeMDB property.
+			[DirectoryProperty("homeMDB")]
+			public string HomeMDB
+			{
+				get
+				{
+					if (ExtensionGet("homeMDB").Length != 1)
+						return null;
+					return (string)ExtensionGet("homeMDB")[0];
+				}
+				set
+				{
+					ExtensionSet("homeMDB", value);
+				}
+			}
+			// Create the homeMTA property.
+			[DirectoryProperty("homeMTA")]
+			public string HomeMTA
+			{
+				get
+				{
+					if (ExtensionGet("homeMTA").Length != 1)
+						return null;
+					return (string)ExtensionGet("homeMTA")[0];
+				}
+				set
+				{
+					ExtensionSet("homeMTA", value);
+				}
+			}
+			// Create the homeMTA property.
+			[DirectoryProperty("homePhone")]
+			public string HomePhone
+			{
+				get
+				{
+					if (ExtensionGet("homePhone").Length != 1)
+						return null;
+					return (string)ExtensionGet("homePhone")[0];
+				}
+				set
+				{
+					ExtensionSet("homePhone", value);
+				}
+			}
+			// Create the info property.
+			[DirectoryProperty("info")]
+			public string Info
+			{
+				get
+				{
+					if (ExtensionGet("info").Length != 1)
+						return null;
+					return (string)ExtensionGet("info")[0];
+				}
+				set
+				{
+					ExtensionSet("info", value);
+				}
+			}
+			// Create the sn property.
+			[DirectoryProperty("sn")]
+			public string sn
+			{
+				get
+				{
+					if (ExtensionGet("sn").Length != 1)
+						return null;
+					return (string)ExtensionGet("sn")[0];
+				}
+				set
+				{
+					ExtensionSet("sn", value);
+				}
+			}
+			// Create the initials property.
+			[DirectoryProperty("initials")]
+			public string Initials
+			{
+				get
+				{
+					if (ExtensionGet("initials").Length != 1)
+						return null;
+					return (string)ExtensionGet("initials")[0];
+				}
+				set
+				{
+					ExtensionSet("initials", value);
+				}
+			}
+			// Create the ipPhone property.
+			[DirectoryProperty("ipPhone")]
+			public string IPPhone
+			{
+				get
+				{
+					if (ExtensionGet("ipPhone").Length != 1)
+						return null;
+					return (string)ExtensionGet("ipPhone")[0];
+				}
+				set
+				{
+					ExtensionSet("ipPhone", value);
+				}
+			}
+			// Create the l property.
+			[DirectoryProperty("l")]
+			public string City
+			{
+				get
+				{
+					if (ExtensionGet("l").Length != 1)
+						return null;
+					return (string)ExtensionGet("l")[0];
+				}
+				set
+				{
+					ExtensionSet("l", value);
+				}
+			}
+			[DirectoryProperty("l")]		//hjs
+			public string l
+			{
+				get
+				{
+					if (ExtensionGet("l").Length != 1)
+						return null;
+					return (string)ExtensionGet("l")[0];
+				}
+				set
+				{
+					ExtensionSet("l", value);
+				}
+			}
+			// Create the legacyExchangeDN property.
+			[DirectoryProperty("legacyExchangeDN")]
+			public string LegacyExchangeDN
+			{
+				get
+				{
+					if (ExtensionGet("legacyExchangeDN").Length != 1)
+						return null;
+					return (string)ExtensionGet("legacyExchangeDN")[0];
+				}
+				set
+				{
+					ExtensionSet("legacyExchangeDN", value);
+				}
+			}
+			// Create the mailNickName property.		//hjs
+			[DirectoryProperty("mailNickName")]
+			public string MailNickName
+			{
+				get
+				{
+					if (ExtensionGet("mailNickName").Length != 1)
+						return null;
+					return (string)ExtensionGet("mailNickName")[0];
+				}
+				set
+				{
+					ExtensionSet("mailNickName", value);
+				}
+			}
+			// Create the manager property.
+			[DirectoryProperty("manager")]
+			public string Manager
+			{
+				get
+				{
+					if (ExtensionGet("manager").Length != 1)
+						return null;
+					return (string)ExtensionGet("manager")[0];
+				}
+				set
+				{
+					ExtensionSet("manager", value);
+				}
+			}
+			// Create the mAPIRecipient property.
+			[DirectoryProperty("mAPIRecipient")]
+			public string MAPIRecipient
+			{
+				get
+				{
+					if (ExtensionGet("mAPIRecipient").Length != 1)
+						return null;
+					return (string)ExtensionGet("mAPIRecipient")[0];
+				}
+				set
+				{
+					ExtensionSet("mAPIRecipient", value);
+				}
+			}
+			// Create the mobile phone property.
+			[DirectoryProperty("mobile")]
+			public string MobilePhone
+			{
+				get
+				{
+					if (ExtensionGet("mobile").Length != 1)
+						return null;
+					return (string)ExtensionGet("mobile")[0];
+				}
+				set
+				{
+					ExtensionSet("mobile", value);
+				}
+			}
+			// Create the telephoneNumber property.		//hjs
+			[DirectoryProperty("telephoneNumber")]
+			public string telephoneNumber
+			{
+				get
+				{
+					if (ExtensionGet("telephoneNumber").Length != 1)
+						return null;
+					return (string)ExtensionGet("telephoneNumber")[0];
+				}
+				set
+				{
+					ExtensionSet("telephoneNumber", value);
+				}
+			}
+			// Create the AccountDisabled property.		//hjs - Adding this does not allow the checkbox to work, even if I use "AccountDisabled" as the name.
+			[DirectoryProperty("Enabled")]
+			public string AccountDisabled
+			{
+				get
+				{
+					if (ExtensionGet("Enabled").Length != 1)
+						return null;
+					return (string)ExtensionGet("Enabled")[0];
+				}
+				set
+				{
+					ExtensionSet("Enabled", value);
+				}
+			}
+			[DirectoryProperty("mail")]		//hjs
+			public string mail
+			{
+				get
+				{
+					if (ExtensionGet("mail").Length != 1)
+						return null;
+					return (string)ExtensionGet("mail")[0];
+				}
+				set
+				{
+					ExtensionSet("mail", value);
+				}
+			}
+			// Create the mDBUseDefaults property.		//hjs
+			[DirectoryProperty("mDBUseDefaults")]
+			public string mDBUseDefaults
+			{
+				get
+				{
+					if (ExtensionGet("mDBUseDefaults").Length != 1)
+						return null;
+					return (string)ExtensionGet("mDBUseDefaults")[0];
+				}
+				set
+				{
+					ExtensionSet("mDBUseDefaults", value);
+				}
+			}
+			// Create the msExchAssistantName property.
+			[DirectoryProperty("msExchAssistantName")]
+			public string MSxchAssistantName
+			{
+				get
+				{
+					if (ExtensionGet("msExchAssistantName").Length != 1)
+						return null;
+					return (string)ExtensionGet("msExchAssistantName")[0];
+				}
+				set
+				{
+					ExtensionSet("msExchAssistantName", value);
+				}
+			}
+			// Create the msExchExpansionServerName property.
+			[DirectoryProperty("msExchExpansionServerName")]
+			public string MSExchExpansionServerName
+			{
+				get
+				{
+					if (ExtensionGet("msExchExpansionServerName").Length != 1)
+						return null;
+					return (string)ExtensionGet("msExchExpansionServerName")[0];
+				}
+				set
+				{
+					ExtensionSet("msExchExpansionServerName", value);
+				}
+			}
+			// Create the msExchHideFromAddressList property.
+			[DirectoryProperty("msExchHideFromAddressLists")]
+			public bool MSExchHideFromAddressLists
+			{
+				get
+				{
+					try
+					{
+						return (bool)ExtensionGet("msExchHideFromAddressList")[0];
+					}
+					catch
+					{
+						Console.WriteLine("Error querying msExchHideFromAddressList");
+						return false;
+					}
+				}
+				set
+				{
+					ExtensionSet("msExchHideFromAddressList",  value);
+				}
+			}
+			// Create the msExchHomeServerName property.
+			[DirectoryProperty("msExchHomeServerName")]
+			public string MSExchHomeServerName
+			{
+				get
+				{
+					if (ExtensionGet("msExchHomeServerName").Length != 1)
+						return null;
+					return (string)ExtensionGet("msExchHomeServerName")[0];
+				}
+				set
+				{
+					ExtensionSet("msExchHomeServerName", value);
+				}
+			}
+			// Create the msExchMasterAccountSid property.
+			[DirectoryProperty("msExchMasterAccountSid")]
+			public string MSExchMasterAccountSid
+			{
+				get
+				{
+					if (ExtensionGet("msExchMasterAccountSid").Length != 1)
+						return null;
+					return (string)ExtensionGet("msExchMasterAccountSid")[0];
+				}
+				set
+				{
+					ExtensionSet("msExchMasterAccountSid", value);
+				}
+			}
+			// Create the other msExchOriginatingForest property.  
+			[DirectoryProperty("msExchOriginatingForest")]
+			public string[] MSExchOriginatingForest
+			{
+				get
+				{
+					int len = ExtensionGet("msExchOriginatingForest").Length;
+					if (len == 0) return null;
+					string[] msExchOriginatingForest = new string[len];
+					object[] msExchOriginatingForestRaw = ExtensionGet("msExchOriginatingForest");
+					for (int i = 0; i < len; i++)
+					{
+						msExchOriginatingForest[i] = (string)msExchOriginatingForestRaw[i];
+					}
+					return msExchOriginatingForest;
+				}
+				set
+				{
+					ExtensionSet("msExchOriginatingForest", value);
+				}
+			}
+			// Create the nMCIAssetTag property.
+			[DirectoryProperty("nMCIAssetTag")]
+			public string NMCIAssetTag
+			{
+				get
+				{
+					if (ExtensionGet("nMCIAssetTag").Length != 1)
+						return null;
+					return (string)ExtensionGet("nMCIAssetTag")[0];
+				}
+				set
+				{
+					ExtensionSet("nMCIAssetTag", value);
+				}
+			}
+			// Create the pager property.
+			[DirectoryProperty("pager")]
+			public string Pager
+			{
+				get
+				{
+					if (ExtensionGet("pager").Length != 1)
+						return null;
+					return (string)ExtensionGet("pager")[0];
+				}
+				set
+				{
+					ExtensionSet("pager", value);
+				}
+			}
+			// Create the personalTitle property.
+			[DirectoryProperty("personalTitle")]
+			public string PersonalTitle
+			{
+				get
+				{
+					if (ExtensionGet("personalTitle").Length != 1)
+						return null;
+					return (string)ExtensionGet("personalTitle")[0];
+				}
+				set
+				{
+					ExtensionSet("personalTitle", value);
+				}
+			}
+			// Create the physicalDeliveryOfficeName property.
+			[DirectoryProperty("physicalDeliveryOfficeName")]
+			public string PhysicalDeliveryOfficeName
+			{
+				get
+				{
+					if (ExtensionGet("physicalDeliveryOfficeName").Length != 1)
+						return null;
+					return (string)ExtensionGet("physicalDeliveryOfficeName")[0];
+				}
+				set
+				{
+					ExtensionSet("physicalDeliveryOfficeName", value);
+				}
+			}
+			// Create the postalCode property.
+			[DirectoryProperty("postalCode")]
+			public string PostalCode
+			{
+				get
+				{
+					if (ExtensionGet("postalCode").Length != 1)
+						return null;
+					return (string)ExtensionGet("postalCode")[0];
+				}
+				set
+				{
+					ExtensionSet("postalCode", value);
+				}
+			}
+			// Create the profilePath property.
+			[DirectoryProperty("profilePath")]
+			public string ProfilePath
+			{
+				get
+				{
+					if (ExtensionGet("profilePath").Length != 1)
+						return null;
+					return (string)ExtensionGet("profilePath")[0];
+				}
+				set
+				{
+					ExtensionSet("profilePath", value);
+				}
+			}
+			// Create the roomCube property.
+			[DirectoryProperty("roomCube")]
+			public string RoomCube
+			{
+				get
+				{
+					if (ExtensionGet("roomCube").Length != 1)
+						return null;
+					return (string)ExtensionGet("roomCube")[0];
+				}
+				set
+				{
+					ExtensionSet("roomCube", value);
+				}
+			}
+			// Create the other seeAlso property.  
+			[DirectoryProperty("seeAlso")]
+			public string[] SeeAlso
+			{
+				get
+				{
+					int len = ExtensionGet("seeAlso").Length;
+					if (len == 0) return null;
+					string[] seeAlso = new string[len];
+					object[] seeAlsoRaw = ExtensionGet("seeAlso");
+					for (int i = 0; i < len; i++)
+					{
+						seeAlso[i] = (string)seeAlsoRaw[i];
+					}
+					return seeAlso;
+				}
+				set
+				{
+					ExtensionSet("seeAlso", value);
+				}
+			}
+			// Create the st property.
+			[DirectoryProperty("st")]
+			public string State
+			{
+				get
+				{
+					if (ExtensionGet("st").Length != 1)
+						return null;
+					return (string)ExtensionGet("st")[0];
+				}
+				set
+				{
+					ExtensionSet("st", value);
+				}
+			}
+			[DirectoryProperty("st")]		//hjs
+			public string st
+			{
+				get
+				{
+					if (ExtensionGet("st").Length != 1)
+						return null;
+					return (string)ExtensionGet("st")[0];
+				}
+				set
+				{
+					ExtensionSet("st", value);
+				}
+			}
+			// Create the streetAddress property.
+			[DirectoryProperty("streetAddress")]
+			public string StreetAddress
+			{
+				get
+				{
+					if (ExtensionGet("streetAddress").Length != 1)
+						return null;
+					return (string)ExtensionGet("streetAddress")[0];
+				}
+				set
+				{
+					ExtensionSet("streetAddress", value);
+				}
+			}
+			// Create the terminalServer property.
+			[DirectoryProperty("terminalServer")]
+			public string TerminalServer
+			{
+				get
+				{
+					if (ExtensionGet("terminalServer").Length != 1)
+						return null;
+					return (string)ExtensionGet("terminalServer")[0];
+				}
+				set
+				{
+					ExtensionSet("terminalServer", value);
+				}
+			}
+			// Create the title property.
+			[DirectoryProperty("title")]
+			public string Title
+			{
+				get
+				{
+					if (ExtensionGet("title").Length != 1)
+						return null;
+					return (string)ExtensionGet("title")[0];
+				}
+				set
+				{
+					ExtensionSet("title", value);
+				}
+			}
+			// Create the uAITChanged property.
+			[DirectoryProperty("uAITChanged")]
+			public string UAITChanged
+			{
+				get
+				{
+					if (ExtensionGet("uAITChanged").Length != 1)
+						return null;
+					return (string)ExtensionGet("uAITChanged")[0];
+				}
+				set
+				{
+					ExtensionSet("uAITChanged", value);
+				}
+			}
+			// Create the uIC property.
+			[DirectoryProperty("uIC")]
+			public string UIC
+			{
+				get
+				{
+					if (ExtensionGet("uIC").Length != 1)
+						return null;
+					return (string)ExtensionGet("uIC")[0];
+				}
+				set
+				{
+					ExtensionSet("uIC", value);
+				}
+			}
+			// Create the unicodePwd property.
+			[DirectoryProperty("unicodePwd")]
+			public string UnicodePwd
+			{
+				get
+				{
+					if (ExtensionGet("unicodePwd").Length != 1)
+						return null;
+					return (string)ExtensionGet("unicodePwd")[0];
+				}
+				set
+				{
+					ExtensionSet("unicodePwd", value);
+				}
+			}
+			// Create the userParameters property.
+			[DirectoryProperty("userParameters")]
+			public string UserParameters
+			{
+				get
+				{
+					if (ExtensionGet("userParameters").Length != 1)
+						return null;
+					return (string)ExtensionGet("userParameters")[0];
+				}
+				set
+				{
+					ExtensionSet("userParameters", value);
+				}
+			}
+			// Create the primaryComputer property.
+			[DirectoryProperty("primaryComputer")]
+			public string primaryComputer
+			{
+				get
+				{
+					if (ExtensionGet("primaryComputer").Length != 1)
+						return null;
+					return (string)ExtensionGet("primaryComputer")[0];
+				}
+				set
+				{
+					ExtensionSet("primaryComputer", value);
+				}
+			}
+			// Create the userWorkstations property.
+			[DirectoryProperty("userWorkstations")]
+			public string UserWorkstations
+			{
+				get
+				{
+					if (ExtensionGet("userWorkstations").Length != 1)
+						return null;
+					return (string)ExtensionGet("userWorkstations")[0];
+				}
+				set
+				{
+					ExtensionSet("userWorkstations", value);
+				}
+			}
+			// Create the wWWHomePage property.
+			[DirectoryProperty("wWWHomePage")]
+			public string WWWHomePage
+			{
+				get
+				{
+					if (ExtensionGet("wWWHomePage").Length != 1)
+						return null;
+					return (string)ExtensionGet("wWWHomePage")[0];
+				}
+				set
+				{
+					ExtensionSet("wWWHomePage", value);
+				}
+			}
+			// Implement the overloaded search method FindByIdentity.
+			public static new NMCIUserPrincipal FindByIdentity(PrincipalContext context,
+														   string identityValue)
+			{
+				return (NMCIUserPrincipal)FindByIdentityWithType(context,
+															 typeof(NMCIUserPrincipal),
+															 identityValue);
+			}
+			// Implement the overloaded search method FindByIdentity. 
+			public static new NMCIUserPrincipal FindByIdentity(PrincipalContext context,
+														   IdentityType identityType,
+														   string identityValue)
+			{
+				return (NMCIUserPrincipal)FindByIdentityWithType(context,
+															 typeof(NMCIUserPrincipal),
+															 identityType,
+															 identityValue);
+			}
+		}
+	}
 "@
 
-$assemblies = @('System.DirectoryServices', 'System.DirectoryServices.AccountManagement')
-Add-Type -TypeDefinition $cs -Language 'CSharp' -ReferencedAssemblies $assemblies -IgnoreWarnings
+	$assemblies = @('System.DirectoryServices', 'System.DirectoryServices.AccountManagement')
+	Add-Type -TypeDefinition $cs -Language 'CSharp' -ReferencedAssemblies $assemblies -IgnoreWarnings
+}
