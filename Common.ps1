@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	20 November 2015
+# Updated Date:	23 November 2015
 # Purpose:		Common routines to all/most projects.
 # Requirements: Documents.ps1 for the CreateZipFile() routine.
 ##########################################
@@ -181,11 +181,13 @@
 			if ($bolAsAdmin -ne $True){
 				$strMessage = "You should run this PS Script with admin permissions." + "`r`n" + "Want us to restart this PS Script for you?";
 				if ((!(Get-Command "MsgBox" -ErrorAction SilentlyContinue))){
-					##$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-					##if ((Test-Path ($ScriptDir + "\Forms.ps1"))){
 					#if ((Test-Path (".\Forms.ps1"))){
-					##	. ($ScriptDir + "\Forms.ps1")
 					#	. (".\Forms.ps1")
+					#}
+					#else{
+					#	if ((Test-Path (".\..\PS-CFW\Forms.ps1"))){
+					#		. (".\..\PS-CFW\Forms.ps1")
+					#	}
 					#}
 
 					Write-Host "`r`n$strMessage ([Y]es, [N]o)";
@@ -329,55 +331,48 @@
 		$arrDefaults.Add("Root", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\");
 		$arrDefaults.Add("SupportFiles", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\SupportFiles\");
 
-		<#
-		#Set the $ScriptDir variable.
-		#This sets the location of the "config.txt" file that is relative to the application (relative to Common.ps1 really).
-		if ($MyInvocation.MyCommand.Path -eq $null){
-			$ScriptDir = ".";
-		}
-		else{
-			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-		}
-		$strConfigFile = $ScriptDir + "\" + $strConfigFile;
-		#>
 		$strConfigFile = $arrDefaults.SupportFiles + $strConfigFile;
 
-		#Check if the config file exist.
-		if (Test-Path -Path $strConfigFile){
-			#Config file exists
+		#Config file  (takes about 1 sec)
+		if (($objReturn.Results -eq $False) -or ($objReturn.Results -lt 1)){
+			#Check if the config file exist.
+			if (Test-Path -Path $strConfigFile){
+				#Config file exists
 
-			#Create the DataTable to return
-			$objTable = New-Object System.Data.DataTable;
-			$col1 = New-Object System.Data.DataColumn Name,([String]);
-			$col2 = New-Object System.Data.DataColumn Path,([String]);
-			$col3 = New-Object System.Data.DataColumn Description,([String]);
-			$objTable.columns.add($col1);
-			$objTable.columns.add($col2);
-			$objTable.columns.add($col3);
+				#Create the DataTable to return
+				$objTable = New-Object System.Data.DataTable;
+				$col1 = New-Object System.Data.DataColumn Name,([String]);
+				$col2 = New-Object System.Data.DataColumn Path,([String]);
+				$col3 = New-Object System.Data.DataColumn Description,([String]);
+				$objTable.columns.add($col1);
+				$objTable.columns.add($col2);
+				$objTable.columns.add($col3);
 
-			$Error.Clear();
-			foreach ($strLine in [System.IO.File]::ReadAllLines($strConfigFile)){
-				if (($strLine.StartsWith($sName)) -or ($sName -eq "all")){
-					#Need to accomodate commented lines, especially for when $sName is "all".
-					if (!($strLine.StartsWith("--"))){
-						$strRawName = $strLine.SubString(0, $strLine.IndexOf("=") - 1).Trim();
-						$strRawPath = $strLine.SubString($strLine.IndexOf("=") + 1).Trim();
+				$Error.Clear();
+				foreach ($strLine in [System.IO.File]::ReadAllLines($strConfigFile)){
+					if (($strLine.StartsWith($sName)) -or ($sName -eq "all")){
+						#Need to accomodate commented lines, especially for when $sName is "all".
+						if (!($strLine.StartsWith("--"))){
+							$strRawName = $strLine.SubString(0, $strLine.IndexOf("=") - 1).Trim();
+							$strRawPath = $strLine.SubString($strLine.IndexOf("=") + 1).Trim();
 
-						$row = $objTable.NewRow();
-						$row.Name = $strRawName;
-						$row.Path = $strRawPath;
-						$row.Description = $null;
-						$objTable.Rows.Add($row);
+							$row = $objTable.NewRow();
+							$row.Name = $strRawName;
+							$row.Path = $strRawPath;
+							$row.Description = $null;
+							$objTable.Rows.Add($row);
+						}
 					}
 				}
-			}
 
-			if ($objTable.Rows.Count -gt 0){
-				$objReturn.Message = "Success";
-				$objReturn.Results = $objTable.Rows.Count;
+				if ($objTable.Rows.Count -gt 0){
+					$objReturn.Message = "Success";
+					$objReturn.Results = $objTable.Rows.Count;
+				}
 			}
 		}
 
+		#DB  (takes 2 to 3 sec)
 		if ((($objReturn.Results -eq $False) -or ($objReturn.Results -lt 1)) -and ((Get-PSCallStack)[1].Command -ne "GetDBInfo")){
 			#No config file, or no entry, so check DB.
 			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
@@ -387,6 +382,12 @@
 				if ((Test-Path (".\DB-Routines.ps1"))){
 					#. ($ScriptDir + "\DB-Routines.ps1")
 					. (".\DB-Routines.ps1")
+				}
+				else{
+					if ((Test-Path (".\..\PS-CFW\DB-Routines.ps1"))){
+						#. ($ScriptDir + "\DB-Routines.ps1")
+						. (".\..\PS-CFW\DB-Routines.ps1")
+					}
 				}
 			}
 
@@ -398,22 +399,13 @@
 			$Error.Clear();
 			$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
 
-			<#
-			if (($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -eq 0)){
-				#Error getting DB info.
-				$strSQL = "GetSP_spGetNetPath;";
-				$objTable = $null;
-				$Error.Clear();
-				$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
-			}
-			#>
-
 			if (!(($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -eq 0))){
 				$objReturn.Message = "Success";
 				$objReturn.Results = $objTable.Rows.Count;
 			}
 		}
 
+		#Hard Coded
 		#Check if File and DB failed.
 		if (($objReturn.Results -eq $False) -or ($objReturn.Results -lt 1)){
 			#Both the Config file and the DB process failed, so return the default hard coded values.
