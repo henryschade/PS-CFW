@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	27 October 2015
+# Updated Date:	17 November 2015
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -72,11 +72,32 @@
 		)
 		#Sets the DB variables (DBType, DBServer, DBName, LoginR, PassR, LoginW, PassW), and returns an array.
 		#strWhatSystem = The DB info we are after.
-			#Current values coded for are: "Score", "Sites" (Server Farm LookUp), "SRMDB", "CDR", "ECMD"
+			#Current values coded for are: "AgentActivity", "Score", "Sites" (Server Farm LookUp), "SRMDB", "CDR", "ECMD"
 
 		#Set some defaults
 		$strRawData = "";
+		$strConfigFile = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\MiscSettings.txt";
+
+		#if (!(Get-Command "GetPathing" -ErrorAction SilentlyContinue)){
+		#	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+		#	if ((Test-Path ($ScriptDir + "\Common.ps1"))){
+		#		. ($ScriptDir + "\Common.ps1")
+		#	}
+		#}
+		#$strConfigFile = ((GetPathing "SupportFiles").Returns.Rows[0].Path) + "MiscSettings.txt";
+
+		#$strRawData = ((GetPathing $strWhatSystem).Returns.Rows[0].Path);				#AND eliminate the HardCoded values here.
 		Switch ($strWhatSystem){
+			"AgentActivity"{
+				#Same as "Score".
+				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkFcU1E3MlZBSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==";
+			}
+			"CDR"{
+				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAyDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h";
+			}
+			"ECMD"{
+				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTUzXFNRNTNJTlNUMDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==";
+			}
 			"Score"{
 				#$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcxVkFcU1E3MVZBSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==";
 				#New value for the DB migration on 20150421.1700
@@ -90,16 +111,10 @@
 				#New value for the DB migration on 20150421.1700
 				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBTUk1fQXBwc19Ub29scw0Kc3RyREJMb2dpblIgPSBTUk1fQXBwc19Ub29sc19XRk0NCnN0ckRCUGFzc1IgPSAhU1JNX0FwcHNfVG9vbHNfV0ZNNjkNCnN0ckRCTG9naW5XID0gU1JNX0FwcHNfVG9vbHMNCnN0ckRCUGFzc1cgPSAhU1JNX0FwcHNfVG9vbHM2OQ==";
 			}
-			"CDR"{
-				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAyDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h";
-			}
-			"ECMD"{
-				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTUzXFNRNTNJTlNUMDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==";
-			}
 		}
 
 		$Error.Clear();
-		foreach ($strLine in [System.IO.File]::ReadAllLines("\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\MiscSettings.txt")) {
+		foreach ($strLine in [System.IO.File]::ReadAllLines($strConfigFile)) {
 			if ($strLine.StartsWith($strWhatSystem)){
 				$strRawData = $strLine.SubString($strLine.IndexOf("=") + 1).Trim();
 				break;

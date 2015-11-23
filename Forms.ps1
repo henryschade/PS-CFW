@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	19 November 2015
+# Updated Date:	23 November 2015
 # Purpose:		My functions to create PS Forms and Controls
 # Requirements: None
 # Web sites that helped me:
@@ -514,6 +514,30 @@
 				$strMessage = "Unable to load Windows.Markup.XamlReader.";
 				if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne "STA"){
 					$strMessage = $strMessage + "`r`n" + "The PowerShell environment needs to be in 'STA' mode.";
+
+					#Check that the Apartment State is STA, required for XAML GUI's.
+					#if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne "STA"){
+						#http://powershell.com/cs/blogs/tips/archive/2011/01/17/checking-sta-mode.aspx
+
+						#Get Script path and name.
+						#$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
+
+						#$strMessage = "The PowerShell environment needs to be in 'STA' mode, so restarting.";
+						#WriteLogFile $strMessage $strLogDirL $strLogFile;
+
+						#Write-Host $strMessage -foregroundcolor Green -background blue;
+						#Write-Host "If you are constantly seeing this message, you probably need to update your shortcut to the new one." -foregroundcolor Green -background blue;
+						#Write-Host "Press any key to continue ..." -foregroundcolor red;
+						#$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
+
+						#Launch script in a separate PowerShell process with STA enabled.
+						#Start-Process ($PSHOME + "\powershell.exe") -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
+						##exit;
+
+						#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
+						#$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
+						#Stop-Process -Id $PID;
+					#}
 				}
 				else{
 					if ($PSVersionTable.CLRVersion.Major -lt 4){
@@ -559,6 +583,31 @@
 
 				$strMessage = "Error";
 				foreach ($objNode in $objNodes){
+					#Check if the Node is a "Image" node, and has a source.  i.e.:
+					#<Image HorizontalAlignment="Left" Height="40" Margin="20,3,0,0" VerticalAlignment="Top" Width="40" Source="C:\Projects\WILE\WILE_GUI\Images\wile01.jpg" Stretch="Fill"/>
+					if ($objNode.Name -Match "Image"){
+						if (($objNode.Source -ne "") -and ($objNode.Source -ne $null)){
+							#.Source should be an absolute path.  When the GUI is designed, should basically be relative to the GUI file.
+							#Should be able to find $strFormFile in the .Source.
+							$strTempPath = $strFormFile.Replace(($strFormFile.Split("\")[-1]), "");
+							$arrTempPath = $strTempPath.Split("\");
+							$strTempSource = ($objNode.Source);
+							$arrTempSource = $strTempSource.Split("\");
+							$strTempSource = $strTempPath;
+							for ($intX = 0; $intX -lt $arrTempSource.Count; $intX++){
+								if ($arrTempSource[$intX] -eq $arrTempPath[-2]){
+									$strTempSource = $strTempSource + $arrTempSource[-2] + "\" + $arrTempSource[-1];
+									break;
+								}
+							}
+							$objNode.Source = $strTempSource;
+							#if (($env:UserName.Contains("schade"))){
+							#	$strMsg = "Found Node: " + $objNode.Name + "`r`n" + $objNode.Type + "`r`n" + $objNode.Source + "`r`n" + $strTempSource;
+							#	MsgBox $strMsg;
+							#}
+						}
+					}
+
 					if (($objNode.Name -ne "") -and ($objNode.Name -ne $null) -and ($objNode.Name -ne "Grid")){
 						#Create variables for each of the nodes/controlls. (for "-Scope",  0 is the current scope and 1 is its parent).
 						Set-Variable -Name ($objNode.Name) -Value $objForm.FindName($objNode.Name) -Scope $intVarScope;

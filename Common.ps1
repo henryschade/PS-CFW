@@ -173,9 +173,10 @@
 		#Returns $False if Config Files were NOT created.
 
 		$bReturn = $False;
+		$bolAsAdmin = $False;
 
 		if ($PSVersionTable.CLRVersion.Major -lt 4){
-			$bolAsAdmin = $False;
+			$bReturn = $True;
 			$bolAsAdmin = AsAdmin;
 			if ($bolAsAdmin -ne $True){
 				$strMessage = "You should run this PS Script with admin permissions." + "`r`n" + "Want us to restart this PS Script for you?";
@@ -260,9 +261,6 @@
 
 			if ($Error){
 				$bReturn = $False;
-			}
-			else{
-				$bReturn = $True;
 			}
 		}
 		else{
@@ -410,7 +408,7 @@
 			}
 			#>
 
-			if (!(($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -lt 1))){
+			if (!(($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -eq 0))){
 				$objReturn.Message = "Success";
 				$objReturn.Results = $objTable.Rows.Count;
 			}
@@ -484,12 +482,13 @@
 				#Populate the DataTable, if we have the desired info.
 				$row = $objTable.NewRow();
 				$row.Name = $sName;
+				#$row.Path = $strRawPath;
 				$row.Path = $arrDefaults."$sName";
 				$row.Description = "HardCoded Value.";
 				$objTable.Rows.Add($row);
 
 				$objReturn.Message = "Success";
-				#$objReturn.Results = $objTable.Rows.Count;
+				$objReturn.Results = $objTable.Rows.Count;
 			}
 			else{
 				if ($sName -eq "all"){
@@ -502,12 +501,11 @@
 					}
 
 					$objReturn.Message = "Success";
-					#$objReturn.Results = $objTable.Rows.Count;
+					$objReturn.Results = $objTable.Rows.Count;
 				}
 			}
 		}
 
-		$objReturn.Results = $objTable.Rows.Count;
 		$objReturn.Returns = $objTable;
 
 		return $objReturn;
