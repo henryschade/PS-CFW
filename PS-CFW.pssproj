@@ -34,6 +34,9 @@
     <Compile Include="Common.ps1" />
     <Compile Include="DB-Routines.ps1" />
     <Compile Include="Display.ps1" />
+    <Compile Include="Documentation\CFW-ProposedRoutines.docx" />
+    <Compile Include="Documentation\CFW-ProposedRoutines.jpg" />
+    <Compile Include="Documentation\EWS-Install-Files.zip" />
     <Compile Include="EWS-Files.txt" />
     <Compile Include="Documents.ps1" />
     <Compile Include="Exchange.ps1" />
@@ -41,6 +44,8 @@
     <Compile Include="Forms.ps1" />
     <Compile Include="Jobs.ps1" />
     <Compile Include="Machine.ps1" />
+    <Compile Include="StartingCode.txt" />
+    <Compile Include="StartingFromScratch.txt" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Documentation\HowToVS.txt" />

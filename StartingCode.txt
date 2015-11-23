@@ -22,6 +22,8 @@
 	#It Must be defined before we can use it.
 	. ($ScriptDir + "\..\PS-CFW\" + "Common.ps1")
 
+	#Get Pathing info.
+
 	#Make sure the log directories exist.
 	if (!(Test-Path -Path $strLogDirL)){
 		#Need to create the directory
