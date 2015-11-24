@@ -5,14 +5,17 @@
 # Requirements: PS-CFW
 ###########################################
 
-	$strProjName = "WILE";
+	$strProjName = "Project";
 	$strVer = "beta 0.1";
+	$strLogLoc = "Logs_ITSS";
+	$strLocalLoc = "Local";
+	$arrIncludes = @("AD-Routines.ps1", "Common.ps1", "DB-Routines.ps1", "Display.ps1", "Exchange.ps1", "FileOperations.ps1", "Forms.ps1", "Jobs.ps1");
+
 	$strCodeFile = $strProjName + ".ps1";
 	$strGUIFile = $strProjName + "_GUI\MainWindow.xaml";
 	$strLogFile = $strProjName + ".log";
 	$strLogDirS = "";
 	$strLogDirL = "C:\ITSS-Tools\Logs\" + $strProjName + "\";
-
 	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 
 	$strMessage = "Starting " + $strProjName + ", ver " + $strVer + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
@@ -23,11 +26,11 @@
 	. ($ScriptDir + "\..\PS-CFW\" + "Common.ps1")
 
 	#Get pathing info.
-	$strPathing = GetPathing "Logs_ITSS";
+	$strPathing = GetPathing $strLogLoc;
 	if ($strPathing.Results -gt 0){
 		$strLogDirS = $strPathing.Returns.Rows[0].Path + $strProjName + "\";
 	}
-	$strPathing = GetPathing "Local";
+	$strPathing = GetPathing $strLocalLoc;
 	if ($strPathing.Results -gt 0){
 		$strLogDirL = $strPathing.Returns.Rows[0].Path + "Logs\" + $strProjName + "\";
 	}
@@ -52,8 +55,7 @@
 
 	WriteLogFile $strMessage $strLogDirS $strLogFile;
 
-	#Include following Scripts/Files/modules.
-	$arrIncludes = @("FileOperations.ps1", "AD-Routines.ps1", "Common.ps1", "DB-Routines.ps1", "Display.ps1", "Exchange.ps1", "Forms.ps1", "Jobs.ps1");
+	#Include $arrIncludes Scripts/Files/modules.
 	foreach ($strInclude in $arrIncludes){
 		$Error.Clear();
 		. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
