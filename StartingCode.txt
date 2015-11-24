@@ -10,19 +10,27 @@
 	$strCodeFile = $strProjName + ".ps1";
 	$strGUIFile = $strProjName + "_GUI\MainWindow.xaml";
 	$strLogFile = $strProjName + ".log";
-	$strLogDirS = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Logs\";
-	$strLogDirL = "C:\ITSS-Tools\Logs\";
+	$strLogDirS = "";
+	$strLogDirL = "C:\ITSS-Tools\Logs\" + $strProjName + "\";
 
 	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 
-	$strMessage = "Starting " + $strProjName + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
+	$strMessage = "Starting " + $strProjName + ", ver " + $strVer + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
 	Write-Host $strMessage;
 
 	#WriteLogFile() is a function to Do Log File Writes.
 	#It Must be defined before we can use it.
 	. ($ScriptDir + "\..\PS-CFW\" + "Common.ps1")
 
-	#Get Pathing info.
+	#Get pathing info.
+	$strPathing = GetPathing "Logs_ITSS";
+	if ($strPathing.Results -gt 0){
+		$strLogDirS = $strPathing.Returns.Rows[0].Path + $strProjName + "\";
+	}
+	$strPathing = GetPathing "Local";
+	if ($strPathing.Results -gt 0){
+		$strLogDirL = $strPathing.Returns.Rows[0].Path + "Logs\" + $strProjName + "\";
+	}
 
 	#Make sure the log directories exist.
 	if (!(Test-Path -Path $strLogDirL)){
@@ -30,7 +38,7 @@
 		#PS mkdir, will create any parent folders needed.
 		$strResults = mkdir $strLogDirL;
 	}
-	if (!(Test-Path -Path $strLogDirS)){
+	if ((!(Test-Path -Path $strLogDirS)) -and ($strLogDirS -ne "")){
 		#Need to create the directory
 		if ((Test-Path -Path ("\\" + $strLogDirS.Split("\")[2] + "\" + $strLogDirS.Split("\")[3]))){
 			#PS mkdir, will create any parent folders needed.
@@ -38,7 +46,7 @@
 		}
 	}
 	#Set local logging if no network path
-	if (!(Test-Path -Path $strLogDirS)){
+	if ((!(Test-Path -Path $strLogDirS)) -or ($strLogDirS -eq "")){
 		$strLogDirS = $strLogDirL;
 	}
 
