@@ -49,6 +49,7 @@ Starting a PowerShell project from scratch, for use with PS-CFW (and a GUI).
 37) ?Click "Clone".?
 
 38) Open "StartingCode.txt", then "CTRL+A" then "CTRL+C".
+    a) https://github.com/henryschade/PS-CFW/blob/master/StartingCode.txt
 39) Open <Project.Name>.ps1, then "CTRL+A" then "CTRL+V".
 40) Update the initial variables as needed.
 41) Start coding.
