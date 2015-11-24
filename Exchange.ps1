@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	20 November 2015
+# Updated Date:	24 November 2015
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process, 
@@ -69,7 +69,7 @@
 
 		#permissions to a mailbox:
 		#SetupConn
-		#& "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\PS-Scripts\Exchange.ps1" SetUp
+		#& "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\PS-CFW\Exchange.ps1" SetUp
 		#$MailboxName = "henry.schade@nmci-isf.com";
 		#$strUserToAdd = "henry.schade.adm";
 		#Check permissions:
@@ -253,7 +253,7 @@
 			#https://msdn.microsoft.com/en-us/library/office/dn458791(v=exchg.150).aspx
 			#http://stackoverflow.com/questions/21636201/how-to-unsubscribe-from-ews-push-notification-using-managed-api
 
-			. C:\Projects\PS-Scripts\Exchange.ps1;
+			. C:\Projects\PS-CFW\Exchange.ps1;
 			$MailboxName = "henry.schade@nmci-isf.com";
 
 
@@ -1204,12 +1204,13 @@
 		#http://www.getautomationmachine.com/en/company/news/item/embedding-files-in-powershell-scripts
 		#Talks about using base85 for smaller data --> http://trevorsullivan.net/2012/07/24/powershell-embed-binary-data-in-your-script/
 
-		$strFileFile = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\PS-Scripts\EWS-Files.txt";
-		if (Test-Path -Path ("C:\SRM_Apps_N_Tools\PS-Scripts\EWS-Files.txt")){
-			$strFileFile = "C:\SRM_Apps_N_Tools\PS-Scripts\EWS-Files.txt";
-		}
+		#$strFileFile = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\PS-Scripts\EWS-Files.txt";
+		$strFileFile = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\PS-CFW\EWS-Files.txt";
 		if (Test-Path -Path ("C:\Projects\PS-Scripts\EWS-Files.txt")){
 			$strFileFile = "C:\Projects\PS-Scripts\EWS-Files.txt";
+		}
+		if (Test-Path -Path ("C:\Projects\PS-CFW\EWS-Files.txt")){
+			$strFileFile = "C:\Projects\PS-CFW\EWS-Files.txt";
 		}
 
 		if (($strDesiredVer -eq "1.2") -or ($strDesiredVer -eq "2.1") -or ($strDesiredVer -eq "2.2")){
