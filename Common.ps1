@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	23 November 2015
+# Updated Date:	24 November 2015
 # Purpose:		Common routines to all/most projects.
 # Requirements: Documents.ps1 for the CreateZipFile() routine.
 ##########################################
@@ -155,7 +155,13 @@
 		#$Files = An array of the files to add to the zip file. (Full paths) [i.e. @("c:\path\file.one", "c:\path\file.two")]
 
 		$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-		. ($ScriptDir + "\Documents.ps1")
+		$strInclude = "Documents.ps1";
+		if (Test-Path -Path ($ScriptDir + "\..\PS-CFW\" + $strInclude)){
+			. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
+		}
+		else{
+			. ($ScriptDir + "\" + $strInclude)
+		}
 
 		$objReturn = ZipCreateFile $ZipFile $Files;
 
@@ -329,6 +335,7 @@
 		$arrDefaults.Add("Logs_ITSS", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Logs\");
 		$arrDefaults.Add("Reports", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Reports\");
 		$arrDefaults.Add("Root", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\");
+		$arrDefaults.Add("Scripts", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\PS-Scripts\");
 		$arrDefaults.Add("SupportFiles", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\SupportFiles\");
 
 		$strConfigFile = $arrDefaults.SupportFiles + $strConfigFile;
