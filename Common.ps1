@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	24 November 2015
+# Updated Date:	25 November 2015
 # Purpose:		Common routines to all/most projects.
 # Requirements: Documents.ps1 for the CreateZipFile() routine.
 ##########################################
@@ -308,15 +308,6 @@
 
 		#Write-Host "Calling routine is: " (Get-PSCallStack)[1].Command;
 
-		#1) Look for a config file.
-		#2) Read the desired path out of the file.
-		#3) If path not exist, query DB for path info.
-		#4) If both fail use a hard coded default.
-		#5) Update Share config file (used by apps/tools NOT PowerShell).
-			#Probably NOT going to do step 5.
-		#6) Return the path info.
-
-
 		$strConfigFile = "MiscSettings.txt";
 		$arrDefaults = @{};
 		#DB Info
@@ -329,6 +320,7 @@
 
 		#File Share Info ( MUST end in \ )
 		$arrDefaults.Add("Beta", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Beta\");
+		$arrDefaults.Add("Dev", "C:\Projects\");
 		$arrDefaults.Add("ITSS-Tools", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\");
 		$arrDefaults.Add("Local", "C:\ITSS-Tools\");
 		$arrDefaults.Add("Logs", "\\NAWESPSCFS101V.NADSUSWE.NADS.NAVY.MIL\ISF-IOS$\IOS-LOGS\");
@@ -380,20 +372,43 @@
 		}
 
 		#DB  (takes 2 to 3 sec)
-		if ((($objReturn.Results -eq $False) -or ($objReturn.Results -lt 1)) -and ((Get-PSCallStack)[1].Command -ne "GetDBInfo")){
+		if ((($objReturn.Results -eq $False) -or ($objReturn.Results -lt 1)) -and (((Get-PSCallStack)[1].Command -ne "GetDBInfo") -and ((Get-PSCallStack)[1].Command -ne "GetPathing"))){
+			#??  Update Share config file (used by apps/tools NOT PowerShell).  ??
+
 			#No config file, or no entry, so check DB.
 			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
 			if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
-				#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-				#if ((Test-Path ($ScriptDir + "\DB-Routines.ps1"))){
 				if ((Test-Path (".\DB-Routines.ps1"))){
-					#. ($ScriptDir + "\DB-Routines.ps1")
-					. (".\DB-Routines.ps1")
+					. (".\DB-Routines.ps1");
 				}
 				else{
 					if ((Test-Path (".\..\PS-CFW\DB-Routines.ps1"))){
-						#. ($ScriptDir + "\DB-Routines.ps1")
-						. (".\..\PS-CFW\DB-Routines.ps1")
+						. (".\..\PS-CFW\DB-Routines.ps1");
+					}
+					else{
+						#When calling from a DOS command prompt, the PS executes from a ?Random? directory, and so the above "relative" checks fail.
+						$strMyLoc = (Get-PSCallStack | Select-Object -Property *)[0].ScriptName;
+							#Now $strMyLoc = "C:\Projects\PS-CFW\Common.ps1"
+						$strMyLoc = $strMyLoc.Replace($strMyLoc.Split("\")[-1], "");
+							#Now $strMyLoc = "C:\Projects\PS-CFW\"
+						if ((Test-Path ($strMyLoc + "DB-Routines.ps1"))){
+							. ($strMyLoc + "DB-Routines.ps1");
+						}
+						else{
+							if ((Test-Path ($arrDefaults."Dev" + "PS-CFW\DB-Routines.ps1"))){
+								. ($arrDefaults."Dev" + "PS-CFW\DB-Routines.ps1");
+							}
+							else{
+								if ((Test-Path ($arrDefaults."Local" + "PS-CFW\DB-Routines.ps1"))){
+									. ($arrDefaults."Local" + "PS-CFW\DB-Routines.ps1");
+								}
+								else{
+									if ((Test-Path ($arrDefaults."Root" + "PS-CFW\DB-Routines.ps1"))){
+										. ($arrDefaults."Root" + "PS-CFW\DB-Routines.ps1");
+									}
+								}
+							}
+						}
 					}
 				}
 			}
@@ -416,58 +431,6 @@
 		#Check if File and DB failed.
 		if (($objReturn.Results -eq $False) -or ($objReturn.Results -lt 1)){
 			#Both the Config file and the DB process failed, so return the default hard coded values.
-			<#
-			Switch ($sName){
-				#DB info
-				"AgentActivity"{
-					#Same as "Score".
-					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkFcU1E3MlZBSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==";
-				}
-				"CDR"{
-					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAyDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h";
-				}
-				"ECMD"{
-					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTUzXFNRNTNJTlNUMDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==";
-				}
-				"Score"{
-					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkFcU1E3MlZBSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==";
-				}
-				"Sites"{
-					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTc1VkFcU1E3NVZBSU5TVDAxDQpzdHJEQk5hbWUgPSBTaXRlQ29kZXMNCnN0ckRCTG9naW5SID0gS0J1c2VyDQpzdHJEQlBhc3NSID0ga2M1JHNxMDI=";
-				}
-				"SRMDB"{
-					$strRawPath = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBTUk1fQXBwc19Ub29scw0Kc3RyREJMb2dpblIgPSBTUk1fQXBwc19Ub29sc19XRk0NCnN0ckRCUGFzc1IgPSAhU1JNX0FwcHNfVG9vbHNfV0ZNNjkNCnN0ckRCTG9naW5XID0gU1JNX0FwcHNfVG9vbHMNCnN0ckRCUGFzc1cgPSAhU1JNX0FwcHNfVG9vbHM2OQ==";
-				}
-
-				#File Share Info ( MUST end in \ )
-				"Beta"{
-					$strRawPath = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Beta\";
-				}
-				"ITSS-Tools"{
-					$strRawPath = "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF-SDCP-HELPDESK\ITSS-Tools\";
-				}
-				"Local"{
-					$strRawPath = "C:\ITSS-Tools\";
-				}
-				"Logs"{
-					$strRawPath = "\\NAWESPSCFS101V.NADSUSWE.NADS.NAVY.MIL\ISF-IOS$\IOS-LOGS\";
-				}
-				"Reports"{
-					$strRawPath = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Reports\";
-				}
-				"Root"{
-					$strRawPath = "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\";
-				}
-				"SupportFiles"{
-					$strRawPath = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\SupportFiles\";
-				}
-
-				default{
-					$strRawPath = $null;
-				}
-			}
-			#>
-
 			#Create the DataTable to return
 			$objTable = New-Object System.Data.DataTable;
 			$col1 = New-Object System.Data.DataColumn Name,([String]);
