@@ -28,6 +28,16 @@
 		#Hide the PowerShell Console.
 		[ConsoleHelper]::HideConsole();
 
+		#([cDisplaySettings]::IsWindowVisible());		#Requires a window Handle.
+			# Get window handle samples:
+			#http://superuser.com/questions/677012/in-windows-how-can-i-view-a-list-of-all-window-titles
+		#foreach ($objProc in (Get-Process | Where-Object {$_.ProcessName -eq 'powershell'})){
+		#	Write-Host $objProc.MainWindowTitle
+		#	Write-Host $objProc.Handles
+		#	([cDisplaySettings]::IsWindowVisible($objProc.Handles));		#Requires a window Handle.
+		#}
+		#(Get-Process -Id $PID).StartInfo.WindowStyle
+
 		start-sleep 10;
 		#Do code here instead of Sleep.
 
@@ -102,6 +112,8 @@ $DisplayCode = @"
 		public static extern int EnumDisplaySettings(string deviceName, int modeNum, ref DEVMODE devMode);
 		[DllImport("user32.dll")]
 		public static extern int ChangeDisplaySettings(ref DEVMODE devMode, int flags);
+		[DllImport("user32.dll")]
+		public static extern bool IsWindowVisible(int hwnd);
 
 		public const int ENUM_CURRENT_SETTINGS = -1;
 		public const int CDS_UPDATEREGISTRY = 0x01;
@@ -239,7 +251,7 @@ $DisplayCode = @"
 			}
 		}
 	}
-"@
+"@		#This MUST end w/ no leading spaces.
 
 
 $ConsoleCode = @'
@@ -275,45 +287,47 @@ $ConsoleCode = @'
 
 	#Load the DisplayCode
 	$Error.Clear();
-	#Add-Type $DisplayCode
-	Add-Type -TypeDefinition $DisplayCode -IgnoreWarnings;
+	if (-not ([System.Management.Automation.PSTypeName]'cDisplaySettings').Type){
+		#Add-Type $DisplayCode
+		Add-Type -TypeDefinition $DisplayCode -IgnoreWarnings;
 
-	if ($Error){
-		#If the Add-Type() commandlet fails, try this:
-		#Can build a CSharpCodeProvider object and load the source code (above) into it.
-		#[cDisplaySettings] > $null
-		#$DisSet = [cDisplaySettings]
-		trap {
-			if (($MyInvocation.MyCommand.Path -eq "") -or ($MyInvocation.MyCommand.Path -eq $null)){
-				#$ScriptDir = "C:\SRM_Apps_N_Tools\PS-Scripts";
-				$ScriptDir = "C:\SRM_Apps_N_Tools\PS-CFW";
-			}else{
-				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;				#Gets the directory/path the Script was run from.
-			}
-			$ScriptDir = $ScriptDir + "\PS.tmp";
-
-			# Get an instance of the CSharp code provider
-			$CProv = new-object Microsoft.CSharp.CSharpCodeProvider;
-			# And compiler parameters...
-			$CPara = New-Object System.CodeDom.Compiler.CompilerParameters;
-			$CPara.GenerateInMemory = $True;
-			$CPara.GenerateExecutable = $False;
-			#$CPara.OutputAssembly = "custom";
-			#$CPara.OutputAssembly = "C:\PS.tmp";
-			$CPara.OutputAssembly = $ScriptDir;
-			$Results = $CProv.CompileAssemblyFromSource($CPara, $DisplayCode);
-
-			# display any errors
-			if ($Results.Errors.Count){
-				$codeLines = $DisplayCode.Split("`n");
-				foreach ($CompErr in $Results.Errors){
-					write-host "Error: $($codeLines[$($CompErr.Line - 1)])";
-					$CompErr | out-default;
+		if ($Error){
+			#If the Add-Type() commandlet fails, try this:
+			#Can build a CSharpCodeProvider object and load the source code (above) into it.
+			#[cDisplaySettings] > $null
+			#$DisSet = [cDisplaySettings]
+			trap {
+				if (($MyInvocation.MyCommand.Path -eq "") -or ($MyInvocation.MyCommand.Path -eq $null)){
+					#$ScriptDir = "C:\SRM_Apps_N_Tools\PS-Scripts";
+					$ScriptDir = "C:\SRM_Apps_N_Tools\PS-CFW";
+				}else{
+					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;				#Gets the directory/path the Script was run from.
 				}
-				Throw "Compile failed...";
-			}else{
-				# don't report the exception
-				continue;
+				$ScriptDir = $ScriptDir + "\PS.tmp";
+
+				# Get an instance of the CSharp code provider
+				$CProv = new-object Microsoft.CSharp.CSharpCodeProvider;
+				# And compiler parameters...
+				$CPara = New-Object System.CodeDom.Compiler.CompilerParameters;
+				$CPara.GenerateInMemory = $True;
+				$CPara.GenerateExecutable = $False;
+				#$CPara.OutputAssembly = "custom";
+				#$CPara.OutputAssembly = "C:\PS.tmp";
+				$CPara.OutputAssembly = $ScriptDir;
+				$Results = $CProv.CompileAssemblyFromSource($CPara, $DisplayCode);
+
+				# display any errors
+				if ($Results.Errors.Count){
+					$codeLines = $DisplayCode.Split("`n");
+					foreach ($CompErr in $Results.Errors){
+						write-host "Error: $($codeLines[$($CompErr.Line - 1)])";
+						$CompErr | out-default;
+					}
+					Throw "Compile failed...";
+				}else{
+					# don't report the exception
+					continue;
+				}
 			}
 		}
 	}
@@ -321,48 +335,50 @@ $ConsoleCode = @'
 
 	#Load the ConsoleCode
 	$Error.Clear();
-	##Add-Type $ConsoleCode
-	Add-Type -TypeDefinition $ConsoleCode -IgnoreWarnings;
+	if (-not ([System.Management.Automation.PSTypeName]'ConsoleHelper').Type){
+		##Add-Type $ConsoleCode
+		Add-Type -TypeDefinition $ConsoleCode -IgnoreWarnings;
 
-	if ($Error){
-		#If the Add-Type() commandlet fails, try this:
-		#Can build a CSharpCodeProvider object and load the source code (above) into it.
-		[ConsoleHelper] > $null
-		$ch = [ConsoleHelper]
-		trap {
-			if (($MyInvocation.MyCommand.Path -eq "") -or ($MyInvocation.MyCommand.Path -eq $null)){
-				#$ScriptDir = "C:\SRM_Apps_N_Tools\PS-Scripts";
-				$ScriptDir = "C:\SRM_Apps_N_Tools\PS-CFW";
-			}else{
-				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;				#Gets the directory/path the Script was run from.
-			}
-			$ScriptDir = $ScriptDir + "\PS.tmp";
-
-			# Get an instance of the CSharp code provider
-			$CProv = new-object Microsoft.CSharp.CSharpCodeProvider;
-			# And compiler parameters...
-			$CPara = New-Object System.CodeDom.Compiler.CompilerParameters;
-			$CPara.GenerateInMemory = $True;
-			$CPara.GenerateExecutable = $False;
-			#$CPara.OutputAssembly = "custom";
-			#$CPara.OutputAssembly = "C:\PS.tmp";
-			$CPara.OutputAssembly = $ScriptDir;
-			$Results = $CProv.CompileAssemblyFromSource($CPara, $ConsoleCode);
-
-			# display any errors
-			if ($Results.Errors.Count){
-				$codeLines = $ConsoleCode.Split("`n");
-				foreach ($CompErr in $Results.Errors){
-					write-host "Error: $($codeLines[$($CompErr.Line - 1)])";
-					$CompErr | out-default;
+		if ($Error){
+			#If the Add-Type() commandlet fails, try this:
+			#Can build a CSharpCodeProvider object and load the source code (above) into it.
+			[ConsoleHelper] > $null
+			$ch = [ConsoleHelper]
+			trap {
+				if (($MyInvocation.MyCommand.Path -eq "") -or ($MyInvocation.MyCommand.Path -eq $null)){
+					#$ScriptDir = "C:\SRM_Apps_N_Tools\PS-Scripts";
+					$ScriptDir = "C:\SRM_Apps_N_Tools\PS-CFW";
+				}else{
+					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;				#Gets the directory/path the Script was run from.
 				}
-				Throw "Compile failed...";
-			}else{
-				# don't report the exception
-				continue;
+				$ScriptDir = $ScriptDir + "\PS.tmp";
+
+				# Get an instance of the CSharp code provider
+				$CProv = new-object Microsoft.CSharp.CSharpCodeProvider;
+				# And compiler parameters...
+				$CPara = New-Object System.CodeDom.Compiler.CompilerParameters;
+				$CPara.GenerateInMemory = $True;
+				$CPara.GenerateExecutable = $False;
+				#$CPara.OutputAssembly = "custom";
+				#$CPara.OutputAssembly = "C:\PS.tmp";
+				$CPara.OutputAssembly = $ScriptDir;
+				$Results = $CProv.CompileAssemblyFromSource($CPara, $ConsoleCode);
+
+				# display any errors
+				if ($Results.Errors.Count){
+					$codeLines = $ConsoleCode.Split("`n");
+					foreach ($CompErr in $Results.Errors){
+						write-host "Error: $($codeLines[$($CompErr.Line - 1)])";
+						$CompErr | out-default;
+					}
+					Throw "Compile failed...";
+				}else{
+					# don't report the exception
+					continue;
+				}
 			}
+		}else{
+			$ch = [ConsoleHelper];
 		}
-	}else{
-		$ch = [ConsoleHelper];
 	}
 
