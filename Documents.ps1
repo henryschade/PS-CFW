@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	2 November 2015
+# Updated Date:	30 November 2015
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
@@ -79,7 +79,7 @@
 	}
 
 
-	function DeCodeFile{
+	function DeCode{
 		Param(
 			[Parameter(Mandatory=$True)][String]$strBase64String, 
 			[Parameter(Mandatory=$False)][String]$strOutPut
@@ -98,7 +98,17 @@
 		}
 	}
 
-	function EncodeFile{
+	function DeCodeFile{
+		#A place holder.  Should be using DeCode() instead of this one.
+		Param(
+			[Parameter(Mandatory=$True)][String]$strBase64String, 
+			[Parameter(Mandatory=$False)][String]$strOutPut
+		);
+
+		DeCode $strBase64String $strOutPut;
+	}
+
+	function Encode{
 		Param(
 			[Parameter(Mandatory=$True)][String]$strFile, 
 			[Parameter(Mandatory=$False)][String]$strOutPut
@@ -115,6 +125,16 @@
 		}else{
 			Write-Host $strBase64;
 		}
+	}
+
+	function EncodeFile{
+		#A place holder.  Should be using Encode() instead of this one.
+		Param(
+			[Parameter(Mandatory=$True)][String]$strFile, 
+			[Parameter(Mandatory=$False)][String]$strOutPut
+		);
+
+		Encode $strFile $strOutPut;
 	}
 
 
