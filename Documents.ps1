@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	30 November 2015
+# Updated Date:	1 December 2015
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
@@ -138,7 +138,7 @@
 	}
 
 
-	function ExcelCreateOpenFile(){
+	function ExcelCreateOpenFile{
 		param(
 			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel file path.")][string] $ExcelFilePath, 
 			[ValidateNotNull()][Parameter(Mandatory = $False, HelpMessage = "Create a new Excel file if not exist.")][bool] $CreateNew = $True, 
@@ -183,7 +183,187 @@
 		return ($application, $workbook);
 	}
 
-	function ExcelGetWorksheet(){
+	function ExcelCreateWorksheet{
+		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
+			#The $JobCode blocks in ExcelGetData() and ExcelGetSheets() and ExcelCreateWorksheet() look the same to me at a quick glance.
+			#Looks to me like we create a routine ExcelXMLJob() that could build the $JobCode block.
+			#Or we build a routine ExcelXML(), that is basically the $JobCode block, but that is a standalone routine that can be called NOT in a job, 
+				#but we make sure the Routine can be used as a Job Block too.
+		Param(
+			[Parameter(Mandatory=$true)][String] $Path,
+			[Parameter(Mandatory=$true)][String] $WorksheetName,
+			[Parameter(Mandatory=$true)][String] $ListValues
+		)
+
+		$JobCode = {
+			Param($Path,$WorkSheetName,$ListValues)
+
+			# Check if the file is XLS or XLSX 
+			if ((Get-Item -Path $Path).Extension -eq 'xls') {
+				$Provider = 'Microsoft.Jet.OLEDB.4.0'
+				$ExtendedProperties = 'Excel 8.0;HDR=YES;IMEX=1'
+			} else {
+				$Provider = 'Microsoft.ACE.OLEDB.12.0'
+				$ExtendedProperties = 'Excel 12.0;HDR=YES'
+			}
+			
+			# Build the connection string and connection object
+			$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $Path, $ExtendedProperties
+			$Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
+
+			try {
+				# Open the connection to the file, and fill the datatable
+				$Connection.Open()
+				$Command = $Connection.CreateCommand()
+				$Command.CommandText = "CREATE TABLE [$WorksheetName] ($ListValues)";
+				$Command.ExecuteNonQuery();
+			} catch {
+				# something went wrong :-(
+				Write-Error $_.Exception.Message
+			}
+			finally {
+				# Close the connection
+				if ($Connection.State -eq 'Open') {
+					$Connection.Close()
+				}
+			}
+
+			# Return the results NOT as an array
+			return ,$DataTable
+		}
+
+		# Run the code in a 32bit job, since the provider is 32bit only
+		$job = Start-Job $JobCode -RunAs32 -ArgumentList $Path,$WorkSheetName,$ListValues
+		$job | Wait-Job | Receive-Job
+		Remove-Job $job
+	}
+
+	function ExcelGetData {
+		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
+			#The $JobCode blocks in ExcelGetData() and ExcelGetSheets() and ExcelCreateWorksheet() look the same to me at a quick glance.
+			#Looks to me like we create a routine ExcelXMLJob() that could build the $JobCode block.
+			#Or we build a routine ExcelXML(), that is basically the $JobCode block, but that is a standalone routine that can be called NOT in a job, 
+				#but we make sure the Routine can be used as a Job Block too.
+		[CmdletBinding(DefaultParameterSetName='Worksheet')]
+		Param(
+			[Parameter(Mandatory=$true, Position=0)][String] $Path,
+			[Parameter(Position=1, ParameterSetName='Worksheet')][String] $WorksheetName = 'Sheet1',
+			[Parameter(Position=1, ParameterSetName='Query')][String] $Query = 'SELECT * FROM [Sheet1$]'
+		)
+
+		switch ($pscmdlet.ParameterSetName) {
+			'Worksheet' {
+				$Query = 'SELECT * FROM [{0}$]' -f $WorksheetName
+				break
+			}
+			'Query' {
+				# Make sure the query is in the correct syntax (e.g. 'SELECT * FROM [SheetName$]')
+				$Pattern = '.*from\b\s*(?<Table>\w+).*'
+				if($Query -match $Pattern) {
+					$Query = $Query -replace $Matches.Table, ('[{0}$]' -f $Matches.Table)
+				}
+			}
+		}
+
+		# Create the scriptblock to run in a job
+		$JobCode = {
+			Param($Path, $Query)
+
+			# Check if the file is XLS or XLSX 
+			if ((Get-Item -Path $Path).Extension -eq 'xls') {
+				$Provider = 'Microsoft.Jet.OLEDB.4.0'
+				$ExtendedProperties = 'Excel 8.0;HDR=YES;IMEX=1'
+			} else {
+				$Provider = 'Microsoft.ACE.OLEDB.12.0'
+				$ExtendedProperties = 'Excel 12.0;HDR=YES'
+			}
+			
+			# Build the connection string and connection object
+			$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $Path, $ExtendedProperties
+			$Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
+
+			try {
+				# Open the connection to the file, and fill the datatable
+				$Connection.Open()
+				$Adapter = New-Object -TypeName System.Data.OleDb.OleDbDataAdapter $Query, $Connection
+				$DataTable = New-Object System.Data.DataTable
+				$Adapter.Fill($DataTable) | Out-Null
+			}
+			catch {
+				# something went wrong :-(
+				Write-Error $_.Exception.Message
+			}
+			finally {
+				# Close the connection
+				if ($Connection.State -eq 'Open') {
+					$Connection.Close()
+				}
+			}
+
+			# Return the results NOT as an array
+			return ,$DataTable
+		}
+
+		# Run the code in a 32bit job, since the provider is 32bit only
+		$job = Start-Job $JobCode -RunAs32 -ArgumentList $Path, $Query
+		$job | Wait-Job | Receive-Job
+		Remove-Job $job
+	}
+
+	function ExcelGetSheets {
+		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
+			#The $JobCode blocks in ExcelGetData() and ExcelGetSheets() and ExcelCreateWorksheet() look the same to me at a quick glance.
+			#Looks to me like we create a routine ExcelXMLJob() that could build the $JobCode block.
+			#Or we build a routine ExcelXML(), that is basically the $JobCode block, but that is a standalone routine that can be called NOT in a job, 
+				#but we make sure the Routine can be used as a Job Block too.
+		Param(
+			[Parameter(Mandatory=$true)][String] $Path
+		)
+		#Returns the sheet names and creation information. bit more filtering to be added. 
+
+		$JobCode = {
+			Param($Path, $Query)
+
+			# Check if the file is XLS or XLSX 
+			if ((Get-Item -Path $Path).Extension -eq 'xls') {
+				$Provider = 'Microsoft.Jet.OLEDB.4.0'
+				$ExtendedProperties = 'Excel 8.0;HDR=YES;IMEX=1'
+			} else {
+				$Provider = 'Microsoft.ACE.OLEDB.12.0'
+				$ExtendedProperties = 'Excel 12.0;HDR=YES'
+			}
+			
+			# Build the connection string and connection object
+			$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $Path, $ExtendedProperties
+			$Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
+
+			try {
+				# Open the connection to the file, and fill the datatable
+				$Connection.Open()
+				$DataTable = $Connection.GetSchema("Tables")
+			} catch {
+				# something went wrong :-(
+				Write-Error $_.Exception.Message
+			}
+			finally {
+				# Close the connection
+				if ($Connection.State -eq 'Open') {
+					$Connection.Close()
+				}
+			}
+
+			# Return the results NOT as an array
+			return ,$DataTable
+		}
+
+		# Run the code in a 32bit job, since the provider is 32bit only
+		$job = Start-Job $JobCode -RunAs32 -ArgumentList $Path
+		$job | Wait-Job | Receive-Job
+		Remove-Job $job
+
+	}
+
+	function ExcelGetWorksheet{
 		param(
 			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel workbook object.")][object] $Workbook, 
 			[ValidateNotNull()][Parameter(Mandatory = $False)][string] $SheetName = "Sheet1"

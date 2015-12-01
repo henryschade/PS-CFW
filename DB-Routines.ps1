@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	17 November 2015
+# Updated Date:	1 December 2015
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -422,6 +422,78 @@
 		if ($ForceTableRet -eq $True){
 			return ,$objTable;
 		}else{
+			#Return a datatable in an array. (PS default, yuck.)
 			return $objTable;
 		}
+	}
+
+	function RecordTransaction{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strCOI,  
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strSource, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strTeam, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strAssignment, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strTicketNum, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strAction, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strCTI, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strSummary, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$intQuant, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$dteStart, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strToolName, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strQuoteNum
+		)
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with the paramaters passed in.
+			#$objReturn.Results		= $True or $False.
+			#$objReturn.Message		= "Success" or the error message.
+		#strCOI = Domain/Network.
+		#strSource = The source that is initiating this work.  i.e "Ticket", "Email"
+		#strTeam = i.e. SRM
+		#strAssignment = i.e. UA
+		#strTicketNum = A Ticket #.
+		#strAction = The Action being done. i.e. "Disable", "Create Account".   	[taskDesc]
+		#strCTI = The CTI/CAS of the ticket being worked.							[cas]
+		#strSummary = The Ticket Summary/Short Desc.
+		#intQuant = The Quantity on the Ticket.
+		#dteStart = The time the work started.
+		#strToolName = The name of the Tool doing the work.
+		#$strQuoteNum = A Quote/BO #.
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $True
+			Message = "Success";
+		}
+		#Assume success
+
+		$arrDBInfo = GetDBInfo "Score";
+		$strSQL = Prep4ScoreCard $strCOI $strSource $strTeam $strAssignment $strTicketNum $strAction $strCTI $strSummary $intQuant $dteStart $strToolName $strQuoteNum;
+
+		$Error.Clear();
+		$objResults = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
+		if (($objResults.Rows[0].Message -eq "Error") -or ($Error)){
+			if ($Error){
+				$strMessage = "Error writing to ScoreCard DB.`r`n" + $Error;
+			}else{
+				$strMessage = $objResults.Rows[0].Message + " writing to ScoreCard DB.`r`n" + $objResults.Rows[0].Results;
+			}
+			#MsgBox $strMessage "ScoreCard DB error";
+			$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n";
+			$strMessage = $strMessage + $strSQL + "`r`n";
+
+			$objReturn.Results = $False;
+			$objReturn.Message = $strMessage;
+		}
+
+		return $objReturn;
 	}
