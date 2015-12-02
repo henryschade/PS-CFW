@@ -1,7 +1,7 @@
 ###########################################
-# Updated Date:	28 August 2015
+# Updated Date:	2 December 2015
 # Purpose:		Background Job and RunSpace Functions.
-# Requirements: none
+# Requirements: None
 #				All this code is based on info from the following URLs:
 #				#http://technet.microsoft.com/en-US/library/hh847783.aspx
 #				#http://msdn.microsoft.com/en-us/library/dd878288(v=vs.85).aspx
@@ -13,6 +13,123 @@
 #				#http://msdn.microsoft.com/en-us/library/system.management.automation.runspaces.runspacefactory.createrunspacepool(v=vs.85).aspx
 #				#http://thesurlyadmin.com/2013/02/11/multithreading-powershell-scripts/
 ##########################################
+
+	#Sample Job calls
+	function SampleJobCall1{
+		#Pass any arguments using the ArgumentList parameter
+		$objJob1 = CreateJob -JobName "FindUserDomain" -JobScript {
+			Param(
+				[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Username
+			)
+			$strSrcDomain = "";
+			Import-Module ActiveDirectory -ErrorAction SilentlyContinue;
+
+			#$arrDomains = @("nadsusea", "nadsuswe", "pads", "nmci-isf");
+			#Get Domain List
+			$objForest = [System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest();
+			$DomainList = @($objForest.Domains | Select-Object Name);
+			#$Domains = $DomainList | foreach {$_.Name};
+			$arrDomains = @($DomainList | foreach {($_.Name).split(".")[0]});
+			#Write-Host $arrDomains;
+			if ($arrDomains -eq ""){
+				$arrDomains = @("nadsusea", "nadsuswe", "pads", "nmci-isf");
+			}
+
+			foreach ($strDomain in $arrDomains){
+				if (($strDomain -eq $null) -or ($strDomain -eq "")){
+					break;
+				}
+
+				$strProgress = "Looking in $strDomain domain.";
+				$strProgress;
+				$strRIDMaster = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
+				#$objUser = Get-ADUser -Server $strRIDMaster -Identity $UserName;
+				#$objComp = Get-ADComputer -Server $strRIDMaster -Identity "MachineName";
+				$objUser = $(Try {Get-ADUser -Server $strRIDMaster -Identity $UserName} Catch {$null});
+				If (($objUser.DistinguishedName -ne "") -and ($objUser.DistinguishedName -ne $null)){
+					$strSrcDomain = $strDomain;
+					#Write-Host "Found $UserName in $strSrcDomain domain.";
+					#$objTxbResults.TEXT = $objTxbResults.TEXT + "  -- Found " + $UserName + " in " + $strDomain + " domain." + "`r`n";
+					break;
+				}
+			}
+			
+			return $strSrcDomain;} -ArgumentList $UserName;
+	}
+	function SampleJobCall2{
+		#http://stackoverflow.com/questions/15520404/how-to-call-a-powershell-function-within-the-script-from-start-job
+		$objJobCode = [scriptblock]::create($function:FindUserDomain);
+		#Pass any arguments using the ArgumentList parameter
+		$objJob1 = CreateJob -JobName "FindUserDomain" -JobScript $objJobCode -ArgumentList $UserName;
+
+		#or
+		#http://stackoverflow.com/questions/7162090/how-do-i-start-a-job-of-a-function-i-just-defined
+		#http://stackoverflow.com/questions/8750813/powershell-start-job-scriptblock-cannot-recognize-the-function-defined-in-the-s
+		$objJobCode = [scriptblock]::create("function GetGroups {" + $function:GetGroups + "}");
+		#Pass any arguments using the ArgumentList parameter
+		$objJob1 = CreateJob -JobName "GetMemberships" -InitScript $objJobCode -JobScript {param($Name) GetGroups $Name} -ArgumentList @($env:UserName, @());
+	}
+
+	function SampleRunSpaceCalls1{
+		$objPool = CreateRunSpace 3;
+		$objJobs = @();								#Collection of the Jobs that get run in the RunSpacePool.
+
+		$objJobCode = [scriptblock]::create("Get-Command");
+		#or
+		#$objJobCode = [scriptblock]::create({Get-Command});
+		$objJobs += CreateRunSpaceJob -RSPool $objPool -JobName "GetCmds" -JobScript $objJobCode;
+		#Write-Host $objJobs[($objJobs.Count) - 1].Name;
+		#CheckRunSpaceJob "GetCmds" $objJobs;
+		$strResults = WaitForRunSpaceJob "GetCmds" $objJobs;
+		Write-Host $strResults;
+		CleanRunSpace "GetCmds" $objJobs;
+
+
+
+
+		$objJobCode = [scriptblock]::create({Import-Module ActiveDirectory; (Get-ADDomain "nmci-isf").RIDMaster;});
+		$objJobs += CreateRunSpaceJob -RSPool $objPool -JobName "RIDMaster" -JobScript $objJobCode;
+		$strResults = CheckRunSpaceJob "RIDMaster" $objJobs;
+		if (($strResults) -eq "Completed"){
+			$strResults = WaitForRunSpaceJob "RIDMaster" $objJobs;
+		}
+		Write-Host $strResults;
+		CleanRunSpace "RIDMaster" $objJobs;
+
+
+
+
+		#If I create an Exchange Session in the Pool, then the Exchange cmdlets are only available in the Pool.
+		$objJobCode = [scriptblock]::create($function:GetPSCmds);		#create an Exchange Session, and returns all imported commands.
+		$objJobs += CreateRunSpaceJob -RSPool $objPool -JobName "GetPSCmds" -JobScript $objJobCode;
+		$strResults = WaitForRunSpaceJob $objJobs[($objJobs.Count) - 1].Name $objJobs;
+		#Write-Host $strResults;
+		#CleanRunSpace "GetPSCmds" $objJobs;
+
+		#$objJobCode = [scriptblock]::create("Get-MailboxStatistics -Identity ""henry.schade"" | Select DisplayName, TotalItemSize, ItemCount, TotalDeletedItemSize, StorageLimitStatus, ServerName, DatabaseName, MailboxGUID;");
+		$objJobCode = [scriptblock]::create({param($Username, $strDC); Get-MailboxStatistics -Identity $Username -DomainController $strDC | Select DisplayName, TotalItemSize, ItemCount, TotalDeletedItemSize, StorageLimitStatus, ServerName, DatabaseName, MailboxGUID;});
+		$arrArgs = @("henry.schade", "SomeDC");
+		$objJobs += CreateRunSpaceJob $objPool "MailBoxSize" $objJobCode -Arguments $arrArgs;
+		#$objJobs += CreateRunSpaceJob $objPool "MailBoxSize" $objJobCode -Arguments @("henry.schade", "SomeDC");
+		$objMailBoxInfo = WaitForRunSpaceJob "MailBoxSize" $objJobs;
+		Write-Host $objMailBoxInfo.DisplayName
+		Write-Host $objMailBoxInfo.TotalItemSize
+		Write-Host $objMailBoxInfo.ItemCount
+		Write-Host $objMailBoxInfo.TotalDeletedItemSize
+		CleanRunSpace "MailBoxSize" $objJobs;
+
+
+
+
+		$objJobCode1 = [scriptblock]::create("function GetGroups {" + $function:GetGroups + "}");
+		$objJobCode2 = [scriptblock]::create({param($Name) GetGroups $Name;});
+		$objJobs += CreateRunSpaceJob -RSPool $objPool -JobName "GetUserMemberships" -JobScript @($objJobCode1, $objJobCode2) -Arguments @($env:UserName);
+		Write-Host "Name: " $objJobs[($objJobs.Count) - 1].Name;
+		$strResults = WaitForRunSpaceJob "GetUserMemberships" $objJobs;
+		Write-Host $strResults;
+		CleanRunSpace "GetUserMemberships" $objJobs;
+	}
+
 
 	function CheckJob{
 		#Returns Job State.
@@ -42,6 +159,81 @@
 			return "Failed";
 		}
 	}
+
+	function CreateJob{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$JobName,
+			[ValidateNotNull()][Parameter(Mandatory=$False)][ScriptBlock]$InitScript,
+			[ValidateNotNull()][Parameter(Mandatory=$True)][ScriptBlock]$JobScript,
+			$ArgumentList = $null
+		)
+		#Pass any arguments using the ArgumentList parameter
+
+		#Start the Job
+		#$objJob = Start-Job -Name $strJobName -ScriptBlock {Get-Process};
+		#$objJob = Start-Job -InitializationScript $objJobCode -ScriptBlock {GetGroups}|
+		if ($InitScript -ne $null){
+			$objJob = Start-Job -Name $JobName -InitializationScript $InitScript -ScriptBlock $JobScript -ArgumentList $ArgumentList;
+		}else{
+			$objJob = Start-Job -Name $JobName -ScriptBlock $JobScript -ArgumentList $ArgumentList;
+		}
+
+		return $objJob;
+	}
+
+	function WaitForJob{
+		#Waits for a background job to finish then returns the Job Results.
+		#If $objControl is provided it is updated w/ the progress and the results.
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$objJob, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$objControl, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolKeep
+		)
+
+		if (($bolKeep -eq "") -or ($bolKeep -eq $null)){
+			$bolKeep = $False;
+		}
+
+		$strLastResults = "";
+		$strJobResults = "";
+		$objJobDetails = Get-Job -ID $objJob.ID;
+		#$intX = 0;
+		Do{
+			if (($objControl -ne $null) -and ($objControl -ne "")){
+				#$intX++;
+				if ($bolKeep -eq $True){
+					$strJobResults = Receive-Job -Job $objJobDetails -Keep;
+				}else{
+					$strJobResults = Receive-Job -Job $objJobDetails;
+				}
+				if (($strJobResults -ne $null) -and ($strJobResults -ne "")){
+					##if ($strJobResults -ne $strLastResults){
+					#if (!($objControl.Text.Contains($strLastResults))){
+						$objControl.Text = $objControl.Text + $strJobResults + "`r`n";
+					#}
+					$strLastResults = $strJobResults;
+					#$strJobResults = "";
+				}
+				[System.Windows.Forms.Application]::DoEvents();
+				#$objControl.Refresh;
+			}
+		}Until (($objJobDetails.State -eq "Completed") -or ($objJobDetails.State -eq "Complete"))
+		#}Until (($objJobDetails.State -eq "Completed") -or ($intX -gt 10000))
+		if (($strJobResults -eq "") -or ($strJobResults -eq $null)){
+			$strJobResults = Receive-Job -Job $objJobDetails -Keep;
+			if (($strJobResults -eq "") -or ($strJobResults -eq $null)){
+				#Delete the job.
+				Remove-Job -Job $objJobDetails;
+			}
+		}
+
+		if ((($strJobResults -eq "") -or ($strJobResults -eq $null)) -and ($strLastResults -ne "")){
+			$strJobResults = $strLastResults;
+		}
+
+		return $strJobResults;
+	}
+
 
 	function CheckRunSpaceJob{
 		#Returns Job State.
@@ -87,27 +279,6 @@
 		}
 
 		#$objJobs = $objJobs | ? {$_ -ne $null};
-	}
-
-	function CreateJob{
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$JobName,
-			[ValidateNotNull()][Parameter(Mandatory=$False)][ScriptBlock]$InitScript,
-			[ValidateNotNull()][Parameter(Mandatory=$True)][ScriptBlock]$JobScript,
-			$ArgumentList = $null
-		)
-		#Pass any arguments using the ArgumentList parameter
-
-		#Start the Job
-		#$objJob = Start-Job -Name $strJobName -ScriptBlock {Get-Process};
-		#$objJob = Start-Job -InitializationScript $objJobCode -ScriptBlock {GetGroups}|
-		if ($InitScript -ne $null){
-			$objJob = Start-Job -Name $JobName -InitializationScript $InitScript -ScriptBlock $JobScript -ArgumentList $ArgumentList;
-		}else{
-			$objJob = Start-Job -Name $JobName -ScriptBlock $JobScript -ArgumentList $ArgumentList;
-		}
-
-		return $objJob;
 	}
 
 	function CreateRunSpace{
@@ -212,59 +383,6 @@
 		return $objJobReturning;
 	}
 
-	function WaitForJob{
-		#Waits for a background job to finish then returns the Job Results.
-		#If $objControl is provided it is updated w/ the progress and the results.
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True)]$objJob, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)]$objControl, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolKeep
-		)
-
-		if (($bolKeep -eq "") -or ($bolKeep -eq $null)){
-			$bolKeep = $False;
-		}
-
-		$strLastResults = "";
-		$strJobResults = "";
-		$objJobDetails = Get-Job -ID $objJob.ID;
-		#$intX = 0;
-		Do{
-			if (($objControl -ne $null) -and ($objControl -ne "")){
-				#$intX++;
-				if ($bolKeep -eq $True){
-					$strJobResults = Receive-Job -Job $objJobDetails -Keep;
-				}else{
-					$strJobResults = Receive-Job -Job $objJobDetails;
-				}
-				if (($strJobResults -ne $null) -and ($strJobResults -ne "")){
-					##if ($strJobResults -ne $strLastResults){
-					#if (!($objControl.Text.Contains($strLastResults))){
-						$objControl.Text = $objControl.Text + $strJobResults + "`r`n";
-					#}
-					$strLastResults = $strJobResults;
-					#$strJobResults = "";
-				}
-				[System.Windows.Forms.Application]::DoEvents();
-				#$objControl.Refresh;
-			}
-		}Until (($objJobDetails.State -eq "Completed") -or ($objJobDetails.State -eq "Complete"))
-		#}Until (($objJobDetails.State -eq "Completed") -or ($intX -gt 10000))
-		if (($strJobResults -eq "") -or ($strJobResults -eq $null)){
-			$strJobResults = Receive-Job -Job $objJobDetails -Keep;
-			if (($strJobResults -eq "") -or ($strJobResults -eq $null)){
-				#Delete the job.
-				Remove-Job -Job $objJobDetails;
-			}
-		}
-
-		if ((($strJobResults -eq "") -or ($strJobResults -eq $null)) -and ($strLastResults -ne "")){
-			$strJobResults = $strLastResults;
-		}
-
-		return $strJobResults;
-	}
-
 	function WaitForRunSpaceJob{
 		#Waits for a RunSpace background job to finish then returns the Job Results.
 		#If $objControl is provided it is updated w/ the progress and the results.
@@ -356,119 +474,3 @@
 		}
 	}
 
-
-	#Sample Job calls
-	function SampleJobCall1{
-		#Pass any arguments using the ArgumentList parameter
-		$objJob1 = CreateJob -JobName "FindUserDomain" -JobScript {
-			Param(
-				[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Username
-			)
-			$strSrcDomain = "";
-			Import-Module ActiveDirectory -ErrorAction SilentlyContinue;
-
-			#$arrDomains = @("nadsusea", "nadsuswe", "pads", "nmci-isf");
-			#Get Domain List
-			$objForest = [System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest();
-			$DomainList = @($objForest.Domains | Select-Object Name);
-			#$Domains = $DomainList | foreach {$_.Name};
-			$arrDomains = @($DomainList | foreach {($_.Name).split(".")[0]});
-			#Write-Host $arrDomains;
-			if ($arrDomains -eq ""){
-				$arrDomains = @("nadsusea", "nadsuswe", "pads", "nmci-isf");
-			}
-
-			foreach ($strDomain in $arrDomains){
-				if (($strDomain -eq $null) -or ($strDomain -eq "")){
-					break;
-				}
-
-				$strProgress = "Looking in $strDomain domain.";
-				$strProgress;
-				$strRIDMaster = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
-				#$objUser = Get-ADUser -Server $strRIDMaster -Identity $UserName;
-				#$objComp = Get-ADComputer -Server $strRIDMaster -Identity "MachineName";
-				$objUser = $(Try {Get-ADUser -Server $strRIDMaster -Identity $UserName} Catch {$null});
-				If (($objUser.DistinguishedName -ne "") -and ($objUser.DistinguishedName -ne $null)){
-					$strSrcDomain = $strDomain;
-					#Write-Host "Found $UserName in $strSrcDomain domain.";
-					#$objTxbResults.TEXT = $objTxbResults.TEXT + "  -- Found " + $UserName + " in " + $strDomain + " domain." + "`r`n";
-					break;
-				}
-			}
-			
-			return $strSrcDomain;} -ArgumentList $UserName;
-	}
-	function SampleJobCall2{
-		#http://stackoverflow.com/questions/15520404/how-to-call-a-powershell-function-within-the-script-from-start-job
-		$objJobCode = [scriptblock]::create($function:FindUserDomain);
-		#Pass any arguments using the ArgumentList parameter
-		$objJob1 = CreateJob -JobName "FindUserDomain" -JobScript $objJobCode -ArgumentList $UserName;
-
-		#or
-		#http://stackoverflow.com/questions/7162090/how-do-i-start-a-job-of-a-function-i-just-defined
-		#http://stackoverflow.com/questions/8750813/powershell-start-job-scriptblock-cannot-recognize-the-function-defined-in-the-s
-		$objJobCode = [scriptblock]::create("function GetGroups {" + $function:GetGroups + "}");
-		#Pass any arguments using the ArgumentList parameter
-		$objJob1 = CreateJob -JobName "GetMemberships" -InitScript $objJobCode -JobScript {param($Name) GetGroups $Name} -ArgumentList @($env:UserName, @());
-	}
-
-	function SampleRunSpaceCalls{
-		$objPool = CreateRunSpace 3;
-		$objJobs = @();								#Collection of the Jobs that get run in the RunSpacePool.
-
-		$objJobCode = [scriptblock]::create("Get-Command");
-		#or
-		#$objJobCode = [scriptblock]::create({Get-Command});
-		$objJobs += CreateRunSpaceJob -RSPool $objPool -JobName "GetCmds" -JobScript $objJobCode;
-		#Write-Host $objJobs[($objJobs.Count) - 1].Name;
-		#CheckRunSpaceJob "GetCmds" $objJobs;
-		$strResults = WaitForRunSpaceJob "GetCmds" $objJobs;
-		Write-Host $strResults;
-		CleanRunSpace "GetCmds" $objJobs;
-
-
-
-
-		$objJobCode = [scriptblock]::create({Import-Module ActiveDirectory; (Get-ADDomain "nmci-isf").RIDMaster;});
-		$objJobs += CreateRunSpaceJob -RSPool $objPool -JobName "RIDMaster" -JobScript $objJobCode;
-		$strResults = CheckRunSpaceJob "RIDMaster" $objJobs;
-		if (($strResults) -eq "Completed"){
-			$strResults = WaitForRunSpaceJob "RIDMaster" $objJobs;
-		}
-		Write-Host $strResults;
-		CleanRunSpace "RIDMaster" $objJobs;
-
-
-
-
-		#If I create an Exchange Session in the Pool, then the Exchange cmdlets are only available in the Pool.
-		$objJobCode = [scriptblock]::create($function:GetPSCmds);		#create an Exchange Session, and returns all imported commands.
-		$objJobs += CreateRunSpaceJob -RSPool $objPool -JobName "GetPSCmds" -JobScript $objJobCode;
-		$strResults = WaitForRunSpaceJob $objJobs[($objJobs.Count) - 1].Name $objJobs;
-		#Write-Host $strResults;
-		#CleanRunSpace "GetPSCmds" $objJobs;
-
-		#$objJobCode = [scriptblock]::create("Get-MailboxStatistics -Identity ""henry.schade"" | Select DisplayName, TotalItemSize, ItemCount, TotalDeletedItemSize, StorageLimitStatus, ServerName, DatabaseName, MailboxGUID;");
-		$objJobCode = [scriptblock]::create({param($Username, $strDC); Get-MailboxStatistics -Identity $Username -DomainController $strDC | Select DisplayName, TotalItemSize, ItemCount, TotalDeletedItemSize, StorageLimitStatus, ServerName, DatabaseName, MailboxGUID;});
-		$arrArgs = @("henry.schade", "SomeDC");
-		$objJobs += CreateRunSpaceJob $objPool "MailBoxSize" $objJobCode -Arguments $arrArgs;
-		#$objJobs += CreateRunSpaceJob $objPool "MailBoxSize" $objJobCode -Arguments @("henry.schade", "SomeDC");
-		$objMailBoxInfo = WaitForRunSpaceJob "MailBoxSize" $objJobs;
-		Write-Host $objMailBoxInfo.DisplayName
-		Write-Host $objMailBoxInfo.TotalItemSize
-		Write-Host $objMailBoxInfo.ItemCount
-		Write-Host $objMailBoxInfo.TotalDeletedItemSize
-		CleanRunSpace "MailBoxSize" $objJobs;
-
-
-
-
-		$objJobCode1 = [scriptblock]::create("function GetGroups {" + $function:GetGroups + "}");
-		$objJobCode2 = [scriptblock]::create({param($Name) GetGroups $Name;});
-		$objJobs += CreateRunSpaceJob -RSPool $objPool -JobName "GetUserMemberships" -JobScript @($objJobCode1, $objJobCode2) -Arguments @($env:UserName);
-		Write-Host "Name: " $objJobs[($objJobs.Count) - 1].Name;
-		$strResults = WaitForRunSpaceJob "GetUserMemberships" $objJobs;
-		Write-Host $strResults;
-		CleanRunSpace "GetUserMemberships" $objJobs;
-	}

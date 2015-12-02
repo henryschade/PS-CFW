@@ -1,10 +1,69 @@
 ###########################################
-# Updated Date:	1 December 2015
+# Updated Date:	2 December 2015
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
 
-	function ExcelSampleUsage{
+	function ExcelSampleReadCOM{
+		$strFilePath = "C:\Projects\PS-Scripts\Testing\CIVMAR Bulk MAC.xls";
+		$WorkSheetName = "Create User Account";
+
+		#Opening the file.
+		($objExcel, $objWorkBook) = ExcelCreateOpenFile -ExcelFilePath $strFilePath $False $False;
+
+		#Check if got the workbook
+		if ($objWorkBook){
+			#Get an Array of all available sheets:
+			$arrSheets = ExcelGetWorksheet $objWorkBook;
+			#Get a WorkSheet object.
+			#$objSheets = ExcelGetWorksheet $objWorkBook $arrSheets[1];
+			#or one of the following:
+			#$objSheets = ExcelGetWorksheet $objWorkBook "SheetName";
+			#$objWorkSheet = ExcelGetWorksheet -Workbook $objWorkBook -SheetName "East";
+			$objWorkSheet = ExcelGetWorksheet -Workbook $objWorkBook -SheetName $WorkSheetName;
+
+			#Get an object of the Cells
+			#$objCells = $objWorkSheet.Cells;
+
+			#Read from the worksheet.
+			#Write-Host $objCells.Item($intRow, $intCol).Value();
+			#Write-Host $objCells.Item(1, 1).Value();					#A1
+			#Write-Host $objCells.Item(1, 2).Value();					#B1
+			#Write-Host $objCells.Item(2, 1).Value();					#A2
+			#Write-Host $objCells.Item(2, 2).Value();					#B2
+
+			#or don't bother with the Cells object and just to the following
+			#Write-Host $objWorkSheet.Range("A2").Text;					#A2
+
+			##Clean up / Release Cells object
+			#[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objCells) | Out-Null;
+			#$objCells = $null;
+
+			#Clean up / Release WorkSheet object
+			[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objWorkSheet) | Out-Null;
+			$objWorkSheet = $null;
+
+			#Close the workbook.
+			#Turn off Error messages.
+			#$objExcel.DisplayAlerts = $False;
+			$objWorkBook.Close();
+			#Turn Error messages back on.
+			#$objExcel.DisplayAlerts = $True;
+			#Clean up / Release WorkBook object
+			[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objWorkBook) | Out-Null;
+		}
+
+		#Quit/Close Excel.
+		$objExcel.Quit();
+			#Excel still shows in TaskManager...
+			#When close Powershell Excel will close too (this is a .NET using COM objects issue).
+		#Clean up / Release Excel object
+		[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objExcel) | Out-Null;
+		$objExcel = $null;
+
+	}
+
+	function ExcelSampleUsageCOM{
 		# The Excel Code is from following URL, but modified for my use.
 		# http://mypowershell.webnode.sk/news/create-or-open-excel-file-in-powershell/
 
@@ -16,22 +75,40 @@
 
 		#What file to open/create
 		$strFilePath = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\BackUpLocation\USN_Server_Farms-Testing.xls";
+		$strFilePath = "C:\Projects\PS-Scripts\Testing\CIVMAR Bulk MAC.xls";
+		$WorkSheetName = "Create User Account";
 
 		#Opening the file, and/or create it, and visible or not.
 		($objExcel, $objWorkBook) = ExcelCreateOpenFile -ExcelFilePath $strFilePath $False $False;
+
 		#Check if got the workbook
 		if ($objWorkBook){
 			#Got a workbook, so now can get the desired sheet.
-			$objWorkSheet = ExcelGetWorksheet -Workbook $objWorkBook -SheetName "East";
+			#$objWorkSheet = ExcelGetWorksheet -Workbook $objWorkBook -SheetName "East";
+			$objWorkSheet = ExcelGetWorksheet -Workbook $objWorkBook -SheetName $WorkSheetName;
 
 			#Read the worksheet, or write to the worksheet.
 			#$objCells = $objWorkSheet.Cells;
 
+			#Read from the worksheet.
+			#Write-Host $objCells.Item(1, 1).Value();					#A1
+			#Write-Host $objCells.Item(1, 2).Value();					#B1
+			#Write-Host $objCells.Item(2, 1).Value();					#A2
+			#Write-Host $objCells.Item(2, 2).Value();					#B2
+			#Write-Host $objCells.Item($intRow, $intCol).Value();
+			#or:
+			#Write-Host $objWorkSheet.Range("A2").Text;					#A2
+
 			#Write to the worksheet.
 			#$objCells.Item(1, 1) = "A1";
-			#$objCells.Item(1, 2) = "A2";
-			#$objCells.Item(2, 1) = "B1";
+			#$objCells.Item(1, 2) = "B1";
+			#$objCells.Item(2, 1) = "A2";
 			#$objCells.Item(2, 2) = "B2";
+			#or:
+			#$objCells.Item(1, 1).Value() = "A1";
+			#$objCells.Item(1, 2).Value() = "B1";
+			#$objCells.Item(2, 1).Value() = "A2";
+			#$objCells.Item(2, 2).Value() = "B2";
 
 			#Turn off Error message for replacing existing file when saving it.
 			#$objExcel.DisplayAlerts = $False;
@@ -41,26 +118,90 @@
 			#Turn Error message back on.
 			#$objExcel.DisplayAlerts = $True;
 
-			#Read from the worksheet.
-			#Write-Host $objCells.Item(1, 1).Value();
-			#Write-Host $objCells.Item(1, 2).Value();
-			#Write-Host $objCells.Item(2, 1).Value();
-			#Write-Host $objCells.Item(2, 2).Value();
-			#Write-Host $objWorkSheet.Range("A2").Text;
+			#Clean up / Release Cells object
+			[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objCells) | Out-Null;
 
-			#Clean up WorkSheet object
+			#Clean up / Release WorkSheet object
 			[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objWorkSheet) | Out-Null;
 
 			#Close the workbook.
 			$objWorkBook.Close();
-			#Clean up WorkBook object
+			#Clean up / Release WorkBook object
 			[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objWorkBook) | Out-Null;
 		}
 		#Quit/Close Excel.
 		$objExcel.Quit();
-		#Clean up Excel object
+		#Clean up / Release Excel object
 		[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objExcel) | Out-Null;
 	}
+
+	function ExcelSampleUsageXML1{
+		$strDocPath = "C:\Projects\PS-Scripts\Testing\CIVMAR Bulk MAC.xls";
+		$WorkSheetName = "Create User Account";
+		$Query = "";
+		$ListValues = "";
+		#Create the scriptblock to run in a job
+		$JobCode = [scriptblock]::create($function:ExcelXML);
+
+
+		#Create
+		$strDocPath = "C:\Projects\PS-Scripts\Testing\Test.xls";
+		$WorkSheetName = "TestSheet";
+		$ListValues = "Col1, Col2, Col3";		#Not sure what this should be.
+		#Create the scriptblock to run in a job
+			#$JobCode = [scriptblock]::create($function:ExcelXML);		#$strDocPath $WorkSheetName $ListValues;
+		# Run the code in a 32bit job, since the provider is 32bit only
+		$job = Start-Job $JobCode -RunAs32 -ArgumentList $strDocPath, $Query, $WorkSheetName, $ListValues
+		$job | Wait-Job | Receive-Job
+		Remove-Job $job
+
+
+		#GetSheets
+		#Create the scriptblock to run in a job
+			#$JobCode = [scriptblock]::create($function:ExcelXML);		#$strDocPath $Query;
+		# Run the code in a 32bit job, since the provider is 32bit only
+		$job = Start-Job $JobCode -RunAs32 -ArgumentList $strDocPath
+		$job | Wait-Job | Receive-Job
+		Remove-Job $job
+
+
+		#GetSheetData
+		#Create the scriptblock to run in a job
+			#$JobCode = [scriptblock]::create($function:ExcelXML);		# $strDocPath $Query;
+		# Run the code in a 32bit job, since the provider is 32bit only
+		$job = Start-Job $JobCode -RunAs32 -ArgumentList $strDocPath, $Query
+		$job | Wait-Job | Receive-Job
+		Remove-Job $job
+	}
+
+	function ExcelSampleUsageXML2{
+		$strDocPath = "C:\Projects\PS-Scripts\Testing\CIVMAR Bulk MAC.xls";
+		$WorkSheetName = "Create User Account";
+		$Query = "";
+		$ListValues = "";
+
+
+		#Create
+		$strDocPath = "C:\Projects\PS-Scripts\Testing\Test.xls";
+		$WorkSheetName = "TestSheet";
+		$ListValues = "Col1, Col2, Col3";		#Not sure what this should be.
+		$objData = ExcelXML $strDocPath $Query $WorkSheetName $ListValues;
+
+
+		#GetSheets
+		$objData = ExcelXML $strDocPath;
+
+
+		#GetSheetData
+		$Query = "SELECT * FROM [" + $WorkSheetName + '$]';
+		#or 		$Query = 'SELECT * FROM [Create User Account$]';
+		$objData = ExcelXML $strDocPath $Query;
+		#or
+		#$Query = "";
+		#$objData = ExcelXML $strDocPath $Query $WorkSheetName;
+
+	}
+
 
 	function SampleEncodeDecode{
 		#From a PowerShell window run one of the following commands:
@@ -138,6 +279,43 @@
 	}
 
 
+
+	function ExcelCreateWorksheetXML{
+		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
+		Param(
+			[Parameter(Mandatory=$true)][String] $Path,
+			[Parameter(Mandatory=$true)][String] $WorksheetName,
+			[Parameter(Mandatory=$true)][String] $ListValues
+		)
+		$JobCode = {
+			Param($Path,$WorkSheetName,$ListValues)
+		}
+	}
+
+	function ExcelGetDataXML{
+		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
+		[CmdletBinding(DefaultParameterSetName='Worksheet')]
+		Param(
+			[Parameter(Mandatory=$true, Position=0)][String] $Path,
+			[Parameter(Position=1, ParameterSetName='Worksheet')][String] $WorksheetName = 'Sheet1',
+			[Parameter(Position=1, ParameterSetName='Query')][String] $Query = 'SELECT * FROM [Sheet1$]'
+		)
+		$JobCode = {
+			Param($Path, $Query)
+		}
+	}
+
+	function ExcelGetSheetsXML{
+		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
+		Param(
+			[Parameter(Mandatory=$true)][String] $Path
+		)
+		$JobCode = {
+			Param($Path, $Query)
+		}
+	}
+
+
 	function ExcelCreateOpenFile{
 		param(
 			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel file path.")][string] $ExcelFilePath, 
@@ -157,6 +335,10 @@
 		if(-not $application){
 			$application = New-Object -comobject Excel.Application;
 		}
+		else{
+			#Excel is running already, so use the visibility of the current session.
+			$ExcelVisible = $application.Visible;
+		}
 
 		$application.Visible = $ExcelVisible;
 
@@ -168,7 +350,8 @@
 				#Open the file normally.
 				$workbook = $application.Workbooks.Open($ExcelFilePath, 2, $False);
 			}
-		}else{
+		}
+		else{
 			if($CreateNew){
 				$workbook = $application.Workbooks.Add();
 				$workbook.SaveAs($ExcelFilePath);																		#appears to default to Excel 2007/2010 format
@@ -183,197 +366,28 @@
 		return ($application, $workbook);
 	}
 
-	function ExcelCreateWorksheet{
-		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
-			#The $JobCode blocks in ExcelGetData() and ExcelGetSheets() and ExcelCreateWorksheet() look the same to me at a quick glance.
-			#Looks to me like we create a routine ExcelXMLJob() that could build the $JobCode block.
-			#Or we build a routine ExcelXML(), that is basically the $JobCode block, but that is a standalone routine that can be called NOT in a job, 
-				#but we make sure the Routine can be used as a Job Block too.
-		Param(
-			[Parameter(Mandatory=$true)][String] $Path,
-			[Parameter(Mandatory=$true)][String] $WorksheetName,
-			[Parameter(Mandatory=$true)][String] $ListValues
-		)
-
-		$JobCode = {
-			Param($Path,$WorkSheetName,$ListValues)
-
-			# Check if the file is XLS or XLSX 
-			if ((Get-Item -Path $Path).Extension -eq 'xls') {
-				$Provider = 'Microsoft.Jet.OLEDB.4.0'
-				$ExtendedProperties = 'Excel 8.0;HDR=YES;IMEX=1'
-			} else {
-				$Provider = 'Microsoft.ACE.OLEDB.12.0'
-				$ExtendedProperties = 'Excel 12.0;HDR=YES'
-			}
-			
-			# Build the connection string and connection object
-			$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $Path, $ExtendedProperties
-			$Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
-
-			try {
-				# Open the connection to the file, and fill the datatable
-				$Connection.Open()
-				$Command = $Connection.CreateCommand()
-				$Command.CommandText = "CREATE TABLE [$WorksheetName] ($ListValues)";
-				$Command.ExecuteNonQuery();
-			} catch {
-				# something went wrong :-(
-				Write-Error $_.Exception.Message
-			}
-			finally {
-				# Close the connection
-				if ($Connection.State -eq 'Open') {
-					$Connection.Close()
-				}
-			}
-
-			# Return the results NOT as an array
-			return ,$DataTable
-		}
-
-		# Run the code in a 32bit job, since the provider is 32bit only
-		$job = Start-Job $JobCode -RunAs32 -ArgumentList $Path,$WorkSheetName,$ListValues
-		$job | Wait-Job | Receive-Job
-		Remove-Job $job
-	}
-
-	function ExcelGetData {
-		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
-			#The $JobCode blocks in ExcelGetData() and ExcelGetSheets() and ExcelCreateWorksheet() look the same to me at a quick glance.
-			#Looks to me like we create a routine ExcelXMLJob() that could build the $JobCode block.
-			#Or we build a routine ExcelXML(), that is basically the $JobCode block, but that is a standalone routine that can be called NOT in a job, 
-				#but we make sure the Routine can be used as a Job Block too.
-		[CmdletBinding(DefaultParameterSetName='Worksheet')]
-		Param(
-			[Parameter(Mandatory=$true, Position=0)][String] $Path,
-			[Parameter(Position=1, ParameterSetName='Worksheet')][String] $WorksheetName = 'Sheet1',
-			[Parameter(Position=1, ParameterSetName='Query')][String] $Query = 'SELECT * FROM [Sheet1$]'
-		)
-
-		switch ($pscmdlet.ParameterSetName) {
-			'Worksheet' {
-				$Query = 'SELECT * FROM [{0}$]' -f $WorksheetName
-				break
-			}
-			'Query' {
-				# Make sure the query is in the correct syntax (e.g. 'SELECT * FROM [SheetName$]')
-				$Pattern = '.*from\b\s*(?<Table>\w+).*'
-				if($Query -match $Pattern) {
-					$Query = $Query -replace $Matches.Table, ('[{0}$]' -f $Matches.Table)
-				}
-			}
-		}
-
-		# Create the scriptblock to run in a job
-		$JobCode = {
-			Param($Path, $Query)
-
-			# Check if the file is XLS or XLSX 
-			if ((Get-Item -Path $Path).Extension -eq 'xls') {
-				$Provider = 'Microsoft.Jet.OLEDB.4.0'
-				$ExtendedProperties = 'Excel 8.0;HDR=YES;IMEX=1'
-			} else {
-				$Provider = 'Microsoft.ACE.OLEDB.12.0'
-				$ExtendedProperties = 'Excel 12.0;HDR=YES'
-			}
-			
-			# Build the connection string and connection object
-			$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $Path, $ExtendedProperties
-			$Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
-
-			try {
-				# Open the connection to the file, and fill the datatable
-				$Connection.Open()
-				$Adapter = New-Object -TypeName System.Data.OleDb.OleDbDataAdapter $Query, $Connection
-				$DataTable = New-Object System.Data.DataTable
-				$Adapter.Fill($DataTable) | Out-Null
-			}
-			catch {
-				# something went wrong :-(
-				Write-Error $_.Exception.Message
-			}
-			finally {
-				# Close the connection
-				if ($Connection.State -eq 'Open') {
-					$Connection.Close()
-				}
-			}
-
-			# Return the results NOT as an array
-			return ,$DataTable
-		}
-
-		# Run the code in a 32bit job, since the provider is 32bit only
-		$job = Start-Job $JobCode -RunAs32 -ArgumentList $Path, $Query
-		$job | Wait-Job | Receive-Job
-		Remove-Job $job
-	}
-
-	function ExcelGetSheets {
-		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
-			#The $JobCode blocks in ExcelGetData() and ExcelGetSheets() and ExcelCreateWorksheet() look the same to me at a quick glance.
-			#Looks to me like we create a routine ExcelXMLJob() that could build the $JobCode block.
-			#Or we build a routine ExcelXML(), that is basically the $JobCode block, but that is a standalone routine that can be called NOT in a job, 
-				#but we make sure the Routine can be used as a Job Block too.
-		Param(
-			[Parameter(Mandatory=$true)][String] $Path
-		)
-		#Returns the sheet names and creation information. bit more filtering to be added. 
-
-		$JobCode = {
-			Param($Path, $Query)
-
-			# Check if the file is XLS or XLSX 
-			if ((Get-Item -Path $Path).Extension -eq 'xls') {
-				$Provider = 'Microsoft.Jet.OLEDB.4.0'
-				$ExtendedProperties = 'Excel 8.0;HDR=YES;IMEX=1'
-			} else {
-				$Provider = 'Microsoft.ACE.OLEDB.12.0'
-				$ExtendedProperties = 'Excel 12.0;HDR=YES'
-			}
-			
-			# Build the connection string and connection object
-			$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $Path, $ExtendedProperties
-			$Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
-
-			try {
-				# Open the connection to the file, and fill the datatable
-				$Connection.Open()
-				$DataTable = $Connection.GetSchema("Tables")
-			} catch {
-				# something went wrong :-(
-				Write-Error $_.Exception.Message
-			}
-			finally {
-				# Close the connection
-				if ($Connection.State -eq 'Open') {
-					$Connection.Close()
-				}
-			}
-
-			# Return the results NOT as an array
-			return ,$DataTable
-		}
-
-		# Run the code in a 32bit job, since the provider is 32bit only
-		$job = Start-Job $JobCode -RunAs32 -ArgumentList $Path
-		$job | Wait-Job | Receive-Job
-		Remove-Job $job
-
-	}
-
 	function ExcelGetWorksheet{
 		param(
 			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel workbook object.")][object] $Workbook, 
-			[ValidateNotNull()][Parameter(Mandatory = $False)][string] $SheetName = "Sheet1"
+			[ValidateNotNull()][Parameter(Mandatory = $False)][string] $SheetName
 		)
 
-		$worksheet = $Workbook.Worksheets | where {$_.name -eq $SheetName};
+		if (($SheetName -eq "") -or ($SheetName -eq $null)){
+			#Return an array of the available sheets
+			$worksheet = @();
+			foreach ($sheet in $Workbook.Worksheets){
+				#Write-Host $sheet.Name;
+				$worksheet += $sheet.Name;
+			}
+		}
+		else{
+			#Return a WorkSheet object.
+			$worksheet = $Workbook.Worksheets | where {$_.name -eq $SheetName};
 
-		if (-not $worksheet){
-			$worksheet = $Workbook.Worksheets.Add();
-			$worksheet.name = $SheetName;
+			if (-not $worksheet){
+				$worksheet = $Workbook.Worksheets.Add();
+				$worksheet.name = $SheetName;
+			}
 		}
 
 		return $worksheet;
@@ -381,8 +395,8 @@
 
 	function ExcelWriteData{
 		param(
-			[Parameter(Mandatory = $True, HelpMessage = "Excel file path.")][string] $ExcelFilePath,
-			[Parameter(Mandatory = $True, HelpMessage = "Object with input data e. g. hashtable, array, ...")][object] $InputData 
+			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel file path.")][string] $ExcelFilePath,
+			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Object with input data e. g. hashtable, array, ...")][object] $InputData 
 		)
 
 		#Add next sheet for 'Test Case Overview'
@@ -418,6 +432,111 @@
 		$application.DisplayAlerts = $False;
 		$workbook.SaveAs($ExcelFilePath);
 		#$application.Quit();
+	}
+
+	function ExcelXML{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$DocPath,
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Query,
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$WorksheetName,
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$ListValues
+		)
+
+		$strAction = "";
+		#Make sure we have defaults, and know what action is being done.
+		if ((($WorksheetName -eq "") -or ($WorksheetName -eq $null)) -and (($Query -eq "") -or ($Query -eq $null)) -and (($ListValues -eq "") -or ($ListValues -eq $null))){
+			#Only $DocPath provided, so GetSheet()
+			#No need to set defaults.
+			$strAction = "GetSheets";
+		}
+		else{
+			if (($ListValues -eq "") -or ($ListValues -eq $null)){
+				#No $ListValues provided, so GetData().
+				$strAction = "Query";
+				if (($WorksheetName -eq "") -or ($WorksheetName -eq $null)){
+					#Query.  $Query was provided, so $WorksheetName NOT be needed.
+					#$WorksheetName = "Sheet1";
+					#Lets make sure $Query is populated too.
+					if (($Query -eq "") -or ($Query -eq $null)){
+						$Query = 'SELECT * FROM [Sheet1$]';
+					}
+				}
+				else{
+					#Query.  $WorksheetName was provided, but $Query may not have been.
+					#$WorksheetName was provided, lets make sure $Query is populated too.
+					if (($Query -eq "") -or ($Query -eq $null) -or ((!($Query -Match $WorksheetName)) -and ($Query.ToUpper().StartsWith("SELECT")))){
+						#Both of the following do the same thing.
+						#$Query = 'SELECT * FROM [{0}$]' -f $WorksheetName;
+						$Query = "SELECT * FROM [" + $WorksheetName + '$]';
+					}
+				}
+
+				# Make sure the query is in the correct syntax (e.g. 'SELECT * FROM [SheetName$]')
+				$Pattern = '.*from\b\s*(?<Table>\w+).*'
+				if($Query -match $Pattern) {
+					$Query = $Query -replace $Matches.Table, ('[{0}$]' -f $Matches.Table)
+				}
+			}
+			else{
+				#Must be Create()
+				$strAction = "Create";
+				#$WorksheetName has no default value, but probably should.
+				if (($WorksheetName -eq "") -or ($WorksheetName -eq $null)){
+					$WorksheetName = "Sheet1";
+				}
+			}
+		}
+
+
+		# Check if the file is XLS or XLSX 
+		#if ((Get-Item -Path $DocPath).Extension -eq '.xls'){
+		if ($strDocPath.EndsWith("xls")){
+			$Provider = 'Microsoft.Jet.OLEDB.4.0'
+			$ExtendedProperties = 'Excel 8.0;HDR=YES;IMEX=1'
+		} else {
+			$Provider = 'Microsoft.ACE.OLEDB.12.0'
+			$ExtendedProperties = 'Excel 12.0;HDR=YES'
+		}
+
+		# Build the connection string and connection object
+		$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $DocPath, $ExtendedProperties
+		$Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
+
+		try {
+			# Open the connection to the file, and fill the datatable
+			$Connection.Open()
+
+			#Create
+			if ($strAction -eq "Create"){
+				$Command = $Connection.CreateCommand()
+				$Command.CommandText = "CREATE TABLE [$WorksheetName] ($ListValues)";
+				$Command.ExecuteNonQuery();
+			}
+
+			#GetData
+			if ($strAction -eq "Query"){
+				$Adapter = New-Object -TypeName System.Data.OleDb.OleDbDataAdapter $Query, $Connection
+				$DataTable = New-Object System.Data.DataTable
+				$Adapter.Fill($DataTable) | Out-Null
+			}
+
+			#GetSheets
+			if ($strAction -eq "GetSheets"){
+				$DataTable = $Connection.GetSchema("Tables")
+			}
+		} catch {
+			# something went wrong :-(
+			Write-Error $_.Exception.Message
+		}
+		finally {
+			# Close the connection
+			if ($Connection.State -eq 'Open') {
+				$Connection.Close()
+			}
+		}
+
+		# Return the results NOT as an array
+		return ,$DataTable
 	}
 
 
