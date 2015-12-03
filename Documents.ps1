@@ -1,22 +1,28 @@
 ###########################################
-# Updated Date:	2 December 2015
+# Updated Date:	3 December 2015
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
 
 	function ExcelSampleReadCOM{
+		#. C:\Projects\PS-CFW\Documents.ps1
 		$strFilePath = "C:\Projects\PS-Scripts\Testing\CIVMAR Bulk MAC.xls";
 		$WorkSheetName = "Create User Account";
+		$bCreateIfNotExist = $False;
+		$bVisible = $False;
+		#Google search "powershell Excel.Application iterate columns"
 
 		#Opening the file.
-		($objExcel, $objWorkBook) = ExcelCreateOpenFile -ExcelFilePath $strFilePath $False $False;
+		($objExcel, $objWorkBook) = ExcelCreateOpenFile -ExcelFilePath $strFilePath $bCreateIfNotExist $bVisible;
 
 		#Check if got the workbook
 		if ($objWorkBook){
 			#Get an Array of all available sheets:
 			$arrSheets = ExcelGetWorksheet $objWorkBook;
+
 			#Get a WorkSheet object.
 			#$objSheets = ExcelGetWorksheet $objWorkBook $arrSheets[1];
+			#$objWorkSheet = $arrSheets[1];
 			#or one of the following:
 			#$objSheets = ExcelGetWorksheet $objWorkBook "SheetName";
 			#$objWorkSheet = ExcelGetWorksheet -Workbook $objWorkBook -SheetName "East";
@@ -150,7 +156,7 @@
 		$ListValues = "Col1, Col2, Col3";		#Not sure what this should be.
 		#Create the scriptblock to run in a job
 			#$JobCode = [scriptblock]::create($function:ExcelXML);		#$strDocPath $WorkSheetName $ListValues;
-		# Run the code in a 32bit job, since the provider is 32bit only
+		#Run the code in a 32bit job, since the provider is 32bit only
 		$job = Start-Job $JobCode -RunAs32 -ArgumentList $strDocPath, $Query, $WorkSheetName, $ListValues
 		$job | Wait-Job | Receive-Job
 		Remove-Job $job
@@ -159,7 +165,7 @@
 		#GetSheets
 		#Create the scriptblock to run in a job
 			#$JobCode = [scriptblock]::create($function:ExcelXML);		#$strDocPath $Query;
-		# Run the code in a 32bit job, since the provider is 32bit only
+		#Run the code in a 32bit job, since the provider is 32bit only
 		$job = Start-Job $JobCode -RunAs32 -ArgumentList $strDocPath
 		$job | Wait-Job | Receive-Job
 		Remove-Job $job
@@ -168,7 +174,7 @@
 		#GetSheetData
 		#Create the scriptblock to run in a job
 			#$JobCode = [scriptblock]::create($function:ExcelXML);		# $strDocPath $Query;
-		# Run the code in a 32bit job, since the provider is 32bit only
+		#Run the code in a 32bit job, since the provider is 32bit only
 		$job = Start-Job $JobCode -RunAs32 -ArgumentList $strDocPath, $Query
 		$job | Wait-Job | Receive-Job
 		Remove-Job $job
@@ -180,6 +186,7 @@
 		$Query = "";
 		$ListValues = "";
 
+		#If I can figure out the 64 Bit PS with 32 Bit Office DLL's issue, this will work.
 
 		#Create
 		$strDocPath = "C:\Projects\PS-Scripts\Testing\Test.xls";
@@ -336,8 +343,13 @@
 			$application = New-Object -comobject Excel.Application;
 		}
 		else{
-			#Excel is running already, so use the visibility of the current session.
-			$ExcelVisible = $application.Visible;
+			if (($application.Visible -eq $True) -or ($ExcelVisible -eq $True)){
+				$ExcelVisible = $True;
+			}
+			else{
+				#Excel is running already, so use the visibility of the current session.
+				$ExcelVisible = $application.Visible;
+			}
 		}
 
 		$application.Visible = $ExcelVisible;
@@ -383,6 +395,7 @@
 		else{
 			#Return a WorkSheet object.
 			$worksheet = $Workbook.Worksheets | where {$_.name -eq $SheetName};
+			#$worksheet = $Workbook.Sheets.Item($SheetName);
 
 			if (-not $worksheet){
 				$worksheet = $Workbook.Worksheets.Add();
@@ -487,22 +500,49 @@
 			}
 		}
 
+		#Check what Providers are available.
+		#http://stackoverflow.com/questions/6649363/microsoft-ace-oledb-12-0-provider-is-not-registered-on-the-local-machine
+		$objOLEProviders = (New-Object system.data.oledb.oledbenumerator).GetElements() | select SOURCES_NAME, SOURCES_DESCRIPTION;
+		$objOLEProviders = ($objOLEProviders | Where-Object { $_.SOURCES_NAME -like "Microsoft.*" } | Sort-Object SOURCES_NAME);
+		#$Provider = ((New-Object System.Data.OleDb.OleDbEnumerator).GetElements() | Where-Object { $_.SOURCES_NAME -like "Microsoft.ACE.OLEDB*" } | Sort-Object SOURCES_NAME -Descending | Select-Object -First 1 SOURCES_NAME).SOURCES_NAME;
+		#$Provider = ($objOLEProviders | Where-Object { $_.SOURCES_NAME -like "Microsoft.ACE.OLEDB*" } | Sort-Object SOURCES_NAME -Descending | Select-Object -First 1 SOURCES_NAME).SOURCES_NAME;
+			#Should be able to use "Invoke-Command" to run a ScriptBlock using the "Microsoft.PowerShell32" Configuration.
+				#But does not work.
+			#http://www.ravichaganti.com/blog/powershell-2-0-remoting-guide-part-9-%E2%80%93-session-configurations-and-creating-custom-configurations/
+			#Get-PSSessionConfiguration
+			#Register-PSSessionConfiguration Microsoft.PowerShell32 -processorarchitecture x86 -force
+			#[ScriptBlock]$ScriptBlock = {((New-Object System.Data.OleDb.OleDbEnumerator).GetElements() | Where-Object { $_.SOURCES_NAME -like "Microsoft.ACE.OLEDB*" } | Sort-Object SOURCES_NAME -Descending | Select-Object -First 1 SOURCES_NAME).SOURCES_NAME;};
+			#Invoke-Command -ScriptBlock $ScriptBlock -ConfigurationName Microsoft.PowerShell32;
 
-		# Check if the file is XLS or XLSX 
+		#Following errors (in 64 bit PS).
+		#[Reflection.Assembly]::LoadFrom("C:\Program Files (x86)\Common Files\Microsoft Shared\OFFICE14\ACEOLEDB.DLL")
+		#http://stackoverflow.com/questions/31545746/unable-to-load-net-assembly-in-powershell
+			#... You can't load a 32 bit dll in a 64 bit process or vice versa unless the dll was compiled for Any Cpu....
+			#... bad image format exceptions usually happen when you try to load a non-.net assembly, or if you try to load a differing .net assembly....
+
+		#Check if the file is XLS or XLSX
+		#http://danielcai.blogspot.com/2011/02/solution-run-jet-database-engine-on-64.html
 		#if ((Get-Item -Path $DocPath).Extension -eq '.xls'){
-		if ($strDocPath.EndsWith("xls")){
-			$Provider = 'Microsoft.Jet.OLEDB.4.0'
-			$ExtendedProperties = 'Excel 8.0;HDR=YES;IMEX=1'
-		} else {
-			$Provider = 'Microsoft.ACE.OLEDB.12.0'
-			$ExtendedProperties = 'Excel 12.0;HDR=YES'
+		if (($strDocPath.EndsWith(".xls")) -and ($env:Processor_Architecture -eq "x86")){
+			#32Bit only
+			$Provider = "Microsoft.Jet.OLEDB.4.0";
+			$ExtendedProperties = "Excel 8.0;HDR=YES;IMEX=1";
+		}
+		else{
+			#32Bit or 64bit, depending on version of office installed.
+			#http://blog.sqlauthority.com/2015/06/24/sql-server-fix-export-error-microsoft-ace-oledb-12-0-provider-is-not-registered-on-the-local-machine/
+				#32Bit office -> "C:\Program Files (x86)\Common Files\Microsoft Shared\OFFICE14\ACEOLEDB.DLL"
+				#64Bit office -> "C:\Program Files\Common Files\Microsoft Shared\OFFICE14\ACEOLEDB.DLL"
+			$Provider = "Microsoft.ACE.OLEDB.12.0";
+			$ExtendedProperties = "Excel 12.0;HDR=YES";
 		}
 
 		# Build the connection string and connection object
-		$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $DocPath, $ExtendedProperties
+		#$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $DocPath, $ExtendedProperties
+		$ConnectionString = "Provider=" + $Provider + ";Data Source=" + $DocPath + ";Extended Properties=" + $ExtendedProperties;
 		$Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
 
-		try {
+		try{
 			# Open the connection to the file, and fill the datatable
 			$Connection.Open()
 
@@ -524,11 +564,12 @@
 			if ($strAction -eq "GetSheets"){
 				$DataTable = $Connection.GetSchema("Tables")
 			}
-		} catch {
+		}
+		catch{
 			# something went wrong :-(
 			Write-Error $_.Exception.Message
 		}
-		finally {
+		finally{
 			# Close the connection
 			if ($Connection.State -eq 'Open') {
 				$Connection.Close()
