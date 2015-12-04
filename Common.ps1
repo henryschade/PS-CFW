@@ -1,15 +1,18 @@
 ###########################################
-# Updated Date:	25 November 2015
+# Updated Date:	4 December 2015
 # Purpose:		Common routines to all/most projects.
 # Requirements: Documents.ps1 for the CreateZipFile() routine.
 ##########################################
 
-	##How to include/use this file in other projects:
-	##Include following Scripts/Files.
+	#How to include/use this file in other projects:
 	#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 	#. ($ScriptDir + "\Common.ps1")
 
+	$global:LoadedFiles = @{};
+
 	function AsAdmin{
+		#Checks if the loged in user of the PowerShell session has admin privileges.
+
 		$bolAsAdmin = $False;
 
 		#Next little block is based off the info found in the following URL:
@@ -32,6 +35,10 @@
 		}
 
 		return $bolAsAdmin;
+	}
+
+	function CheckVer{
+		#Checks $global:LoadedFiles.
 	}
 
 	function CleanDir{
@@ -132,6 +139,7 @@
 	}
 
 	function ConvertUTCToLocal{
+		#Convert passed in time, UTC time, to local time.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "UTC / GMT time to convert to Local time.")][String]$strTime
 		)
@@ -139,7 +147,6 @@
 		return [System.TimeZone]::CurrentTimeZone.ToLocalTime($strTime);
 	}
 
-	#Should use ZipCreateFile() from Documents.ps1.
 	function CreateZipFile{
 		#Should use ZipCreateFile() in Documents.ps1.
 		Param(
@@ -174,7 +181,6 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bISE2 = $False
 		)
 		#$bISE2 = $True or $False.  Create the "*\powershell_ise.exe.config" files along with the "*\powershell.exe.config" files.
-
 		#Returns $True if created config files, or .NET 4.x already enabled.
 		#Returns $False if Config Files were NOT created.
 
@@ -279,6 +285,8 @@
 	}
 
 	function GetPathing{
+		#Querys a DB for Pathing info, so that can update pathing info w/out having to release new code versions.
+		#Has default values incase DB is unreachable.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$sName = "all"
 		)
@@ -475,6 +483,7 @@
 	}
 
 	function GetUTC{
+		#Converts passed in time, local time, to UTC.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Local time to convert to UTC / GMT time.")][String]$strTime
 		)
@@ -483,11 +492,11 @@
 	}
 
 	function isADInstalled{
+		#Check if have AD Installed and Enabled.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bEnable = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bDisable = $False
 		)
-		#Check if have AD Installed and Enabled.
 		#$bEnable = $True, $False.  Turn on the AD Features (that are part of the NMCI SRM default set) ONLY if RSAT is installed.
 		#$bDisable = $True, $False.  Turn off the AD Features (that are NOT part of the NMCI SRM default set) ONLY if RSAT is installed.
 
@@ -588,6 +597,7 @@
 	}
 
 	function isNumeric($intX){
+		#Check if passed in value is a number.
 		#IsNumeric() equivelant is -> [Boolean]([String]($x -as [int]))
 
 		#http://rosettacode.org/wiki/Determine_if_a_string_is_numeric
@@ -599,17 +609,62 @@
 		}
 	}
 
+	function LoadRequired{
+		#Loads/includes ("dot" sources) all the files specified in $RequiredFiles.
+			#This routine checks to see if the file to include exists in "..\PS-CFW\", if not assumes the files are in $ScriptDir.
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][Array]$RequiredFiles, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$ScriptDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogFile
+		)
+		#Updates $global:LoadedFiles.
+		#$RequiredFiles = An array of the files to "dot" source / include.
+		#$ScriptDir = The (Split-Path $MyInvocation.MyCommand.Path) of the running project.
+		#$LogDir = The log Directory, that contains $LogFile, that any errors will be reported to.
+		#$LogFile = The Log file that any errors will be reported to.
+		#The following have some good ideas:
+		#http://poshcode.org/668
+		#http://www.gsx.com/blog/bid/81096/Enhance-your-PowerShell-experience-by-automatically-loading-scripts
+		#Creates/Updates $
+
+		foreach ($strInclude in $RequiredFiles){
+			$Error.Clear();
+
+			if (Test-Path -Path ($ScriptDir + "\..\PS-CFW\" + $strInclude)){
+				. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
+			}
+			else{
+				. ($ScriptDir + "\" + $strInclude)
+			}
+
+			if ($Error){
+				$strMessage = "------- Error 'loading' '$strInclude.ps1'." + "`r`n" + $Error;
+				Write-Host $strMessage;
+				if ((($LogDir -ne "") -and ($LogDir -ne $null)) -and (($LogFile -ne "") -and ($LogFile -ne $null))){
+					WriteLogFile $strMessage $LogDir $LogFile;
+				}
+				$Error.Clear();
+			}
+			else{
+				#$global:LoadedFiles
+			}
+		}
+	}
+
 	function WriteLogFile{
+		#Uses Out-File to append $Message to the $LogFile, in the path $LogDir.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Message, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$LogDir, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$LogFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Header = ""
 		)
-		#Uses Out-File to append $Message to the $LogFile, in the path $LogDir.
-		#$LogFile get updated to a format of "yyyymmdd_"$LogFile.  (i.e. 20150513_AscII.log)
-		#$Message gets PrePended with a "Header":
-		#Default Header is (but a different/custom one can be provided INSTEAD) ("False" for no header at all. [NOT boolean]):
+		#$Message = The message to add to $LogFile.  gets PrePended with a "Header":
+		#$LogDir = The location of $LogFile.
+		#$LogFile = The file to add $Message to.  get updated to a format of "yyyymmdd_"$LogFile.  (i.e. 20150513_AscII.log)
+		#$Header = A custom header to prepend $Message with, rather than the default.  ("False" for no header at all. [NOT boolean])
+		#Default Header is:
 			#Date Time - Domain\User - MachineName (MAC) - IP - Ticket# -- $Message
 			#i.e.:
 			#5/13/2015 9:23:15 - NMCI-ISF\henry.schade - ADIDBO226572 (00:24:81:21:CA:CC) - 10.12.21.80 - 8989765 -- $Message
