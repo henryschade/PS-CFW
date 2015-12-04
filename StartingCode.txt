@@ -1,12 +1,12 @@
 #Requires -Version 2.0
 ###########################################
-# Updated Date:	19 November 2015
+# Updated Date:	4 December 2015
 # Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
 
 	$strProjName = "Project";
-	$strVer = "beta 0.1";
+	$strVer = "0.1beta";
 	$strLogLoc = "Logs_ITSS";
 	$strLocalLoc = "Local";
 	$arrIncludes = @("AD-Routines.ps1", "Common.ps1", "DB-Routines.ps1", "Display.ps1", "Exchange.ps1", "FileOperations.ps1", "Forms.ps1", "Jobs.ps1");
@@ -16,6 +16,7 @@
 	$strLogFile = $strProjName + ".log";
 	$strLogDirS = "";
 	$strLogDirL = "C:\ITSS-Tools\Logs\" + $strProjName + "\";
+	$strLogDir = "";
 	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 
 	$strMessage = "Starting " + $strProjName + ", ver " + $strVer + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
@@ -34,7 +35,6 @@
 	if ($strPathing.Results -gt 0){
 		$strLogDirL = $strPathing.Returns.Rows[0].Path + "Logs\" + $strProjName + "\";
 	}
-
 	#Make sure the log directories exist.
 	if (!(Test-Path -Path $strLogDirL)){
 		#Need to create the directory
@@ -48,19 +48,26 @@
 			$strResults = mkdir $strLogDirS;
 		}
 	}
-	#Set local logging if no network path
+
+	#Set logging path
 	if ((!(Test-Path -Path $strLogDirS)) -or ($strLogDirS -eq "")){
-		$strLogDirS = $strLogDirL;
+		$strLogDir = $strLogDirL;
+	}
+	else{
+		$strLogDir = $strLogDirS;
 	}
 
-	WriteLogFile $strMessage $strLogDirS $strLogFile;
+	WriteLogFile $strMessage $strLogDir $strLogFile;
+
+	$objRet = CheckVer $strProjName $strVer $strLogDir $strLogFile;
 
 	#Include $arrIncludes Scripts/Files/modules.
-	foreach ($strInclude in $arrIncludes){
-		$Error.Clear();
-		. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
-		if ($Error){WriteLogFile "------- Error 'loading' '$strInclude.ps1'.`r`n$Error" $strLogDirS $strLogFile; $Error.Clear();}
-	}
+	#foreach ($strInclude in $arrIncludes){
+	#	$Error.Clear();
+	#	. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
+	#	if ($Error){WriteLogFile "------- Error 'loading' '$strInclude.ps1'.`r`n$Error" $strLogDir $strLogFile; $Error.Clear();}
+	#}
+	LoadRequired $arrIncludes $ScriptDir $strLogDir $strLogFile;
 
 	#Ensure .NET 4.x support is "turned on".
 	if ($PSVersionTable.CLRVersion.Major -lt 4){
@@ -69,7 +76,7 @@
 			$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
 
 			$strMessage = "The PowerShell config files for .NET 4.x support should have been created, so restarting.";
-			WriteLogFile $strMessage $strLogDirS $strLogFile;
+			WriteLogFile $strMessage $strLogDir $strLogFile;
 
 			Write-Host $strMessage -foregroundcolor Green -background blue;
 			Write-Host "Press any key to continue ..." -foregroundcolor red;
@@ -101,7 +108,7 @@
 	#If running as admin is irrelevant then comment out the next 26 lines.
 	$strMessage = "Checking if running as Admin.";
 	Write-Host $strMessage;
-	WriteLogFile $strMessage $strLogDirS $strLogFile;
+	WriteLogFile $strMessage $strLogDir $strLogFile;
 	$bolAsAdmin = AsAdmin;
 	$strResponse = "yes";
 	if ($bolAsAdmin -ne $True){
@@ -111,7 +118,7 @@
 			$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
 
 			$strMessage = "Restarting as Admin.";
-			WriteLogFile $strMessage $strLogDirL $strLogFile;
+			WriteLogFile $strMessage $strLogDir $strLogFile;
 
 			#method 1.  Uses Windows UAC to get creds.
 			Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-ExecutionPolicy ByPass -Command $strCommand";
@@ -129,31 +136,31 @@
 	#Change the next lines $True/$False depending on the desired action for running as Admin.
 	if ($bolAsAdmin -eq $True){
 		$strMessage = "You should not run this as Admin.";
-		WriteLogFile $strMessage $strLogDirS $strLogFile;
+		WriteLogFile $strMessage $strLogDir $strLogFile;
 	}
 	else{
 		if ((Test-Path -Path ($ScriptDir + "\" + $strGUIFile))){
 			#GUI File Exists
 			$strMessage = "Starting Load of GUI.";
 			Write-Host $strMessage;
-			WriteLogFile $strMessage $strLogDirS $strLogFile;
+			WriteLogFile $strMessage $strLogDir $strLogFile;
 
 			#Hide the PowerShell Console.
 			[ConsoleHelper]::HideConsole();
 			$objTimer = $null;
 
 			$objRet = GetXAMLGUI ($ScriptDir + "\" + $strGUIFile) ($ScriptDir + "\" + $strCodeFile);
-			WriteLogFile ($objRet.Name) $strLogDirS $strLogFile;
+			WriteLogFile ($objRet.Name) $strLogDir $strLogFile;
 			if (($objRet.Message -Match "Failed to add") -or ($objRet.Message -Match "Error adding") -or ($objRet.Message -Match "Error")){
 				#MsgBox $objRet.Message;
 				$strMessage = "Problems reading xaml GUI --> " + ($objRet.Message);
-				WriteLogFile $strMessage $strLogDirS $strLogFile;
+				WriteLogFile $strMessage $strLogDir $strLogFile;
 			}
 
 			if ($objRet.Results -eq $True){
 				$strMessage = "Loading XAML GUI.";
 				Write-Host $strMessage;
-				WriteLogFile $strMessage $strLogDirS $strLogFile;
+				WriteLogFile $strMessage $strLogDir $strLogFile;
 
 				Write-Host $objRet.Message;
 				$strResult = $objRet.Returns.ShowDialog();
@@ -161,13 +168,13 @@
 			else{
 				$strMessage = "Failed to load GUI." + "`r`n" + "'" + $ScriptDir + "\" + $strGUIFile + "'" + "`r`n`r`n" + $objRet.Message;
 				Write-Host $strMessage;
-				WriteLogFile $strMessage $strLogDirS $strLogFile;
+				WriteLogFile $strMessage $strLogDir $strLogFile;
 			}
 
 		}
 		else{
 			$strMessage = "GUI Interface file not found." + "`r`n" + "(" + $ScriptDir + "\" + $strGUIFile + ")";
-			WriteLogFile $strMessage $strLogDirS $strLogFile;
+			WriteLogFile $strMessage $strLogDir $strLogFile;
 			MsgBox $strMessage;
 		}
 	}

@@ -8,7 +8,10 @@
 	#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 	#. ($ScriptDir + "\Common.ps1")
 
-	$global:LoadedFiles = @{};
+	#For use with CheckVer() and LoadRequired().
+	if ($global:LoadedFiles -eq $null){
+		$global:LoadedFiles = @{};
+	}
 
 	function AsAdmin{
 		#Checks if the loged in user of the PowerShell session has admin privileges.
@@ -38,7 +41,116 @@
 	}
 
 	function CheckVer{
-		#Checks $global:LoadedFiles.
+		#Checks the running version of $Project against the posted Production version.
+		#Also automatically checks that the files in $global:LoadedFiles are up to date.
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Project, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$RunningVer, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogFile
+		)
+		#Updates $global:LoadedFiles.
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters passed in.
+			#$objReturn.Results		= $True or $False.  Running Production version.
+			#$objReturn.Message		= "Success", "Disable", or the error message.
+			#$objReturn.Returns		= The Production version number.
+		#$Project = The Project name to check.  (i.e. "WILE", "ASCII", etc)
+		#$RunningVer = The version currently being run.
+		#$LogDir = The log Directory, that contains $LogFile, that any errors will be reported to.
+		#$LogFile = The Log file that any errors will be reported to.
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $False
+			Message = "Error"
+			Returns = "0.0";
+		}
+
+		#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
+		if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
+			if ((Test-Path (".\DB-Routines.ps1"))){
+				. (".\DB-Routines.ps1");
+			}
+			else{
+				if ((Test-Path (".\..\PS-CFW\DB-Routines.ps1"))){
+					. (".\..\PS-CFW\DB-Routines.ps1");
+				}
+			}
+		}
+
+		#Query DB.
+		#$arrDBInfo = GetDBInfo "AgentActivity";
+		#$strSQL = "GetSP_spGetNetPath '" + $Project + "';";
+		$arrDBInfo = GetDBInfo "SRMDB";
+		$strSQL = "";
+		$strSQL = $strSQL + "SELECT * FROM AppChanges ";
+		$strSQL = $strSQL + "JOIN AppInfo on AppChanges.AppInitials = AppInfo.AppInitials ";
+		$strSQL = $strSQL + "JOIN AppReference on AppReference.AppInitials = AppInfo.AppInitials ";
+		$strSQL = $strSQL + "WHERE (AppName = '" + $Project + "')";
+		$objTable = $null;
+		$Error.Clear();
+		#$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
+		$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True $arrDBInfo[3] $arrDBInfo[4];
+
+		if (!(($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -eq 0))){
+			$objReturn.Message = "Success";
+			$objReturn.Returns = $objTable.Rows[0].UpdatedDate;
+
+			if (($objTable.Rows[0].DisableOld -eq "yes") -or ($objTable.Rows[0].DisableOld -eq $True)){
+				$objReturn.Message = "Disable";
+			}
+
+			if ($objTable.Rows[0].UpdatedDate -eq $RunningVer){
+				$objReturn.Results = $True;
+			}
+		}
+		else{
+			if ($Error){
+				$strMessage = "Error getting version info.`r`n" + $Error;
+				$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n`r`n";
+				$strMessage = $strMessage + $strSQL + "`r`n";
+			}
+			else{
+				if (($objTable -eq $null) -or ($objTable.Rows.Count -eq 0)){
+					$strMessage = "No Results getting version info.";
+				}else{
+					$strMessage = $objTable.Rows[0].Message + " getting version info.`r`n" + $objTable.Rows[0].Results;
+				}
+			}
+			$objReturn.Message = "Error " + $strMessage;
+		}
+
+		#Check if the Required files have been updated since initial load.
+		foreach ($strFile in $global:LoadedFiles.Keys){
+			#$strFile
+			#$global:LoadedFiles.$strFile
+			$objFile = Get-Item -LiteralPath ($global:LoadedFiles.$strFile.Path + $strFile);
+			$Date = $objFile.LastWriteTime;
+			#if ((((Get-Date $objFile.LastWriteTime).ToUniversalTime()).ToString()) -gt $global:LoadedFiles.$strFile.Date){
+			if ((((Get-Date $Date).ToUniversalTime()).ToString()) -gt $global:LoadedFiles.$strFile.Date){
+				#The included file has been updated sincel last loaded.
+				##Reload the file
+				#. ($global:LoadedFiles.$strFile.Path + $strFile);
+
+				##Update the $global:LoadedFiles entry
+				#$strVer = (((Get-Date $Date).ToString("yyyyMMdd.hhmmss")));
+				#$Date = (((Get-Date $Date).ToUniversalTime()).ToString());
+				#$global:LoadedFiles.($objFile.Name) = (@{"Ver" = $strVer; "Date" = $Date; "Path" = ($objFile.FullName).Replace(($objFile.Name), "")});
+			}
+		}
+
+		return $objReturn;
 	}
 
 	function CleanDir{
@@ -136,15 +248,6 @@
 				}
 			}
 		}
-	}
-
-	function ConvertUTCToLocal{
-		#Convert passed in time, UTC time, to local time.
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "UTC / GMT time to convert to Local time.")][String]$strTime
-		)
-
-		return [System.TimeZone]::CurrentTimeZone.ToLocalTime($strTime);
 	}
 
 	function CreateZipFile{
@@ -482,15 +585,6 @@
 
 	}
 
-	function GetUTC{
-		#Converts passed in time, local time, to UTC.
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Local time to convert to UTC / GMT time.")][String]$strTime
-		)
-
-		return ((Get-Date $strTime).ToUniversalTime()).ToString();
-	}
-
 	function isADInstalled{
 		#Check if have AD Installed and Enabled.
 		Param(
@@ -618,6 +712,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogDir, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogFile
 		)
+		#Returns $True or $False.  $True if no errors, else $False.
 		#Updates $global:LoadedFiles.
 		#$RequiredFiles = An array of the files to "dot" source / include.
 		#$ScriptDir = The (Split-Path $MyInvocation.MyCommand.Path) of the running project.
@@ -626,30 +721,77 @@
 		#The following have some good ideas:
 		#http://poshcode.org/668
 		#http://www.gsx.com/blog/bid/81096/Enhance-your-PowerShell-experience-by-automatically-loading-scripts
-		#Creates/Updates $
+
+		$bLoaded = $True;
+
+		#Make sure $ScriptDir does NOT have a trailing slash.
+		if ($ScriptDir.EndsWith("\")){
+			$ScriptDir = $ScriptDir.SubString(0, $ScriptDir.Length - 1);
+		}
 
 		foreach ($strInclude in $RequiredFiles){
 			$Error.Clear();
 
 			if (Test-Path -Path ($ScriptDir + "\..\PS-CFW\" + $strInclude)){
-				. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
+				if (($ScriptDir.EndsWith("\PS-CFW")) -and ((Test-Path -Path ($ScriptDir + "\" + $strInclude)))){
+					. ($ScriptDir + "\" + $strInclude);
+					$strFile = ($ScriptDir + "\" + $strInclude);
+				}
+				else{
+					. ($ScriptDir + "\..\PS-CFW\" + $strInclude);
+					$strFile = ($ScriptDir + "\..\PS-CFW\" + $strInclude);
+				}
 			}
 			else{
-				. ($ScriptDir + "\" + $strInclude)
+				. ($ScriptDir + "\" + $strInclude);
+				$strFile = ($ScriptDir + "\" + $strInclude);
 			}
 
 			if ($Error){
 				$strMessage = "------- Error 'loading' '$strInclude.ps1'." + "`r`n" + $Error;
 				Write-Host $strMessage;
+				$bLoaded = $True;
+
 				if ((($LogDir -ne "") -and ($LogDir -ne $null)) -and (($LogFile -ne "") -and ($LogFile -ne $null))){
 					WriteLogFile $strMessage $LogDir $LogFile;
 				}
 				$Error.Clear();
 			}
 			else{
-				#$global:LoadedFiles
+				#Update $global:LoadedFiles
+
+				$objFile = Get-Item -LiteralPath $strFile;
+				$Date = $objFile.LastWriteTime;
+				$strVer = (((Get-Date $Date).ToString("yyyyMMdd.hhmmss")));
+				$Date = (((Get-Date $Date).ToUniversalTime()).ToString());
+
+				#as a hash
+				#$global:LoadedFiles."Common.ps1".Date
+				$global:LoadedFiles.($objFile.Name) = (@{"Ver" = $strVer; "Date" = $Date; "Path" = ($objFile.FullName).Replace(($objFile.Name), "")});
+				#Cound use the following, but then if have the entry already things error, the above just updates it if already exist.
+					#$global:LoadedFiles.Add(($objFile.Name), (@{"Ver" = $strVer; "Date" = $Date}));
 			}
 		}
+
+		return $bLoaded;
+	}
+
+	function LocalToUTC{
+		#Converts passed in time, local time, to UTC.
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Local time to convert to UTC / GMT time.")][String]$strTime
+		)
+
+		return ((Get-Date $strTime).ToUniversalTime()).ToString();
+	}
+
+	function UTCToLocal{
+		#Convert passed in time, UTC time, to local time.
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "UTC / GMT time to convert to Local time.")][String]$strTime
+		)
+
+		return [System.TimeZone]::CurrentTimeZone.ToLocalTime($strTime);
 	}
 
 	function WriteLogFile{
