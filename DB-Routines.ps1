@@ -348,7 +348,8 @@
 
 		if ($IntSec -eq $False){
 			$strConStr = "Server=$strServer; Database=$strDataBase; uid=$strUser; pwd=$strPass; Integrated Security=False;";
-		}else{
+		}
+		else{
 			$strConStr = "Server=$strServer; Database=$strDataBase; Integrated Security=True;";
 		}
 
@@ -367,7 +368,8 @@
 			$row.Message = "Error";
 			$row.Results = $Error[0];
 			$objTable.Rows.Add($row);
-		}else{
+		}
+		else{
 			$objCommand = New-Object System.Data.SqlClient.SqlCommand;
 			$objCommand = $objCon.CreateCommand();
 			$objCommand.CommandTimeout = $TimeOut;		#Seconds
@@ -386,7 +388,8 @@
 				$row.Message = "Error";
 				$row.Results = $Error[0];
 				$objTable.Rows.Add($row);
-			}else{
+			}
+			else{
 				if (($strSQL.StartsWith("SELECT")) -or ($bolSP -eq $True)){
 					#$objTable = New-Object System.Data.DataTable;
 					$objTable.Load($objResult);
@@ -403,7 +406,8 @@
 						$row.Results = $Error[0];
 						$objTable.Rows.Add($row);
 					}
-				}else{
+				}
+				else{
 					#$objTable = New-Object System.Data.DataTable;
 					$col1 = New-Object System.Data.DataColumn Message,([String]);
 					$col2 = New-Object System.Data.DataColumn Results,([String]);
@@ -421,7 +425,8 @@
 
 		if ($ForceTableRet -eq $True){
 			return ,$objTable;
-		}else{
+		}
+		else{
 			#Return a datatable in an array. (PS default, yuck.)
 			return $objTable;
 		}

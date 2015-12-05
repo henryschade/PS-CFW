@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	3 December 2015
+# Updated Date:	5 December 2015
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
@@ -312,7 +312,7 @@
 		}
 	}
 
-	function ExcelGetSheetsXML{
+	function ExcelGetWorksheetXML{
 		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
 		Param(
 			[Parameter(Mandatory=$true)][String] $Path
@@ -320,131 +320,6 @@
 		$JobCode = {
 			Param($Path, $Query)
 		}
-	}
-
-
-	function ExcelCreateOpenFile{
-		param(
-			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel file path.")][string] $ExcelFilePath, 
-			[ValidateNotNull()][Parameter(Mandatory = $False, HelpMessage = "Create a new Excel file if not exist.")][bool] $CreateNew = $True, 
-			[ValidateNotNull()][Parameter(Mandatory = $False, HelpMessage = "Excel Window visibility.")][bool] $ExcelVisible = $True, 
-			[ValidateNotNull()][Parameter(Mandatory = $False, HelpMessage = "Open WorkBook ReadOnly.")][bool] $AsReadOnly = $False
-		)
-
-		$cultureUS = [System.Globalization.CultureInfo]'en-US';
-		[System.Threading.Thread]::CurrentThread.CurrentCulture = $cultureUS;
-
-		#temporary continue if error, because it stops even when we want to continue, then return to prior state.
-		$ErrorActionPreference = "Continue";
-		$application = try{[Runtime.InteropServices.Marshal]::GetActiveObject('Excel.Application')}catch{$null};
-		$ErrorActionPreference = "Stop";
-
-		if(-not $application){
-			$application = New-Object -comobject Excel.Application;
-		}
-		else{
-			if (($application.Visible -eq $True) -or ($ExcelVisible -eq $True)){
-				$ExcelVisible = $True;
-			}
-			else{
-				#Excel is running already, so use the visibility of the current session.
-				$ExcelVisible = $application.Visible;
-			}
-		}
-
-		$application.Visible = $ExcelVisible;
-
-		if (Test-Path $ExcelFilePath){
-			if ($AsReadOnly){
-				#Open the source file in ReadOnly mode.
-				$workbook = $application.Workbooks.Open($ExcelFilePath, $null, $True);
-			}else{
-				#Open the file normally.
-				$workbook = $application.Workbooks.Open($ExcelFilePath, 2, $False);
-			}
-		}
-		else{
-			if($CreateNew){
-				$workbook = $application.Workbooks.Add();
-				$workbook.SaveAs($ExcelFilePath);																		#appears to default to Excel 2007/2010 format
-				#$workbook.SaveAs($ExcelFilePath, [Microsoft.Office.Interop.Excel.XlFileFormat]::xlExcel12);			#Excel 2007/2010
-				#$workbook.SaveAs($ExcelFilePath, [Microsoft.Office.Interop.Excel.XlFileFormat]::xlExcel8);				#Excel 95/97/2003
-			}else{
-				$workbook = $null;
-			}
-		}
-
-		#we need to return also application, because of option to setup it later
-		return ($application, $workbook);
-	}
-
-	function ExcelGetWorksheet{
-		param(
-			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel workbook object.")][object] $Workbook, 
-			[ValidateNotNull()][Parameter(Mandatory = $False)][string] $SheetName
-		)
-
-		if (($SheetName -eq "") -or ($SheetName -eq $null)){
-			#Return an array of the available sheets
-			$worksheet = @();
-			foreach ($sheet in $Workbook.Worksheets){
-				#Write-Host $sheet.Name;
-				$worksheet += $sheet.Name;
-			}
-		}
-		else{
-			#Return a WorkSheet object.
-			$worksheet = $Workbook.Worksheets | where {$_.name -eq $SheetName};
-			#$worksheet = $Workbook.Sheets.Item($SheetName);
-
-			if (-not $worksheet){
-				$worksheet = $Workbook.Worksheets.Add();
-				$worksheet.name = $SheetName;
-			}
-		}
-
-		return $worksheet;
-	}
-
-	function ExcelWriteData{
-		param(
-			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel file path.")][string] $ExcelFilePath,
-			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Object with input data e. g. hashtable, array, ...")][object] $InputData 
-		)
-
-		#Add next sheet for 'Test Case Overview'
-		($application, $workbook) = ExcelCreateOpenFile -ExcelFilePath $ExcelFilePath;
-		$worksheetTC = ExcelGetWorksheet -Workbook $workbook -SheetName "Data";
-		$row = 1;
-		$col = 1;
-		$cells = $worksheetTC.Cells;
-
-		#if $InputData is simple array
-		foreach($data in $InputData){
-			#write values
-			$cells.item($row,$col) = $data.ToString();
-			$row++;
-
-			#define cell name and create hyperlink to other cell
-			$cellValue = $data.ToString();
-			$cellName = "o1_{0}" -f $cellValue;
-			($cells.Item($row,$col)).Name = $cellName;
-			$targetCellName = "o2_{0}" -f $cellValue;
-			$subAddress = "'{0}'!{1}" -f $sheetName2, $targetCellName;		#"'Test Overview'!A1"
-			$void = $worksheetTC.Hyperlinks.Add($cells.Item($row,$col) ,"" , $subAddress, "", $cellValue);
-		 
-		}
-
-		#read values
-		#if($cells.Item($row, $col).Value() -eq "Id"){
-		#	$row++;
-		#	$cells.item($row, $col) = "cat";
-		#}
-
-		#turn off Error message for replacing existing file when saving it
-		$application.DisplayAlerts = $False;
-		$workbook.SaveAs($ExcelFilePath);
-		#$application.Quit();
 	}
 
 	function ExcelXML{
@@ -578,6 +453,160 @@
 
 		# Return the results NOT as an array
 		return ,$DataTable
+	}
+
+
+	function ExcelCreateOpenFile{
+		param(
+			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel file path.")][string] $ExcelFilePath, 
+			[ValidateNotNull()][Parameter(Mandatory = $False, HelpMessage = "Create a new Excel file if not exist.")][bool] $CreateNew = $True, 
+			[ValidateNotNull()][Parameter(Mandatory = $False, HelpMessage = "Excel Window visibility.")][bool] $ExcelVisible = $True, 
+			[ValidateNotNull()][Parameter(Mandatory = $False, HelpMessage = "Open WorkBook ReadOnly.")][bool] $AsReadOnly = $False
+		)
+
+		$cultureUS = [System.Globalization.CultureInfo]'en-US';
+		[System.Threading.Thread]::CurrentThread.CurrentCulture = $cultureUS;
+
+		#temporary continue if error, because it stops even when we want to continue, then return to prior state.
+		$ErrorActionPreference = "Continue";
+		$application = try{[Runtime.InteropServices.Marshal]::GetActiveObject('Excel.Application')}catch{$null};
+		$ErrorActionPreference = "Stop";
+
+		if(-not $application){
+			$application = New-Object -comobject Excel.Application;
+		}
+		else{
+			if (($application.Visible -eq $True) -or ($ExcelVisible -eq $True)){
+				$ExcelVisible = $True;
+			}
+			else{
+				#Excel is running already, so use the visibility of the current session.
+				$ExcelVisible = $application.Visible;
+			}
+		}
+
+		$application.Visible = $ExcelVisible;
+
+		if (Test-Path $ExcelFilePath){
+			if ($AsReadOnly){
+				#Open the source file in ReadOnly mode.
+				$workbook = $application.Workbooks.Open($ExcelFilePath, $null, $True);
+			}else{
+				#Open the file normally.
+				$workbook = $application.Workbooks.Open($ExcelFilePath, 2, $False);
+			}
+		}
+		else{
+			if($CreateNew){
+				$workbook = $application.Workbooks.Add();
+				$workbook.SaveAs($ExcelFilePath);																		#appears to default to Excel 2007/2010 format
+				#$workbook.SaveAs($ExcelFilePath, [Microsoft.Office.Interop.Excel.XlFileFormat]::xlExcel12);			#Excel 2007/2010
+				#$workbook.SaveAs($ExcelFilePath, [Microsoft.Office.Interop.Excel.XlFileFormat]::xlExcel8);				#Excel 95/97/2003
+			}else{
+				$workbook = $null;
+			}
+		}
+
+		#we need to return also application, because of option to setup it later
+		return ($application, $workbook);
+	}
+
+	function ExcelGetData{
+		param(
+			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel workbook object.")][object] $Workbook, 
+			[ValidateNotNull()][Parameter(Mandatory = $False)][string] $SheetName
+		)
+		#Get data off a WorkSheet.
+
+		if (($SheetName -eq "") -or ($SheetName -eq $null)){
+			#No WorkSheet name provided, so get ALL WorkSheets.
+		}
+		else{
+			#Get the data off $SheetName.
+
+			#Create the DataTable we are going to return.
+			#$objData = New-Object System.Data.DataTable;
+			#$col1 = New-Object System.Data.DataColumn Message,([String]);
+			#$col2 = New-Object System.Data.DataColumn Results,([String]);
+			#$objData.columns.add($col1);
+			#$objData.columns.add($col2);
+			#$row = $objData.NewRow();
+			#$row.Message = "Error";
+			#$row.Results = $Error[0];
+			#$objData.Rows.Add($row);
+		}
+
+		return $objData;
+	}
+
+	function ExcelGetWorksheet{
+		param(
+			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel workbook object.")][object] $Workbook, 
+			[ValidateNotNull()][Parameter(Mandatory = $False)][string] $SheetName
+		)
+		#Returns a WorkSheet object, or an array of available WorkSheets.
+
+		if (($SheetName -eq "") -or ($SheetName -eq $null)){
+			#Return an array of the available sheets
+			$worksheet = @();
+			foreach ($sheet in $Workbook.Worksheets){
+				#Write-Host $sheet.Name;
+				$worksheet += $sheet.Name;
+			}
+		}
+		else{
+			#Return a WorkSheet object.
+			$worksheet = $Workbook.Worksheets | where {$_.name -eq $SheetName};
+			#$worksheet = $Workbook.Sheets.Item($SheetName);
+
+			if (-not $worksheet){
+				$worksheet = $Workbook.Worksheets.Add();
+				$worksheet.name = $SheetName;
+			}
+		}
+
+		return $worksheet;
+	}
+
+	function ExcelWriteData{
+		param(
+			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel file path.")][string] $ExcelFilePath,
+			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Object with input data e. g. hashtable, array, ...")][object] $InputData 
+		)
+
+		#Add next sheet for 'Test Case Overview'
+		($application, $workbook) = ExcelCreateOpenFile -ExcelFilePath $ExcelFilePath;
+		$worksheetTC = ExcelGetWorksheet -Workbook $workbook -SheetName "Data";
+		$row = 1;
+		$col = 1;
+		$cells = $worksheetTC.Cells;
+
+		#if $InputData is simple array
+		foreach($data in $InputData){
+			#write values
+			$cells.item($row,$col) = $data.ToString();
+			$row++;
+
+			#define cell name and create hyperlink to other cell
+			$cellValue = $data.ToString();
+			$cellName = "o1_{0}" -f $cellValue;
+			($cells.Item($row,$col)).Name = $cellName;
+			$targetCellName = "o2_{0}" -f $cellValue;
+			$subAddress = "'{0}'!{1}" -f $sheetName2, $targetCellName;		#"'Test Overview'!A1"
+			$void = $worksheetTC.Hyperlinks.Add($cells.Item($row,$col) ,"" , $subAddress, "", $cellValue);
+		 
+		}
+
+		#read values
+		#if($cells.Item($row, $col).Value() -eq "Id"){
+		#	$row++;
+		#	$cells.item($row, $col) = "cat";
+		#}
+
+		#turn off Error message for replacing existing file when saving it
+		$application.DisplayAlerts = $False;
+		$workbook.SaveAs($ExcelFilePath);
+		#$application.Quit();
 	}
 
 
