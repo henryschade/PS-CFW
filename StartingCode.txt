@@ -1,6 +1,6 @@
 #Requires -Version 2.0
 ###########################################
-# Updated Date:	4 December 2015
+# Updated Date:	5 December 2015
 # Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
@@ -22,7 +22,7 @@
 	$strMessage = "Starting " + $strProjName + ", ver " + $strVer + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
 	Write-Host $strMessage;
 
-	#WriteLogFile() is a function to Do Log File Writes.
+	#GetPathing(), WriteLogFile(), and LoadRequired() are functions in Common.ps1, that are all used before Loading the Required Modules/Scripts.
 	#It Must be defined before we can use it.
 	. ($ScriptDir + "\..\PS-CFW\" + "Common.ps1")
 
@@ -59,15 +59,10 @@
 
 	WriteLogFile $strMessage $strLogDir $strLogFile;
 
-	$objRet = CheckVer $strProjName $strVer $strLogDir $strLogFile;
-
-	#Include $arrIncludes Scripts/Files/modules.
-	#foreach ($strInclude in $arrIncludes){
-	#	$Error.Clear();
-	#	. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
-	#	if ($Error){WriteLogFile "------- Error 'loading' '$strInclude.ps1'.`r`n$Error" $strLogDir $strLogFile; $Error.Clear();}
-	#}
+	#Load/Include $arrIncludes Scripts/Files/modules.
 	LoadRequired $arrIncludes $ScriptDir $strLogDir $strLogFile;
+
+	$objRet = CheckVer $strProjName $strVer $strLogDir $strLogFile;
 
 	#Ensure .NET 4.x support is "turned on".
 	if ($PSVersionTable.CLRVersion.Major -lt 4){

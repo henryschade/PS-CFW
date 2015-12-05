@@ -750,7 +750,7 @@
 			if ($Error){
 				$strMessage = "------- Error 'loading' '$strInclude.ps1'." + "`r`n" + $Error;
 				Write-Host $strMessage;
-				$bLoaded = $True;
+				$bLoaded = $False;
 
 				if ((($LogDir -ne "") -and ($LogDir -ne $null)) -and (($LogFile -ne "") -and ($LogFile -ne $null))){
 					WriteLogFile $strMessage $LogDir $LogFile;
