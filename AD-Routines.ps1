@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	23 November 2015
+# Updated Date:	5 December 2015
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 ##########################################
@@ -1178,7 +1178,6 @@
 	}
 
 	function CreateADComputer{
-		#Note: If the SAMAccountName string provided, does not end with a '$', one will be appended (by powershell) if needed.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strCompName, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strOU, 
@@ -1186,6 +1185,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDC = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)]$objADInfo = $null
 		)
+		#Note: If the SAMAccountName string provided, does not end with a '$', one will be appended (by powershell) if needed.
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Did the AD Computer get created?
@@ -1226,7 +1226,8 @@
 		if (($strDomain -eq "") -or ($strDomain -eq $null)){
 			#No domain provided.
 			$objReturn.Message = "No domain provided.";
-		}else{
+		}
+		else{
 			if (($strOU.IndexOf("DC=") -lt 1) -and ($strOU.IndexOf("dc=") -lt 1)){
 				#OU provided does not have the domain ending.
 				if (!$strOU.EndsWith(",")){
@@ -1283,16 +1284,16 @@
 					#Create a variable w/ the command, and then run it.
 					$strPSCmd = "New-ADcomputer -SamAccountName '" + $strCompName + "' -Path '" + $strOU + "' -Server '" + $strDC + "'";
 					foreach ($strProp in $objADInfo.PSObject.Properties){
-						#Check if a propertie exists:
+						#Check if the property exists:
 						#if ($objADInfo.PSObject.Properties.Match('Test1').Count) {Write-Host "True"} else {Write-Host "False"};
-
 						if (($strProp.Name -ne "") -and ($strProp.Name -ne $null)){
 							if (($strProp.Name -eq "SamAccountName") -or ($strProp.Name -eq "Path") -or ($strProp.Name -eq "Server")){
 								#Skip these ones.
 									#SamAccountName
 									#Path
 									#Server
-							}else{
+							}
+							else{
 								if (($strProp.Value -eq $True) -or ($strProp.Value -eq "True") -or ($strProp.Value -eq $False) -or ($strProp.Value -eq "False")){
 									if (($strProp.Value -eq $True) -or ($strProp.Value -eq "True")){
 										$strPSCmd = $strPSCmd + " -" + $strProp.Name + " $" + $True;
@@ -1328,7 +1329,8 @@
 						}
 					}
 				}
-			}else{
+			}
+			else{
 				$objReturn.Message = "OU was not found on any available domains.";
 			}
 		}
@@ -1411,7 +1413,7 @@
 		if (($oADInfo.password -ne "") -and ($oADInfo.password -ne $null)){
 			$objUser.SetPassword($oADInfo.password);
 		}else{
-			$objUser.SetPassword("S0me.P@$$w0rd4Y0u");
+			$objUser.SetPassword('S0me.P@$$w0rd4Y0u');
 		}
 		$objUser.psbase.InvokeSet("AccountDisabled", $False);
 		$objUser.SetInfo();
@@ -2445,8 +2447,8 @@
 	}
 
 
-#All the code below here is the C Sharp User Class Chris did.
-if ($PSVersionTable.CLRVersion.Major -lt 4){
+#All the code below here is the C Sharp User Class Chris did (.NET 4+ required).
+if ($PSVersionTable.CLRVersion.Major -ge 4){
 	$cs = @"
 	using System;
 	using System.Collections.Generic;
