@@ -1,19 +1,22 @@
 ###########################################
-# Updated Date:	5 December 2015
+# Updated Date:	7 December 2015
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
 
 	function ExcelSampleReadCOM{
+		#Option 3, is the desired option at this time.
+
 		#. C:\Projects\PS-CFW\Documents.ps1
 		$strFilePath = "C:\Projects\PS-Scripts\Testing\CIVMAR Bulk MAC.xls";
 		$WorkSheetName = "Create User Account";
 		$bCreateIfNotExist = $False;
 		$bVisible = $False;
+		$bReadOnly = $False;
 		#Google search "powershell Excel.Application iterate columns"
 
 		#Opening the file.
-		($objExcel, $objWorkBook) = ExcelCreateOpenFile -ExcelFilePath $strFilePath $bCreateIfNotExist $bVisible;
+		($objExcel, $objWorkBook) = ExcelCreateOpenFile $strFilePath $bCreateIfNotExist $bVisible $bReadOnly;
 
 		#Check if got the workbook
 		if ($objWorkBook){
@@ -26,8 +29,9 @@
 			#or one of the following:
 			#$objSheets = ExcelGetWorksheet $objWorkBook "SheetName";
 			#$objWorkSheet = ExcelGetWorksheet -Workbook $objWorkBook -SheetName "East";
-			$objWorkSheet = ExcelGetWorksheet -Workbook $objWorkBook -SheetName $WorkSheetName;
+			$objWorkSheet = ExcelGetWorksheet $objWorkBook $WorkSheetName;
 
+			#---=== Option 1 ===---
 			#Get an object of the Cells
 			#$objCells = $objWorkSheet.Cells;
 
@@ -38,12 +42,20 @@
 			#Write-Host $objCells.Item(2, 1).Value();					#A2
 			#Write-Host $objCells.Item(2, 2).Value();					#B2
 
-			#or don't bother with the Cells object and just to the following
-			#Write-Host $objWorkSheet.Range("A2").Text;					#A2
-
 			##Clean up / Release Cells object
 			#[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objCells) | Out-Null;
 			#$objCells = $null;
+			#---=== Option 1 ===---
+
+			#---=== Option 2 ===---
+			#or don't bother with the Cells object and just do the following
+			#Write-Host $objWorkSheet.Range("A2").Text;					#A2
+			#---=== Option 2 ===---
+
+			#---=== Option 3 ===---
+			#Use ExcelGetData().  Returns a DataTable object.
+			#$objData = ExcelGetData $objWorkBook $objWorkSheet;
+			#---=== Option 3 ===---
 
 			#Clean up / Release WorkSheet object
 			[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objWorkSheet) | Out-Null;
@@ -53,6 +65,8 @@
 			#Turn off Error messages.
 			#$objExcel.DisplayAlerts = $False;
 			$objWorkBook.Close();
+				#Or could close Workbook with false (Don´t save changes)
+				#$objWorkBook.Close($False);
 			#Turn Error messages back on.
 			#$objExcel.DisplayAlerts = $True;
 			#Clean up / Release WorkBook object
@@ -62,7 +76,7 @@
 		#Quit/Close Excel.
 		$objExcel.Quit();
 			#Excel still shows in TaskManager...
-			#When close Powershell Excel will close too (this is a .NET using COM objects issue).
+			#When close Powershell then Excel will close too (this is a .NET issue using COM objects).
 		#Clean up / Release Excel object
 		[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objExcel) | Out-Null;
 		$objExcel = $null;
@@ -142,6 +156,8 @@
 	}
 
 	function ExcelSampleUsageXML1{
+		#Updated the Code from Trev, that treats an Excel doc like an xml doc to pull data.
+
 		$strDocPath = "C:\Projects\PS-Scripts\Testing\CIVMAR Bulk MAC.xls";
 		$WorkSheetName = "Create User Account";
 		$Query = "";
@@ -162,7 +178,7 @@
 		Remove-Job $job
 
 
-		#GetSheets
+		#GetSheets  (Gets all sheets)
 		#Create the scriptblock to run in a job
 			#$JobCode = [scriptblock]::create($function:ExcelXML);		#$strDocPath $Query;
 		#Run the code in a 32bit job, since the provider is 32bit only
@@ -174,6 +190,9 @@
 		#GetSheetData
 		#Create the scriptblock to run in a job
 			#$JobCode = [scriptblock]::create($function:ExcelXML);		# $strDocPath $Query;
+		$WorksheetName = "Sheet1";
+		$Query = 'SELECT * FROM [Sheet1$]';
+		#$Query = 'SELECT * FROM [' + $WorksheetName + '$]';
 		#Run the code in a 32bit job, since the provider is 32bit only
 		$job = Start-Job $JobCode -RunAs32 -ArgumentList $strDocPath, $Query
 		$job | Wait-Job | Receive-Job
@@ -285,42 +304,6 @@
 		Encode $strFile $strOutPut;
 	}
 
-
-
-	function ExcelCreateWorksheetXML{
-		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
-		Param(
-			[Parameter(Mandatory=$true)][String] $Path,
-			[Parameter(Mandatory=$true)][String] $WorksheetName,
-			[Parameter(Mandatory=$true)][String] $ListValues
-		)
-		$JobCode = {
-			Param($Path,$WorkSheetName,$ListValues)
-		}
-	}
-
-	function ExcelGetDataXML{
-		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
-		[CmdletBinding(DefaultParameterSetName='Worksheet')]
-		Param(
-			[Parameter(Mandatory=$true, Position=0)][String] $Path,
-			[Parameter(Position=1, ParameterSetName='Worksheet')][String] $WorksheetName = 'Sheet1',
-			[Parameter(Position=1, ParameterSetName='Query')][String] $Query = 'SELECT * FROM [Sheet1$]'
-		)
-		$JobCode = {
-			Param($Path, $Query)
-		}
-	}
-
-	function ExcelGetWorksheetXML{
-		#Code from Trev, that treats an Excel doc like an xml doc to pull data.
-		Param(
-			[Parameter(Mandatory=$true)][String] $Path
-		)
-		$JobCode = {
-			Param($Path, $Query)
-		}
-	}
 
 	function ExcelXML{
 		Param(
@@ -513,30 +496,126 @@
 
 	function ExcelGetData{
 		param(
-			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel workbook object.")][object] $Workbook, 
-			[ValidateNotNull()][Parameter(Mandatory = $False)][string] $SheetName
+			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel workbook object.")][object] $WorkBook, 
+			[ValidateNotNull()][Parameter(Mandatory = $False)] $WorkSheet, 
+			[ValidateNotNull()][Parameter(Mandatory = $False)] $bShowStatus = $False
 		)
 		#Get data off a WorkSheet.
+		#Returns a DataTable (Returns a DataSet, if no WorkSheet provided).
 
-		if (($SheetName -eq "") -or ($SheetName -eq $null)){
+		if (($WorkSheet -eq "") -or ($WorkSheet -eq $null)){
 			#No WorkSheet name provided, so get ALL WorkSheets.
+			#$objDataSet = New-Object System.Data.DataSet;
+			#---=== repeat as needed ===---
+			#$objDataTable = New-Object System.Data.DataTable;
+			#objDataSet.Tables.Add($objDataTable);
+			#---=== repeat as needed ===---
+
+			#$objData = $objDataSet;
 		}
 		else{
-			#Get the data off $SheetName.
+			#Get the data off $WorkSheet.
+			#Code based heavly from:
+				#https://podlisk.wordpress.com/2011/11/20/import-excel-spreadsheet-into-powershell/
 
-			#Create the DataTable we are going to return.
-			#$objData = New-Object System.Data.DataTable;
-			#$col1 = New-Object System.Data.DataColumn Message,([String]);
-			#$col2 = New-Object System.Data.DataColumn Results,([String]);
-			#$objData.columns.add($col1);
-			#$objData.columns.add($col2);
-			#$row = $objData.NewRow();
-			#$row.Message = "Error";
-			#$row.Results = $Error[0];
-			#$objData.Rows.Add($row);
+			#Following has ide on a faster? way to import the data, maybe:
+				#http://stackoverflow.com/questions/7023140/how-to-remove-empty-rows-from-datatable
+
+			$objDataTable = New-Object System.Data.DataTable;
+
+			$iNumCols = $WorkSheet.UsedRange.Columns.Count;
+			$iNumRows = $WorkSheet.UsedRange.Rows.Count;
+			$iHeaderRow = 1;
+
+			#Determine Header Row.
+			if ($WorkSheet.Range("A1").MergeCells -eq $True){
+				$iHeaderRow = 2;
+			}
+
+			#Get the column headers
+			for ($intCol = 1; $intCol -le $iNumCols; $intCol ++) {
+				$fieldName = $WorkSheet.Cells.Item.Invoke($iHeaderRow, $intCol).Value2;
+				if (($fieldName -eq $null) -or ($fieldName -eq "")){
+					$fieldName = "Column" + $intCol.ToString();
+				}
+				#$fieldName = $fieldName.Replace(" ", "");
+				$fieldName = $fieldName.Replace("`r`n", "");
+
+				#Write-Host "Adding column $fieldName";
+				$Error.Clear();
+				$objCol = New-Object System.Data.DataColumn $fieldName,([String]);
+				$strResult = $objDataTable.Columns.Add($objCol);
+				#$strResult = $objDataTable.Columns.Add($objCol) | Out-Null;
+				if ($Error){
+					$Error.Clear();
+					$fieldName = $fieldName + "1";
+					#Write-Host "Adding column $fieldName again";
+					#Try again.
+					$objCol = New-Object System.Data.DataColumn $fieldName,([String]);
+					$strResult = $objDataTable.Columns.Add($objCol);
+				}
+			}
+
+			#Get the rows of data
+			$intNumBlanks = 0;
+			for ($line = ($iHeaderRow + 1); $line -le $iNumRows; $line ++) {
+				$objRow = $objDataTable.NewRow();
+
+				#Write-Host "Adding row $line...";
+				for ($intCol = 1; $intCol -le $iNumCols; $intCol ++) {
+					$strVal = $WorkSheet.Cells.Item.Invoke($line, $intCol).Value2;
+					#$objRow.($objDataTable.Columns[($intCol - 1)].ColumnName) = $WorkSheet.Cells.Item.Invoke($line, $intCol).Value2;
+					$objRow.($objDataTable.Columns[($intCol - 1)].ColumnName) = $strVal;
+
+					if ($intCol -eq 1){
+						if (($strVal -eq "") -or ($strVal -eq $null)){
+							$intNumBlanks = $intNumBlanks + 1;
+						}
+						else{
+							$intNumBlanks = 0;
+						}
+					}
+				}
+
+				if ($intNumBlanks -gt 2){
+					#Found 3 blank rows (Column 1) together, assume rest are blank and break out of For loop.
+					#Write-Host "Breaking out.";
+					break;
+				}
+
+				$objDataTable.Rows.Add($objRow);
+				if ($bShowStatus){
+					$dblPercent = [math]::round((($line/$iNumRows) * 100), 2);
+					Write-Host "$dblPercent % complete.  (Added row $line of $iNumRows)";
+				}
+			}
+
+			# Remove empty lines
+			$Columns = $objDataTable.Columns.Count;
+			$Rows = $objDataTable.Rows.Count;
+			#for ($r = 0; $r -lt $Rows; $r++) {
+			for ($r = $Rows; $r -ge 0; $r--) {
+				$Empty = 0;
+				if ($objDataTable.Rows[$r] -ne $null) {
+					for ($c = 0; $c -lt $Columns; $c++) {
+						if ($objDataTable.Rows[$r].IsNull($c)) {
+							$Empty++;
+						}
+					}
+					if ($Empty -eq $Columns) {
+						# Mark row for deletion:
+						$objDataTable.Rows[$r].Delete();
+					}
+				}
+			}
+			# Delete marked rows:
+			$objDataTable.AcceptChanges();
+
+			#Now return the DataTable
+			$objData = $objDataTable;
 		}
 
-		return $objData;
+		return ,$objData;
 	}
 
 	function ExcelGetWorksheet{
@@ -573,6 +652,10 @@
 			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel file path.")][string] $ExcelFilePath,
 			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Object with input data e. g. hashtable, array, ...")][object] $InputData 
 		)
+		#Has some basic info on writing to Excel
+			#http://stackoverflow.com/questions/28101802/powershell-excel-combine-worksheets-into-a-single-worksheet
+		#This one might be better
+			#https://gist.github.com/fergus/8553443
 
 		#Add next sheet for 'Test Case Overview'
 		($application, $workbook) = ExcelCreateOpenFile -ExcelFilePath $ExcelFilePath;
