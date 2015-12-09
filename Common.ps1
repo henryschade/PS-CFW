@@ -707,6 +707,12 @@
 	function LoadRequired{
 		#Loads/includes ("dot" sources) all the files specified in $RequiredFiles.
 			#This routine checks to see if the file to include exists in "..\PS-CFW\", if not assumes the files are in $ScriptDir.
+		#Because this is a function the routines loaded are not available in the calling routines (the project).
+		#So based on the following URL can either read in the files, and update all functions to "Global:Function" or we can update ALL the scripts to have the "Global:" value.
+			#http://stackoverflow.com/questions/15187510/dot-sourcing-functions-from-file-to-global-scope-inside-of-function
+		#Above method would not work.  But found the following too, and it works.
+			#https://blairconrad.wordpress.com/2010/01/29/expand-your-scope-you-can-dot-source-more-than-just-files/
+
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][Array]$RequiredFiles, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$ScriptDir, 
@@ -732,7 +738,6 @@
 
 		foreach ($strInclude in $RequiredFiles){
 			$Error.Clear();
-
 			if (Test-Path -Path ($ScriptDir + "\..\PS-CFW\" + $strInclude)){
 				if (($ScriptDir.EndsWith("\PS-CFW")) -and ((Test-Path -Path ($ScriptDir + "\" + $strInclude)))){
 					. ($ScriptDir + "\" + $strInclude);
@@ -748,6 +753,12 @@
 				$strFile = ($ScriptDir + "\" + $strInclude);
 			}
 
+			#$Error.Clear();
+			#$strScript = Get-Content $strFile;
+			##$strScript -Replace '\s*function\s(\w+)','function Global:$1';
+			#$strScript = $strScript -Replace '\s*function\s(\w+)','function Global:$1';
+			#.([ScriptBlock]::Create($strScript));
+
 			if ($Error){
 				$strMessage = "------- Error 'loading' '$strInclude.ps1'." + "`r`n" + $Error;
 				Write-Host $strMessage;
@@ -759,8 +770,12 @@
 				$Error.Clear();
 			}
 			else{
-				#Update $global:LoadedFiles
+				#if ($strInclude -eq "DB-Routines.ps1"){
+				#	Write-Host "Checking";
+				#	Write-Host (Get-Command "GetDBInfo" -ErrorAction SilentlyContinue).Definition;
+				#}
 
+				#Update $global:LoadedFiles
 				$objFile = Get-Item -LiteralPath $strFile;
 				$Date = $objFile.LastWriteTime;
 				$strVer = (((Get-Date $Date).ToString("yyyyMMdd.hhmmss")));

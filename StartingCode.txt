@@ -1,6 +1,6 @@
 #Requires -Version 2.0
 ###########################################
-# Updated Date:	5 December 2015
+# Updated Date:	9 December 2015
 # Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
@@ -48,7 +48,6 @@
 			$strResults = mkdir $strLogDirS;
 		}
 	}
-
 	#Set logging path
 	if ((!(Test-Path -Path $strLogDirS)) -or ($strLogDirS -eq "")){
 		$strLogDir = $strLogDirL;
@@ -60,7 +59,24 @@
 	WriteLogFile $strMessage $strLogDir $strLogFile;
 
 	#Load/Include $arrIncludes Scripts/Files/modules.
-	LoadRequired $arrIncludes $ScriptDir $strLogDir $strLogFile;
+	#foreach ($strInclude in $arrIncludes){
+	#	$Error.Clear();
+	#	if (Test-Path -Path ($ScriptDir + "\..\PS-CFW\" + $strInclude)){
+	#		. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
+	#	}
+	#	else{
+	#		. ($ScriptDir + "\" + $strInclude)
+	#	}
+	#	if ($Error){WriteLogFile "------- Error 'loading' '$strInclude.ps1'.`r`n$Error" $strLogDir $strLogFile; $Error.Clear();}
+	#}
+	$bResults = (. LoadRequired $arrIncludes $ScriptDir $strLogDir $strLogFile);
+	if ($bResults -ne $True){
+		$strMessage = "Failed to load all the required modules/scripts.  Aborting.";
+		Write-Host $strMessage;
+		WriteLogFile $strMessage $strLogDir $strLogFile;
+		#MsgBox "Failed to load all the required modules/scripts.  Aborting." "Missing Required Files";
+		return 1;
+	}
 
 	$objRet = CheckVer $strProjName $strVer $strLogDir $strLogFile;
 
