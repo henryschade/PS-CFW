@@ -59,26 +59,22 @@
 	WriteLogFile $strMessage $strLogDir $strLogFile;
 
 	#Load/Include $arrIncludes Scripts/Files/modules.
-	#foreach ($strInclude in $arrIncludes){
-	#	$Error.Clear();
-	#	if (Test-Path -Path ($ScriptDir + "\..\PS-CFW\" + $strInclude)){
-	#		. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
-	#	}
-	#	else{
-	#		. ($ScriptDir + "\" + $strInclude)
-	#	}
-	#	if ($Error){WriteLogFile "------- Error 'loading' '$strInclude.ps1'.`r`n$Error" $strLogDir $strLogFile; $Error.Clear();}
-	#}
 	$bResults = (. LoadRequired $arrIncludes $ScriptDir $strLogDir $strLogFile);
 	if ($bResults -ne $True){
 		$strMessage = "Failed to load all the required modules/scripts.  Aborting.";
 		Write-Host $strMessage;
 		WriteLogFile $strMessage $strLogDir $strLogFile;
 		#MsgBox "Failed to load all the required modules/scripts.  Aborting." "Missing Required Files";
+
+		Write-Host "Press any key to continue ...";
+		$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
+
 		return 1;
+		exit;
 	}
 
 	$objRet = CheckVer $strProjName $strVer $strLogDir $strLogFile;
+	#$objRet = (. CheckVer "Includes" "" $strLogDir $strLogFile);		#To make sure the Required/Included files are running latest ver.
 
 	#Ensure .NET 4.x support is "turned on".
 	if ($PSVersionTable.CLRVersion.Major -lt 4){

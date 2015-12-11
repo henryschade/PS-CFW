@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	7 December 2015
+# Updated Date:	11 December 2015
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
@@ -233,16 +233,17 @@
 		#From a PowerShell window run one of the following commands:
 		. "C:\Projects\PS-Scripts\Documents.ps1"
 
-		EncodeFile "C:\Settings.txt" "C:\EncSet.txt"
-		EncodeFile "C:\Settings.txt" "Display"
+		Encode "C:\Settings.txt" "C:\EncSet.txt"
+		Encode "C:\Settings.txt" "Display"
+		#"";
 
-		DeCodeFile "....JUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gT......" "C:\Settings.txt"
-		DeCodeFile "....JUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gT......" "Display"
+		DeCode "....JUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gT......" "C:\Settings.txt"
+		DeCode "....JUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gT......" "Display"
 
 		$strEncode = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTc1VkFcU1E3NVZBSU5TVDAxDQpzdHJEQk5hbWUgPSBTaXRlQ29kZXMNCnN0ckRCTG9naW5SID0gS0J1c2VyDQpzdHJEQlBhc3NSID0ga2M1JHNxMDI=";
-		DeCodeFile $strEncode "C:\Users\henry.schade\Desktop\SQL.txt"
-		DeCodeFile $strEncode "Display"
-		EncodeFile "C:\Users\henry.schade\Desktop\SQL.txt" "C:\Users\henry.schade\Desktop\EncSet.txt"
+		DeCode $strEncode "C:\Users\henry.schade\Desktop\SQL.txt"
+		DeCode $strEncode "Display"
+		Encode "C:\Users\henry.schade\Desktop\SQL.txt" "C:\Users\henry.schade\Desktop\EncSet.txt"
 	}
 
 

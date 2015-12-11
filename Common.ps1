@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	9 December 2015
+# Updated Date:	10 December 2015
 # Purpose:		Common routines to all/most projects.
 # Requirements: Documents.ps1 for the CreateZipFile() routine.
 ##########################################
@@ -10,6 +10,7 @@
 
 	#For use with CheckVer() and LoadRequired().
 	if ($global:LoadedFiles -eq $null){
+		#($global:LoadedFiles.GetType().Name -ne "Hashtable")
 		$global:LoadedFiles = @{};
 	}
 
@@ -42,14 +43,13 @@
 
 	function CheckVer{
 		#Checks the running version of $Project against the posted Production version.
-		#Also automatically checks that the files in $global:LoadedFiles are up to date.
+		#Also checks that the files in $global:LoadedFiles are up to date.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Project, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$RunningVer, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogDir, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogFile
 		)
-		#Updates $global:LoadedFiles.
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
 			#$objReturn.Results		= $True or $False.  Running Production version.
@@ -59,6 +59,8 @@
 		#$RunningVer = The version currently being run.
 		#$LogDir = The log Directory, that contains $LogFile, that any errors will be reported to.
 		#$LogFile = The Log file that any errors will be reported to.
+			#To Update/Check the Required/Included files, need to dot source this function and set $Project = "Includes" and $RunningVer = "".
+			#i.e.   $objRet = (. CheckVer "Includes" "" $strLogDir $strLogFile);
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -77,76 +79,84 @@
 			Returns = "0.0";
 		}
 
-		#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
-		if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
-			if ((Test-Path (".\DB-Routines.ps1"))){
-				. (".\DB-Routines.ps1");
-			}
-			else{
-				if ((Test-Path (".\..\PS-CFW\DB-Routines.ps1"))){
-					. (".\..\PS-CFW\DB-Routines.ps1");
-				}
-			}
-		}
-
-		#Query DB.
-		#$arrDBInfo = GetDBInfo "AgentActivity";
-		#$strSQL = "GetSP_spGetNetPath '" + $Project + "';";
-		$arrDBInfo = GetDBInfo "SRMDB";
-		$strSQL = "";
-		$strSQL = $strSQL + "SELECT * FROM AppChanges ";
-		$strSQL = $strSQL + "JOIN AppInfo on AppChanges.AppInitials = AppInfo.AppInitials ";
-		$strSQL = $strSQL + "JOIN AppReference on AppReference.AppInitials = AppInfo.AppInitials ";
-		$strSQL = $strSQL + "WHERE (AppName = '" + $Project + "')";
-		$objTable = $null;
-		$Error.Clear();
-		#$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
-		$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True $arrDBInfo[3] $arrDBInfo[4];
-
-		if (!(($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -eq 0))){
+		if (($Project -eq "Includes") -and ($RunningVer -eq "")){
+			#Check if the Required files have been updated since initial load.
+			$objReturn.Results = $True;
 			$objReturn.Message = "Success";
-			$objReturn.Returns = $objTable.Rows[0].UpdatedDate;
 
-			if (($objTable.Rows[0].DisableOld -eq "yes") -or ($objTable.Rows[0].DisableOld -eq $True)){
-				$objReturn.Message = "Disable";
-			}
+			foreach ($strFile in $global:LoadedFiles.Keys){
+				$strPath = $global:LoadedFiles.$strFile.Path;
+				$objFile = Get-Item -LiteralPath ($strPath + $strFile);
+				$Date = $objFile.LastWriteTime;
 
-			if ($objTable.Rows[0].UpdatedDate -eq $RunningVer){
-				$objReturn.Results = $True;
+				#if ((((Get-Date $objFile.LastWriteTime).ToUniversalTime()).ToString()) -gt $global:LoadedFiles.$strFile.Date){
+				if ((((Get-Date $Date).ToUniversalTime()).ToString()) -gt $global:LoadedFiles.$strFile.Date){
+					#The included file has been updated sincel last loaded.
+					#Reload the file
+					. ($global:LoadedFiles.$strFile.Path + $strFile);
+
+					#Update the $global:LoadedFiles entry
+					$strDateVer = (((Get-Date $Date).ToString("yyyyMMdd.hhmmss")));
+					$Date = (((Get-Date $Date).ToUniversalTime()).ToString());
+					#$global:LoadedFiles.($objFile.Name) = (@{"Ver" = $strDateVer; "Date" = $Date; "Path" = ($objFile.FullName).Replace(($objFile.Name), "")});
+					$global:LoadedFiles.($objFile.Name) = (@{"Ver" = $strDateVer; "Date" = $Date; "Path" = $strPath});
+				}
 			}
 		}
 		else{
-			if ($Error){
-				$strMessage = "Error getting version info.`r`n" + $Error;
-				$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n`r`n";
-				$strMessage = $strMessage + $strSQL + "`r`n";
-			}
-			else{
-				if (($objTable -eq $null) -or ($objTable.Rows.Count -eq 0)){
-					$strMessage = "No Results getting version info.";
-				}else{
-					$strMessage = $objTable.Rows[0].Message + " getting version info.`r`n" + $objTable.Rows[0].Results;
+			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
+			if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
+				if ((Test-Path (".\DB-Routines.ps1"))){
+					. (".\DB-Routines.ps1");
+				}
+				else{
+					if ((Test-Path (".\..\PS-CFW\DB-Routines.ps1"))){
+						. (".\..\PS-CFW\DB-Routines.ps1");
+					}
 				}
 			}
-			$objReturn.Message = "Error " + $strMessage;
-		}
 
-		#Check if the Required files have been updated since initial load.
-		foreach ($strFile in $global:LoadedFiles.Keys){
-			#$strFile
-			#$global:LoadedFiles.$strFile
-			$objFile = Get-Item -LiteralPath ($global:LoadedFiles.$strFile.Path + $strFile);
-			$Date = $objFile.LastWriteTime;
-			#if ((((Get-Date $objFile.LastWriteTime).ToUniversalTime()).ToString()) -gt $global:LoadedFiles.$strFile.Date){
-			if ((((Get-Date $Date).ToUniversalTime()).ToString()) -gt $global:LoadedFiles.$strFile.Date){
-				#The included file has been updated sincel last loaded.
-				##Reload the file
-				#. ($global:LoadedFiles.$strFile.Path + $strFile);
+			#Query DB.
+			#$arrDBInfo = GetDBInfo "AgentActivity";
+			#$strSQL = "GetSP_spGetNetPath '" + $Project + "';";
+			#$Project = "CA";		#TEAC
+			$arrDBInfo = GetDBInfo "SRMDB";
+			$strSQL = "";
+			$strSQL = $strSQL + "SELECT * FROM AppChanges ";
+			$strSQL = $strSQL + "INNER JOIN AppInfo on AppChanges.AppInitials = AppInfo.AppInitials ";
+			$strSQL = $strSQL + "INNER JOIN AppReference on AppReference.AppInitials = AppInfo.AppInitials ";
+			$strSQL = $strSQL + "WHERE (AppChanges.AppInitials = '" + $Project + "')";
+			$objTable = $null;
+			$Error.Clear();
+			#$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
+			$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $False $arrDBInfo[3] $arrDBInfo[4];
 
-				##Update the $global:LoadedFiles entry
-				#$strVer = (((Get-Date $Date).ToString("yyyyMMdd.hhmmss")));
-				#$Date = (((Get-Date $Date).ToUniversalTime()).ToString());
-				#$global:LoadedFiles.($objFile.Name) = (@{"Ver" = $strVer; "Date" = $Date; "Path" = ($objFile.FullName).Replace(($objFile.Name), "")});
+			if (!(($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -eq 0))){
+				$objReturn.Message = "Success";
+				$objReturn.Returns = $objTable.Rows[0].UpdatedDate;
+
+				if (($objTable.Rows[0].DisableOld -eq "yes") -or ($objTable.Rows[0].DisableOld -eq $True)){
+					$objReturn.Message = "Disable";
+				}
+
+				if ($objTable.Rows[0].UpdatedDate -eq $RunningVer){
+					$objReturn.Results = $True;
+				}
+			}
+			else{
+				if ($Error){
+					$strMessage = "Error getting version info.`r`n" + $Error;
+					$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n`r`n";
+					$strMessage = $strMessage + $strSQL + "`r`n";
+				}
+				else{
+					if (($objTable -eq $null) -or ($objTable.Rows.Count -eq 0)){
+						$strMessage = "No Results getting version info.";
+					}else{
+						$strMessage = $objTable.Rows[0].Message + " getting version info.`r`n" + $objTable.Rows[0].Results;
+					}
+				}
+				$objReturn.Message = "Error " + $strMessage;
 			}
 		}
 
@@ -528,7 +538,12 @@
 			#Query DB.
 			$arrDBInfo = GetDBInfo "AgentActivity";
 			#$strSQL = "SELECT * FROM NetPath WHERE Name like '" + $sName + "'";
-			$strSQL = "GetSP_spGetNetPath '" + $sName + "';";
+			if ($sName -eq "all"){
+				$strSQL = "GetSP_spGetNetPath";
+			}
+			else{
+				$strSQL = "GetSP_spGetNetPath '" + $sName + "';";
+			}
 			$objTable = $null;
 			$Error.Clear();
 			$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
@@ -707,7 +722,7 @@
 	function LoadRequired{
 		#Loads/includes ("dot" sources) all the files specified in $RequiredFiles.
 			#This routine checks to see if the file to include exists in "..\PS-CFW\", if not assumes the files are in $ScriptDir.
-		#Because this is a function the routines loaded are not available in the calling routines (the project).
+		#Because this is a function the routines loaded are only available in this scope and NOT in the calling routines (the project).
 		#So based on the following URL can either read in the files, and update all functions to "Global:Function" or we can update ALL the scripts to have the "Global:" value.
 			#http://stackoverflow.com/questions/15187510/dot-sourcing-functions-from-file-to-global-scope-inside-of-function
 		#Above method would not work.  But found the following too, and it works.
@@ -753,12 +768,6 @@
 				$strFile = ($ScriptDir + "\" + $strInclude);
 			}
 
-			#$Error.Clear();
-			#$strScript = Get-Content $strFile;
-			##$strScript -Replace '\s*function\s(\w+)','function Global:$1';
-			#$strScript = $strScript -Replace '\s*function\s(\w+)','function Global:$1';
-			#.([ScriptBlock]::Create($strScript));
-
 			if ($Error){
 				$strMessage = "------- Error 'loading' '$strInclude.ps1'." + "`r`n" + $Error;
 				Write-Host $strMessage;
@@ -770,22 +779,17 @@
 				$Error.Clear();
 			}
 			else{
-				#if ($strInclude -eq "DB-Routines.ps1"){
-				#	Write-Host "Checking";
-				#	Write-Host (Get-Command "GetDBInfo" -ErrorAction SilentlyContinue).Definition;
-				#}
-
 				#Update $global:LoadedFiles
 				$objFile = Get-Item -LiteralPath $strFile;
 				$Date = $objFile.LastWriteTime;
-				$strVer = (((Get-Date $Date).ToString("yyyyMMdd.hhmmss")));
+				$strDateVer = (((Get-Date $Date).ToString("yyyyMMdd.hhmmss")));
 				$Date = (((Get-Date $Date).ToUniversalTime()).ToString());
 
 				#as a hash
 				#$global:LoadedFiles."Common.ps1".Date
-				$global:LoadedFiles.($objFile.Name) = (@{"Ver" = $strVer; "Date" = $Date; "Path" = ($objFile.FullName).Replace(($objFile.Name), "")});
+				$global:LoadedFiles.($objFile.Name) = (@{"Ver" = $strDateVer; "Date" = $Date; "Path" = ($objFile.FullName).Replace(($objFile.Name), "")});
 				#Cound use the following, but then if have the entry already things error, the above just updates it if already exist.
-					#$global:LoadedFiles.Add(($objFile.Name), (@{"Ver" = $strVer; "Date" = $Date}));
+					#$global:LoadedFiles.Add(($objFile.Name), (@{"Ver" = $strDateVer; "Date" = $Date}));
 			}
 		}
 
@@ -843,12 +847,12 @@
 			if (($Header -eq "") -or ($Header -eq $null)){
 				if (($txbTicketNum -ne $null)){
 					if (($txbTicketNum.Text -eq "") -or ($txbTicketNum.Text -eq $null)){
-						$strTicketNum = "none";
+						$strTicketNum = "NoTic#";
 					}else{
 						$strTicketNum = $txbTicketNum.Text;
 					}
 				}else{
-					$strTicketNum = "none";
+					$strTicketNum = "NoTic#";
 				}
 				$strLogHeader = (([System.DateTime]::Now).ToString() + " - " + ([System.Security.Principal.WindowsIdentity]::GetCurrent()).Name + " - " + $env:computername + " (" + (Get-WmiObject Win32_NetworkAdapterConfiguration -Namespace "root\CIMV2" | WHERE{$_.IPEnabled -eq "True"}).MACAddress + ") - " + (Get-WmiObject Win32_NetworkAdapterConfiguration -Namespace "root\CIMV2" | WHERE{$_.IPEnabled -eq "True"}).IPAddress + " - " + $strTicketNum + " -- ");
 				$Message = $strLogHeader + $Message;
