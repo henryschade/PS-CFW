@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	10 December 2015
+# Updated Date:	14 December 2015
 # Purpose:		Common routines to all/most projects.
 # Requirements: Documents.ps1 for the CreateZipFile() routine.
 ##########################################
@@ -52,11 +52,11 @@
 		)
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
-			#$objReturn.Results		= $True or $False.  Running Production version.
+			#$objReturn.Results		= $True or $False.  Running correct Production\Beta version.
 			#$objReturn.Message		= "Success", "Disable", or the error message.
-			#$objReturn.Returns		= The Production version number.
+			#$objReturn.Returns		= An array of the Production version number and the Beta version number.  i.e. @("2.2", "2.5b")
 		#$Project = The Project name to check.  (i.e. "WILE", "ASCII", etc)
-		#$RunningVer = The version currently being run.
+		#$RunningVer = The version currently being run, Beta versions MUST end in "b", "B", "Beta", "beta".
 		#$LogDir = The log Directory, that contains $LogFile, that any errors will be reported to.
 		#$LogFile = The Log file that any errors will be reported to.
 			#To Update/Check the Required/Included files, need to dot source this function and set $Project = "Includes" and $RunningVer = "".
@@ -122,10 +122,16 @@
 			#$Project = "CA";		#TEAC
 			$arrDBInfo = GetDBInfo "SRMDB";
 			$strSQL = "";
-			$strSQL = $strSQL + "SELECT * FROM AppChanges ";
-			$strSQL = $strSQL + "INNER JOIN AppInfo on AppChanges.AppInitials = AppInfo.AppInitials ";
-			$strSQL = $strSQL + "INNER JOIN AppReference on AppReference.AppInitials = AppInfo.AppInitials ";
-			$strSQL = $strSQL + "WHERE (AppChanges.AppInitials = '" + $Project + "')";
+			#$strSQL = $strSQL + "SELECT * FROM AppChanges ";
+			#$strSQL = $strSQL + "INNER JOIN AppInfo on AppChanges.AppInitials = AppInfo.AppInitials ";
+			#$strSQL = $strSQL + "INNER JOIN AppReference on AppReference.AppInitials = AppInfo.AppInitials ";
+			#$strSQL = $strSQL + "WHERE (AppChanges.AppInitials = '" + $Project + "')";
+			$strSQL = $strSQL + "SELECT Ver_Num_P, Ver_Num_B, Allow_Old_Ver ";
+			$strSQL = $strSQL + "FROM ((SourceDesc ";
+			$strSQL = $strSQL + "LEFT JOIN SourceChanges ON SourceDesc.GUID = SourceChanges.SourceDesc_GUID) ";
+			$strSQL = $strSQL + "LEFT JOIN SourceFiles ON SourceDesc.GUID = SourceFiles.SourceDesc_GUID) ";
+			$strSQL = $strSQL + "LEFT JOIN SourceUses ON SourceDesc.GUID = SourceUses.SourceDesc_GUID ";
+			$strSQL = $strSQL + "WHERE ((App_Name = '" + $Project + "') OR (App_Name_Short = '" + $Project + "'));";
 			$objTable = $null;
 			$Error.Clear();
 			#$objTable = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
@@ -133,14 +139,51 @@
 
 			if (!(($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -eq 0))){
 				$objReturn.Message = "Success";
-				$objReturn.Returns = $objTable.Rows[0].UpdatedDate;
 
-				if (($objTable.Rows[0].DisableOld -eq "yes") -or ($objTable.Rows[0].DisableOld -eq $True)){
-					$objReturn.Message = "Disable";
+				#Return the Prod and Beta ver #'s
+				#$objReturn.Returns = $objTable.Rows[0].UpdatedDate;
+				$objReturn.Returns = @($objTable.Rows[0].Ver_Num_P, $objTable.Rows[0].Ver_Num_B);
+
+				#Allow old version to run?
+				#if (($objTable.Rows[0].DisableOld -eq "yes") -or ($objTable.Rows[0].DisableOld -eq $True)){
+				if (($objTable.Rows[0].Allow_Old_Ver -eq "no") -or ($objTable.Rows[0].Allow_Old_Ver -eq $False) -or ($objTable.Rows[0].Allow_Old_Ver -eq 0)){
+					#NO old versions allowed.
+					if (($RunningVer.EndsWith("B")) -or ($RunningVer.EndsWith("b")) -or ($RunningVer.EndsWith("Beta")) -or ($RunningVer.EndsWith("beta"))){
+						$strBDVer = [String]$objTable.Rows[0].Ver_Num_B;
+						if (($strBDVer -ne $RunningVer) -or ($strBDVer -eq $null) -or ($strBDVer -eq "")){
+							$objReturn.Message = "Disable";
+						}
+						else{
+							$objReturn.Results = $True;
+						}
+					}
+					else{
+						$strBDVer = [String]$objTable.Rows[0].Ver_Num_P;
+						if ($strBDVer -ne $RunningVer){
+							$objReturn.Message = "Disable";
+						}
+						else{
+							$objReturn.Results = $True;
+						}
+					}
 				}
-
-				if ($objTable.Rows[0].UpdatedDate -eq $RunningVer){
-					$objReturn.Results = $True;
+				else{
+					#Old versions are allowed.
+					#Are they running the latest Production version?
+					if (($RunningVer.EndsWith("B")) -or ($RunningVer.EndsWith("b")) -or ($RunningVer.EndsWith("Beta")) -or ($RunningVer.EndsWith("beta"))){
+						$strBDVer = [String]$objTable.Rows[0].Ver_Num_B;
+						if (($strBDVer -eq $RunningVer)){
+							#$objReturn.Message = "Disable";
+							$objReturn.Results = $True;
+						}
+					}
+					else{
+						$strBDVer = [String]$objTable.Rows[0].Ver_Num_P;
+						if ($strBDVer -eq $RunningVer){
+							#$objReturn.Message = "Disable";
+							$objReturn.Results = $True;
+						}
+					}
 				}
 			}
 			else{
