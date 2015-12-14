@@ -45,12 +45,12 @@ Starting a PowerShell project from scratch, for use with PS-CFW (and a GUI).
     d) Select "Public" or "Private" as approperiate.
 33) Copy the HTTPS url.
 34) In VS open the "Team Explorer" window.
-35) ? Click the "Home" button. ?
+35) Click the "Home" button.
 36) Click "Unsynced Commits" and enter the URL from GitHub, in the yellow box.
 37) Click "Publish".
 38) Click the "Home" button.
 39) Click "Changes".
-40) Enter a Commit comment.
+40) Enter a Commit comment ("Initial code sync.").
 41) Click "Commit".
 42) Click "Unsynced Commits".
 43) Click "Sync".

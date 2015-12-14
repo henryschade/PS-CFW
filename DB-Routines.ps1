@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	1 December 2015
+# Updated Date:	14 December 2015
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -114,10 +114,12 @@
 		}
 
 		$Error.Clear();
-		foreach ($strLine in [System.IO.File]::ReadAllLines($strConfigFile)) {
-			if ($strLine.StartsWith($strWhatSystem)){
-				$strRawData = $strLine.SubString($strLine.IndexOf("=") + 1).Trim();
-				break;
+		if (Test-Path -Path $strConfigFile){
+			foreach ($strLine in [System.IO.File]::ReadAllLines($strConfigFile)) {
+				if ($strLine.StartsWith($strWhatSystem)){
+					$strRawData = $strLine.SubString($strLine.IndexOf("=") + 1).Trim();
+					break;
+				}
 			}
 		}
 
