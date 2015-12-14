@@ -73,8 +73,23 @@
 		exit;
 	}
 
-	$objRet = CheckVer $strProjName $strVer $strLogDir $strLogFile;
-	#$objRet = (. CheckVer "Includes" "" $strLogDir $strLogFile);		#To make sure the Required/Included files are running latest ver.
+	#$objRet = (. CheckVer "Includes" "");		#To make sure the Required/Included files are running latest ver.
+	$objRet = CheckVer $strProjName $strVer;
+	if (($objRet.Message -eq "Disable") -or ($objRet.Results -eq $False)){
+		if (($strVer.EndsWith("b")) -or ($strVer.EndsWith("B")) -or ($strVer.EndsWith("beta")) -or ($strVer.EndsWith("Beta"))){
+			$strMessage = $objRet.Returns[1];
+		}
+		else{
+			$strMessage = $objRet.Returns[0];
+		}
+		$strMessage = "You do not appear to be running the latest version of $strProjName." + "`r`n" + "The latest version is $strMessage, and you are running ver $strVer.";
+		Write-Host "`r`n$strMessage `r`n" -foregroundcolor red -background black;
+		WriteLogFile $strMessage $strLogDir $strLogFile;
+
+		Write-Host "Press any key to continue ...";
+		$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
+		exit;
+	}
 
 	#Ensure .NET 4.x support is "turned on".
 	if ($PSVersionTable.CLRVersion.Major -lt 4){

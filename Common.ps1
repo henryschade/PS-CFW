@@ -46,9 +46,7 @@
 		#Also checks that the files in $global:LoadedFiles are up to date.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Project, 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$RunningVer, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogDir, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogFile
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$RunningVer
 		)
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
@@ -57,10 +55,8 @@
 			#$objReturn.Returns		= An array of the Production version number and the Beta version number.  i.e. @("2.2", "2.5b")
 		#$Project = The Project name to check.  (i.e. "WILE", "ASCII", etc)
 		#$RunningVer = The version currently being run, Beta versions MUST end in "b", "B", "Beta", "beta".
-		#$LogDir = The log Directory, that contains $LogFile, that any errors will be reported to.
-		#$LogFile = The Log file that any errors will be reported to.
 			#To Update/Check the Required/Included files, need to dot source this function and set $Project = "Includes" and $RunningVer = "".
-			#i.e.   $objRet = (. CheckVer "Includes" "" $strLogDir $strLogFile);
+			#i.e.   $objRet = (. CheckVer "Includes" "");
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -84,6 +80,7 @@
 			$objReturn.Results = $True;
 			$objReturn.Message = "Success";
 
+			$Error.Clear();
 			foreach ($strFile in $global:LoadedFiles.Keys){
 				$strPath = $global:LoadedFiles.$strFile.Path;
 				$objFile = Get-Item -LiteralPath ($strPath + $strFile);
@@ -101,6 +98,9 @@
 					#$global:LoadedFiles.($objFile.Name) = (@{"Ver" = $strDateVer; "Date" = $Date; "Path" = ($objFile.FullName).Replace(($objFile.Name), "")});
 					$global:LoadedFiles.($objFile.Name) = (@{"Ver" = $strDateVer; "Date" = $Date; "Path" = $strPath});
 				}
+			}
+			if ($Error){
+				$objReturn.Message = "Error `r`n" + $Error;
 			}
 		}
 		else{
@@ -130,7 +130,7 @@
 			$strSQL = $strSQL + "FROM ((SourceDesc ";
 			$strSQL = $strSQL + "LEFT JOIN SourceChanges ON SourceDesc.GUID = SourceChanges.SourceDesc_GUID) ";
 			$strSQL = $strSQL + "LEFT JOIN SourceFiles ON SourceDesc.GUID = SourceFiles.SourceDesc_GUID) ";
-			$strSQL = $strSQL + "LEFT JOIN SourceUses ON SourceDesc.GUID = SourceUses.SourceDesc_GUID ";
+			$strSQL = $strSQL + "LEFT JOIN SourceUses ON SourceDesc.GUID = SourceUses.SourceDesc_GUID_Src ";
 			$strSQL = $strSQL + "WHERE ((App_Name = '" + $Project + "') OR (App_Name_Short = '" + $Project + "'));";
 			$objTable = $null;
 			$Error.Clear();
@@ -139,49 +139,57 @@
 
 			if (!(($objTable.Rows[0].Message -eq "Error") -or ($Error) -or ($objTable -eq $null) -or ($objTable.Rows.Count -eq 0))){
 				$objReturn.Message = "Success";
-
 				#Return the Prod and Beta ver #'s
 				#$objReturn.Returns = $objTable.Rows[0].UpdatedDate;
-				$objReturn.Returns = @($objTable.Rows[0].Ver_Num_P, $objTable.Rows[0].Ver_Num_B);
+				$strBDVerP = [String]$objTable.Rows[0].Ver_Num_P;
+				$strBDVerB = [String]$objTable.Rows[0].Ver_Num_B;
+				#$objReturn.Returns = @($objTable.Rows[0].Ver_Num_P, $objTable.Rows[0].Ver_Num_B);
+				$objReturn.Returns = @($strBDVerP, $strBDVerB);
 
-				#Allow old version to run?
-				#if (($objTable.Rows[0].DisableOld -eq "yes") -or ($objTable.Rows[0].DisableOld -eq $True)){
-				if (($objTable.Rows[0].Allow_Old_Ver -eq "no") -or ($objTable.Rows[0].Allow_Old_Ver -eq $False) -or ($objTable.Rows[0].Allow_Old_Ver -eq 0)){
-					#NO old versions allowed.
-					if (($RunningVer.EndsWith("B")) -or ($RunningVer.EndsWith("b")) -or ($RunningVer.EndsWith("Beta")) -or ($RunningVer.EndsWith("beta"))){
-						$strBDVer = [String]$objTable.Rows[0].Ver_Num_B;
-						if (($strBDVer -ne $RunningVer) -or ($strBDVer -eq $null) -or ($strBDVer -eq "")){
-							$objReturn.Message = "Disable";
-						}
-						else{
-							$objReturn.Results = $True;
-						}
-					}
-					else{
-						$strBDVer = [String]$objTable.Rows[0].Ver_Num_P;
-						if ($strBDVer -ne $RunningVer){
-							$objReturn.Message = "Disable";
-						}
-						else{
-							$objReturn.Results = $True;
-						}
-					}
+				if (($strBDVerP -gt $strBDVerB) -and ($strBDVerP -ne $RunningVer)){
+					#Not running production, and Production ver is greater than Beta ver.
+					$objReturn.Message = "Disable";
 				}
 				else{
-					#Old versions are allowed.
-					#Are they running the latest Production version?
-					if (($RunningVer.EndsWith("B")) -or ($RunningVer.EndsWith("b")) -or ($RunningVer.EndsWith("Beta")) -or ($RunningVer.EndsWith("beta"))){
-						$strBDVer = [String]$objTable.Rows[0].Ver_Num_B;
-						if (($strBDVer -eq $RunningVer)){
-							#$objReturn.Message = "Disable";
-							$objReturn.Results = $True;
+					#Allow old version to run?
+					#if (($objTable.Rows[0].DisableOld -eq "yes") -or ($objTable.Rows[0].DisableOld -eq $True)){
+					if (($objTable.Rows[0].Allow_Old_Ver -eq "no") -or ($objTable.Rows[0].Allow_Old_Ver -eq $False) -or ($objTable.Rows[0].Allow_Old_Ver -eq 0)){
+						#NO old versions allowed.
+						if (($RunningVer.EndsWith("B")) -or ($RunningVer.EndsWith("b")) -or ($RunningVer.EndsWith("Beta")) -or ($RunningVer.EndsWith("beta"))){
+							#$strBDVer = [String]$objTable.Rows[0].Ver_Num_B;
+							if (($strBDVerB -ne $RunningVer) -or ($strBDVerB -eq $null) -or ($strBDVerB -eq "")){
+								$objReturn.Message = "Disable";
+							}
+							else{
+								$objReturn.Results = $True;
+							}
+						}
+						else{
+							#$strBDVer = [String]$objTable.Rows[0].Ver_Num_P;
+							if ($strBDVerP -ne $RunningVer){
+								$objReturn.Message = "Disable";
+							}
+							else{
+								$objReturn.Results = $True;
+							}
 						}
 					}
 					else{
-						$strBDVer = [String]$objTable.Rows[0].Ver_Num_P;
-						if ($strBDVer -eq $RunningVer){
-							#$objReturn.Message = "Disable";
-							$objReturn.Results = $True;
+						#Old versions are allowed.
+						#Are they running the latest Production version?
+						if (($RunningVer.EndsWith("B")) -or ($RunningVer.EndsWith("b")) -or ($RunningVer.EndsWith("Beta")) -or ($RunningVer.EndsWith("beta"))){
+							#$strBDVer = [String]$objTable.Rows[0].Ver_Num_B;
+							if (($strBDVerB -eq $RunningVer)){
+								#$objReturn.Message = "Disable";
+								$objReturn.Results = $True;
+							}
+						}
+						else{
+							#$strBDVer = [String]$objTable.Rows[0].Ver_Num_P;
+							if ($strBDVerP -eq $RunningVer){
+								#$objReturn.Message = "Disable";
+								$objReturn.Results = $True;
+							}
 						}
 					}
 				}
