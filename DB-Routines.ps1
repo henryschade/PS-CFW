@@ -5,7 +5,7 @@
 ##########################################
 
 	function SampleUsage{
-		. C:\Projects\PS-Scripts\DB-Routines.ps1
+		. C:\Projects\PS-CFW\DB-Routines.ps1
 
 		$arrDBInfo = GetDBInfo "SRMDB";
 		$strSQL = "SELECT UpdatedDate, ChangeLog, DisableOld FROM AppChanges WHERE AppInitials='CA'";
@@ -64,6 +64,73 @@
 				}
 			}
 		}
+
+	}
+
+	function Testing{
+		#Inserting a file into a varbinary(MAX) field.
+		#http://sev17.com/2010/05/11/t-sql-tuesday-006-blobs-filestream-and-powershell/
+		#http://www.sqlmusings.com/2012/03/10/insert-xml-files-to-sql-server-using-powershell/
+		#http://www.techtalkz.com/microsoft-windows-powershell/511586-question-inserting-varbinary-sql-table-via-powershell.html
+
+		. C:\Projects\PS-CFW\DB-Routines.ps1
+
+		$arrDBInfo = GetDBInfo "SRMDB";
+		$strFilePath = "C:\Projects\PS-Scripts\PS-AScII.ps1";
+		$strFilePath = "C:\Projects\SRM Apps\Beta\Change App.xls";
+		#$strFilePath = "C:\Projects\PS-CFW\EWS-Files.txt"
+		$strGUID = "49C0E1F5-E726-43C4-A435-11B6A603FD0E";		#ASCII
+		$strGUID = "C0D37212-3B90-43CF-A1DC-A4CFBCED421B";		#Change App
+		$strGUID = "DBE41647-7C0A-4F01-A23D-C3B17A3549B6";		#Change App [SourceFiles]
+		$server = $arrDBInfo[1]
+		$database = $arrDBInfo[2]
+		$dteDateTime = ([System.DateTime]::Now).ToString();
+
+		#---=== option 3 ===---
+		$intSize = (Get-ChildItem $strFilePath).Length;
+		Write-Host "$intSize bytes  (" ($intSize/1024) " KB)";
+		Write-Host "$intSize bytes  (" ($intSize/1024) " KB)  (" (($intSize/1024)/1024) " MB)";
+
+
+		Write-Host ([System.DateTime]::Now).ToString();
+		$objFile = [System.IO.File]::OpenRead($strFilePath);
+		$strFileByteArr = New-Object System.Byte[] $objFile.Length;
+		$objFile.Read($strFileByteArr, 0, $objFile.Length);
+		$objFile.Close();
+		Write-Host ([System.DateTime]::Now).ToString();
+		#5 sec  -->  4250438 bytes  ( 4150.82  KB)  ( 4.05  MB)
+		#3 sec  -->  7268352 bytes  ( 7098  KB)  ( 6.93  MB)
+
+
+		#Write-Host ([System.DateTime]::Now).ToString();
+		#[byte[]]$strFileByteArr = Get-Content $strFilePath -Encoding byte
+		#Write-Host ([System.DateTime]::Now).ToString();
+		##8 sec  -->  468kb
+		##5 hrs  -->  4250438 bytes  ( 4150.82  KB)  ( 4.05  MB)
+
+
+		#$objFS = new-object System.IO.FileStream($strFilePath,[System.IO.FileMode]'Open',[System.IO.FileAccess]'Read')
+		#$buffer = new-object byte[] -ArgumentList $objFS.Length
+		#$objFS.Read($buffer, 0, $buffer.Length)
+		#$objFS.Close()
+
+
+		$strSQL = "INSERT INTO SourceFiles(SourceDesc_GUID, Date_Up, File_Binary) VALUES ('$strGUID', '$dteDateTime', @File_Binary)"
+		$strSQL = "UPDATE SourceFiles(Date_Up = '$dteDateTime', File_Binary = @File_Binary) WHERE (GUID = '$strGUID')"
+
+		#QueryDB() basic format
+		$connection=new-object System.Data.SqlClient.SQLConnection
+		$connection.ConnectionString="Server={0};Database={1};Integrated Security=True" -f $server,$database
+		$command=new-object system.Data.SqlClient.SqlCommand($strSQL,$connection)
+		$command.CommandTimeout=120
+		$connection.Open()
+		$command.Parameters.Add("@File_Binary", $strFileByteArr)
+			#$command.Parameters.Add("@File_Binary", [System.Data.SqlDbType]"VarBinary", $buffer.Length)
+			#$command.Parameters["@File_Binary"].Value = $buffer
+		$command.ExecuteNonQuery()
+		$connection.Close()
+		#---=== option 3 ===---
+
 	}
 
 	function GetDBInfo{
@@ -360,7 +427,7 @@
 		$objCon.ConnectionString = $strConStr;
 		Try{$objCon.Open();}Catch{}
 
-		if ($Error.Count -gt 0){
+		if (($Error.Count -gt 0) -or ($Error)){
 			#$objTable = New-Object System.Data.DataTable;
 			$col1 = New-Object System.Data.DataColumn Message,([String]);
 			$col2 = New-Object System.Data.DataColumn Results,([String]);
@@ -368,7 +435,8 @@
 			$objTable.columns.add($col2);
 			$row = $objTable.NewRow();
 			$row.Message = "Error";
-			$row.Results = $Error[0];
+			#$row.Results = $Error[0];
+			$row.Results = $Error;
 			$objTable.Rows.Add($row);
 		}
 		else{
@@ -380,7 +448,7 @@
 			#$objResult = Try{$objCommand.ExecuteReader();}Catch{}
 			$objResult = $objCommand.ExecuteReader();
 
-			if ($Error.Count -gt 0){
+			if (($Error.Count -gt 0) -or ($Error)){
 				#$objTable = New-Object System.Data.DataTable;
 				$col1 = New-Object System.Data.DataColumn Message,([String]);
 				$col2 = New-Object System.Data.DataColumn Results,([String]);
@@ -388,7 +456,8 @@
 				$objTable.columns.add($col2);
 				$row = $objTable.NewRow();
 				$row.Message = "Error";
-				$row.Results = $Error[0];
+				#$row.Results = $Error[0];
+				$row.Results = $Error;
 				$objTable.Rows.Add($row);
 			}
 			else{
@@ -397,7 +466,7 @@
 					$objTable.Load($objResult);
 					#Should check if $objResult has results.
 					#if no error, and no results, add "message" and "results" with "Success". 
-					if ($Error.Count -gt 0){
+					if (($Error.Count -gt 0) -or ($Error)){
 						#$objTable = New-Object System.Data.DataTable;
 						$col1 = New-Object System.Data.DataColumn Message,([String]);
 						$col2 = New-Object System.Data.DataColumn Results,([String]);
@@ -405,7 +474,8 @@
 						$objTable.columns.add($col2);
 						$row = $objTable.NewRow();
 						$row.Message = "Error";
-						$row.Results = $Error[0];
+						#$row.Results = $Error[0];
+						$row.Results = $Error;
 						$objTable.Rows.Add($row);
 					}
 				}

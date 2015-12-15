@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	11 December 2015
+# Updated Date:	15 December 2015
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
@@ -231,7 +231,7 @@
 
 	function SampleEncodeDecode{
 		#From a PowerShell window run one of the following commands:
-		. "C:\Projects\PS-Scripts\Documents.ps1"
+		. "C:\Projects\PS-CFW\Documents.ps1"
 
 		Encode "C:\Settings.txt" "C:\EncSet.txt"
 		Encode "C:\Settings.txt" "Display"
@@ -244,6 +244,13 @@
 		DeCode $strEncode "C:\Users\henry.schade\Desktop\SQL.txt"
 		DeCode $strEncode "Display"
 		Encode "C:\Users\henry.schade\Desktop\SQL.txt" "C:\Users\henry.schade\Desktop\EncSet.txt"
+
+
+		$strDir = "C:\Program Files (x86)\Microsoft\Exchange\Web Services\1.2";
+		$arrFiles = Get-ChildItem $strDir
+		foreach ($strFile in $arrFiles){
+			Encode ($strFile.FullName) (($strFile.FullName).Replace($strFile.Extension, ($strFile.Extension + ".enc.txt")))
+		}
 	}
 
 
