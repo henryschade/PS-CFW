@@ -7,6 +7,7 @@
 	function SampleUsage{
 		. C:\Projects\PS-CFW\DB-Routines.ps1
 
+		#Get SRM Change Log / version info.  (Old process)
 		$arrDBInfo = GetDBInfo "SRMDB";
 		$strSQL = "SELECT UpdatedDate, ChangeLog, DisableOld FROM AppChanges WHERE AppInitials='CA'";
 		$Results = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $False $arrDBInfo[3] $arrDBInfo[4] 180 $True;
@@ -31,6 +32,7 @@
 		}
 
 
+		#Pull cert info for a machine
 		$arrDBInfo = GetDBInfo "ECMD";
 		$strSQL = "SELECT * FROM Certs_Collection WHERE (Subject like '%ADIDBO216191%')";
 		$Results = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $False $arrDBInfo[3] $arrDBInfo[4] 180 $True;
@@ -42,6 +44,7 @@
 		}
 
 
+		#Get top 10 Score card entries.  The last 10 made.
 		$arrDBInfo = GetDBInfo "Score";
 		$strSQL = "SELECT TOP 10 ticket, Type FROM Transactions ORDER BY date_time DESC";
 		$Results = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $False $arrDBInfo[3] $arrDBInfo[4] 180 $True;
@@ -63,6 +66,33 @@
 					}
 				}
 			}
+		}
+
+
+		#Upload a file to the DB
+		$arrDBInfo = GetDBInfo "SRMDB";
+		$strGUID = "49C0E1F5-E726-43C4-A435-11B6A603FD0E";		#ASCII GUID in DB
+		$dteDateTime = ([System.DateTime]::Now).ToString();
+		$hashFiles = @{"File_Binary" = "C:\Projects\PS-Scripts\PS-AScII.ps1"};
+		$strSQL = "INSERT INTO SourceFiles(SourceDesc_GUID, Date_Up, File_Binary) VALUES ('$strGUID', '$dteDateTime', @File_Binary)"
+		$Results = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True -Files $hashFiles;
+		if ($Results.Rows[0].Message -eq "Error"){
+			Write-Host "Error running " $Results.Rows[0].Results;
+		}else{
+			$Results;
+		}
+		#QueryDB $arrDBInfo[1] $arrDBInfo[2] "SELECT * FROM SourceFiles" $True;
+
+
+		#Read a Binary file out of the DB, and write it to a file.
+		$arrDBInfo = GetDBInfo "SRMDB";
+		$strGUID = "DBE41647-7C0A-4F01-A23D-C3B17A3549B6";		#Change App [SourceFiles]
+		$strSQL = "SELECT File_Binary FROM SourceFiles WHERE (GUID = '$strGUID')";
+		$Results = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
+		if ($Results.Rows[0].Message -ne "Error"){
+			#$file = $Results.Rows[0].File_Binary;
+			#[IO.File]::WriteAllBytes("C:\Projects\test.xls", $file)
+			[IO.File]::WriteAllBytes("C:\Projects\test.xls", $Results.Rows[0].File_Binary)
 		}
 
 	}
@@ -119,6 +149,7 @@
 		$command.ExecuteNonQuery()
 		$connection.Close()
 		#---=== option 3 ===---
+
 
 	}
 
@@ -366,7 +397,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$User, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Pass, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$TimeOut = 180, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Boolean]$ForceTableRet = $True
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Boolean]$ForceTableRet = $True, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Hashtable]$Files
 		)
 		#http://irisclasson.com/2013/10/16/how-do-i-query-a-sql-server-db-using-powershell-and-how-do-i-filter-format-and-output-to-a-file-stupid-question-251-255/
 		#Returns a System.Data.DataTable of results  (converted to an Array).
@@ -381,6 +413,10 @@
 		#$TimeOut = The TimeOut period to use.  180 sec is the default.
 		#$ForceTableRet = Force the return to NOT convert the System.Data.DataTable to an Array.
 			#http://www.vistax64.com/powershell/36882-how-return-specific-type-function.html
+		#$Files = Hash array of the field and full path to any files to upload.  (i.e.  $Files = @{"File_Binary" = "C:\Projects\PS-Scripts\PS-AScII.ps1"}; ).
+			#The SQL statement should look something like (notice the at sign "@"):
+				#$strSQL = "INSERT INTO SourceFiles(SourceDesc_GUID, Date_Up, File_Binary) VALUES ('$strGUID', '$dteDateTime', @File_Binary)"
+				#$strSQL = "UPDATE SourceFiles SET File_Binary = @File_Binary WHERE (GUID = '$strGUID')"
 
 		$strServer = $Server;
 		$strDataBase = $DataBase;
@@ -433,6 +469,25 @@
 			$objCommand = $objCon.CreateCommand();
 			$objCommand.CommandTimeout = $TimeOut;		#Seconds
 			$objCommand.CommandText = $strSQL;
+
+			if (($strSQL.IndexOf("@") -gt 1) -and (($Files -ne "") -and ($Files -ne $null))){
+				foreach ($sEntry in $Files.Keys){
+					if (($sEntry -ne "") -and ($Files.$sEntry -ne "")){
+						#Read in the file(s)
+						$objFile = [System.IO.File]::OpenRead($Files.$sEntry);
+						$strFileByteArr = New-Object System.Byte[] $objFile.Length;
+						$objResult = $objFile.Read($strFileByteArr, 0, $objFile.Length);
+						$objResult = $objFile.Close();
+
+						#$objCommand.Parameters.Add("@File_Binary", $strFileByteArr);
+						#	#$objCommand.Parameters.Add("@File_Binary", [System.Data.SqlDbType]"VarBinary", $buffer.Length);
+						#	#$objCommand.Parameters["@File_Binary"].Value = $buffer;
+						$objCommand.Parameters.Add("@" + $sEntry, $strFileByteArr);
+					}
+				}
+			}
+
+			$objResult = $null;
 			#The Try() below causes a SELECT query to error when doing the Load [.Load($objResult)] of data into the DataTable.
 			#$objResult = Try{$objCommand.ExecuteReader();}Catch{}
 			$objResult = $objCommand.ExecuteReader();
