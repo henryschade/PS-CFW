@@ -866,6 +866,39 @@
 		return [System.TimeZone]::CurrentTimeZone.ToLocalTime($strTime);
 	}
 
+	function VerifyPathing{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$sLocalPath, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$sSharePath
+
+		)
+		#Checks if both paths exist, and tries creating them if not, returns Share path unless it does not exist.
+		#$sLocalPath = The local path for the program.
+		#$sSharePath = The Share path for the program. 
+
+		if ((!(Test-Path -Path $sSharePath)) -and ($sSharePath -ne "")){
+			#Need to create the directory
+			if ((Test-Path -Path ("\\" + $sSharePath.Split("\")[2] + "\" + $sSharePath.Split("\")[3]))){
+				#PS mkdir, will create any parent folders needed.
+				$strResults = mkdir $sSharePath;
+			}
+		}
+		if ((!(Test-Path -Path $sLocalPath)) -and ($sLocalPath -ne "")){
+			#Need to create the directory
+			#PS mkdir, will create any parent folders needed.
+			$strResults = mkdir $sLocalPath;
+		}
+		#Set logging path
+		if ((!(Test-Path -Path $sSharePath)) -or ($sSharePath -eq "")){
+			$sLogDir = $sLocalPath;
+		}
+		else{
+			$sLogDir = $sSharePath;
+		}
+
+		return , $sLogDir;
+	}
+
 	function WriteLogFile{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Message, 
