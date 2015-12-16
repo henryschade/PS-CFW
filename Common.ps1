@@ -130,7 +130,7 @@
 			$strSQL = $strSQL + "FROM ((SourceDesc ";
 			$strSQL = $strSQL + "LEFT JOIN SourceChanges ON SourceDesc.GUID = SourceChanges.SourceDesc_GUID) ";
 			$strSQL = $strSQL + "LEFT JOIN SourceFiles ON SourceDesc.GUID = SourceFiles.SourceDesc_GUID) ";
-			$strSQL = $strSQL + "LEFT JOIN SourceUses ON SourceDesc.GUID = SourceUses.SourceDesc_GUID_Src ";
+			$strSQL = $strSQL + "LEFT JOIN SourceUses ON SourceDesc.GUID = SourceUses.SourceDesc_GUID ";
 			$strSQL = $strSQL + "WHERE ((App_Name = '" + $Project + "') OR (App_Name_Short = '" + $Project + "'));";
 			$objTable = $null;
 			$Error.Clear();
@@ -195,6 +195,7 @@
 				}
 			}
 			else{
+				$objReturn.Results = $True;
 				if ($Error){
 					$strMessage = "Error getting version info.`r`n" + $Error;
 					$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n`r`n";
