@@ -1,12 +1,9 @@
 ###########################################
-# Updated Date:	14 December 2015
+# Updated Date:	16 December 2015
 # Purpose:		Common routines to all/most projects.
-# Requirements: Documents.ps1 for the CreateZipFile() routine.
+# Requirements: DB-Routines.ps1 for the CheckVer() routine.
+#				.\MiscSettings.txt
 ##########################################
-
-	#How to include/use this file in other projects:
-	#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-	#. ($ScriptDir + "\Common.ps1")
 
 	#For use with CheckVer() and LoadRequired().
 	if ($global:LoadedFiles -eq $null){
@@ -42,12 +39,12 @@
 	}
 
 	function CheckVer{
-		#Checks the running version of $Project against the posted Production version.
-		#Also checks that the files in $global:LoadedFiles are up to date.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Project, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$RunningVer
 		)
+		#Checks the running version of $Project against the posted Production version.
+		#Can also checks that the files in $global:LoadedFiles are up to date.
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
 			#$objReturn.Results		= $True or $False.  Running correct Production\Beta version.
@@ -130,7 +127,7 @@
 			$strSQL = $strSQL + "FROM ((SourceDesc ";
 			$strSQL = $strSQL + "LEFT JOIN SourceChanges ON SourceDesc.GUID = SourceChanges.SourceDesc_GUID) ";
 			$strSQL = $strSQL + "LEFT JOIN SourceFiles ON SourceDesc.GUID = SourceFiles.SourceDesc_GUID) ";
-			$strSQL = $strSQL + "LEFT JOIN SourceUses ON SourceDesc.GUID = SourceUses.SourceDesc_GUID_Src ";
+			$strSQL = $strSQL + "LEFT JOIN SourceUses ON SourceDesc.GUID = SourceUses.SourceDesc_GUID ";
 			$strSQL = $strSQL + "WHERE ((App_Name = '" + $Project + "') OR (App_Name_Short = '" + $Project + "'));";
 			$objTable = $null;
 			$Error.Clear();
@@ -195,6 +192,7 @@
 				}
 			}
 			else{
+				$objReturn.Results = $True;
 				if ($Error){
 					$strMessage = "Error getting version info.`r`n" + $Error;
 					$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n`r`n";
@@ -215,16 +213,16 @@
 	}
 
 	function CleanDir{
-		#Cleans files out of directories based on the DateLastModified.  
-		#Checks the "NumDays2KeepLogs" entry in MiscSettings.txt file, if $HowOld is -2, blank, or null.
-		#   (180 days) if error reading NumDays2KeepLogs.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Directory, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$DoSubs = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$TypesToSkip = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$HowOld = -2
 		)
-		#$Directory = Folder/Directory path to clean.  i.e. "C:\SRM_Apps_N_Tools" or "\\Nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Boise SRM Team\Jay_Nielson\Reports"
+		#Cleans files out of directories based on the DateLastModified.  
+		#Checks the "NumDays2KeepLogs" entry in MiscSettings.txt file, if $HowOld is -2, blank, or null.
+		#   (180 days) if error reading NumDays2KeepLogs.
+		#$Directory = Folder/Directory path to clean.  i.e. "C:\SRM_Apps_N_Tools" or "\\Server.Name.FQDN\Path1\Path2\Path3"
 		#$DoSubs = True/False. (defult = False) Check/Clean sub folders too.
 		#$TypesToSkip = file types NOT to delete/clean. 
 		#	i.e. ".mdb" or ".ps1" or ".zip"
@@ -233,11 +231,12 @@
 		#$HowOld = How many days old does the file need to be, to be deleted.
 
 		$strSettingFile = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\MiscSettings.txt";
+		#$strSettingFile = "MiscSettings.txt";
 
 		if (($HowOld -lt -1) -or ($HowOld -eq "") -or ($HowOld -eq $null)){
 			if ((Test-Path $strSettingFile)){
 				$Error.Clear();
-				foreach ($strLine in [System.IO.File]::ReadAllLines("\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\MiscSettings.txt")) {
+				foreach ($strLine in [System.IO.File]::ReadAllLines($strSettingFile)) {
 					if ($strLine.StartsWith("--") -ne $True){
 						if ($strLine.Contains("NumDays2KeepLogs")){
 							$HowOld = $strLine.SubString($strLine.IndexOf("=") + 1).Trim();
@@ -317,6 +316,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Zip file path to create.")][String]$ZipFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Array of file path (full) to add.")][Array]$Files
 		)
+		#Should use ZipCreateFile() in Documents.ps1.
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
 			#$objReturn.Results		= $True or $False.  Was a zip file created.
@@ -340,10 +340,10 @@
 	}
 
 	function EnableDotNet4{
-		#Checks if .NET 4 is enabled, and if NOT then creates the *.xml config file to enable .NET4 support.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bISE2 = $False
 		)
+		#Checks if .NET 4 is enabled, and if NOT then creates the *.xml config file to enable .NET4 support.
 		#$bISE2 = $True or $False.  Create the "*\powershell_ise.exe.config" files along with the "*\powershell.exe.config" files.
 		#Returns $True if created config files, or .NET 4.x already enabled.
 		#Returns $False if Config Files were NOT created.
@@ -449,11 +449,11 @@
 	}
 
 	function GetPathing{
-		#Querys a DB for Pathing info, so that can update pathing info w/out having to release new code versions.
-		#Has default values incase DB is unreachable.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$sName = "all"
 		)
+		#Querys a DB for Pathing info, so that can update pathing info w/out having to release new code versions.
+		#Has default values incase DB is unreachable.
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
 			#$objReturn.Results		= # of Rows of data returning.
@@ -653,16 +653,17 @@
 	}
 
 	function isADInstalled{
-		#Check if have AD Installed and Enabled.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bEnable = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bDisable = $False
 		)
+		#Check if have AD Installed and Enabled.
 		#$bEnable = $True, $False.  Turn on the AD Features (that are part of the NMCI SRM default set) ONLY if RSAT is installed.
 		#$bDisable = $True, $False.  Turn off the AD Features (that are NOT part of the NMCI SRM default set) ONLY if RSAT is installed.
 
+		#Here are the settings from my system:
+		<#
 		#https://technet.microsoft.com/en-us/library/ee449483(v=ws.10).aspx
-			#Here are the settings from my system:
 			#RemoteServerAdministrationTools-Features-Wsrm -- Disabled
 			#RemoteServerAdministrationTools-Features-StorageManager -- Disabled
 			#RemoteServerAdministrationTools-Features-StorageExplorer -- Disabled
@@ -693,6 +694,7 @@
 			#RemoteServerAdministrationTools-Roles -- Enabled
 			#RemoteServerAdministrationTools-ServerManager -- Disabled
 			#RemoteServerAdministrationTools -- Enabled
+		#>
 
 		$bInstalled = $False;
 
@@ -764,13 +766,20 @@
 		#http://rosettacode.org/wiki/Determine_if_a_string_is_numeric
 		try {
 			0 + $intX | Out-Null;
-			return $true;
-		} catch {
-			return $false;
+			return $True;
+		}
+		catch {
+			return $False;
 		}
 	}
 
 	function LoadRequired{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][Array]$RequiredFiles, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$ScriptDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogFile
+		)
 		#Loads/includes ("dot" sources) all the files specified in $RequiredFiles.
 			#This routine checks to see if the file to include exists in "..\PS-CFW\", if not assumes the files are in $ScriptDir.
 		#Because this is a function the routines loaded are only available in this scope and NOT in the calling routines (the project).
@@ -778,13 +787,6 @@
 			#http://stackoverflow.com/questions/15187510/dot-sourcing-functions-from-file-to-global-scope-inside-of-function
 		#Above method would not work.  But found the following too, and it works.
 			#https://blairconrad.wordpress.com/2010/01/29/expand-your-scope-you-can-dot-source-more-than-just-files/
-
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True)][Array]$RequiredFiles, 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$ScriptDir, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogDir, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogFile
-		)
 		#Returns $True or $False.  $True if no errors, else $False.
 		#Updates $global:LoadedFiles.
 		#$RequiredFiles = An array of the files to "dot" source / include.
@@ -848,31 +850,64 @@
 	}
 
 	function LocalToUTC{
-		#Converts passed in time, local time, to UTC.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Local time to convert to UTC / GMT time.")][String]$strTime
 		)
+		#Converts passed in time, local time, to UTC.
 
 		return ((Get-Date $strTime).ToUniversalTime()).ToString();
 	}
 
 	function UTCToLocal{
-		#Convert passed in time, UTC time, to local time.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "UTC / GMT time to convert to Local time.")][String]$strTime
 		)
+		#Convert passed in time, UTC time, to local time.
 
 		return [System.TimeZone]::CurrentTimeZone.ToLocalTime($strTime);
 	}
 
+	function VerifyPathing{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$sLocalPath, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$sSharePath
+
+		)
+		#Checks if both paths exist, and tries creating them if not, returns Share path unless it does not exist.
+		#$sLocalPath = The local path for the program.
+		#$sSharePath = The Share path for the program. 
+
+		if ((!(Test-Path -Path $sSharePath)) -and ($sSharePath -ne "")){
+			#Need to create the directory
+			if ((Test-Path -Path ("\\" + $sSharePath.Split("\")[2] + "\" + $sSharePath.Split("\")[3]))){
+				#PS mkdir, will create any parent folders needed.
+				$strResults = mkdir $sSharePath;
+			}
+		}
+		if ((!(Test-Path -Path $sLocalPath)) -and ($sLocalPath -ne "")){
+			#Need to create the directory
+			#PS mkdir, will create any parent folders needed.
+			$strResults = mkdir $sLocalPath;
+		}
+		#Set logging path
+		if ((!(Test-Path -Path $sSharePath)) -or ($sSharePath -eq "")){
+			$sLogDir = $sLocalPath;
+		}
+		else{
+			$sLogDir = $sSharePath;
+		}
+
+		return , $sLogDir;
+	}
+
 	function WriteLogFile{
-		#Uses Out-File to append $Message to the $LogFile, in the path $LogDir.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Message, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$LogDir, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$LogFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Header = ""
 		)
+		#Uses Out-File to append $Message to the $LogFile, in the path $LogDir.
 		#$Message = The message to add to $LogFile.  gets PrePended with a "Header":
 		#$LogDir = The location of $LogFile.
 		#$LogFile = The file to add $Message to.  get updated to a format of "yyyymmdd_"$LogFile.  (i.e. 20150513_AscII.log)
