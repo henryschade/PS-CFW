@@ -507,9 +507,14 @@
 
 		#Config file  (takes about 1 sec)
 		if (($objReturn.Results -eq $False) -or ($objReturn.Results -lt 1)){
-			#Check if the config file exist.
+			#Write-Host "Check if the config file exist";
+			if (!(Test-Path -Path $strConfigFile)){
+				if (Test-Path -Path (".\..\PS-CFW\" + $strConfigFile)){
+					$strConfigFile = ".\..\PS-CFW\" + $strConfigFile;
+				}
+			}
 			if (Test-Path -Path $strConfigFile){
-				#Config file exists
+				#Write-Host "Config file exists";
 
 				#Create the DataTable to return
 				$objTable = New-Object System.Data.DataTable;
@@ -586,7 +591,7 @@
 				}
 			}
 
-			#Query DB.
+			#Write-Host "Query DB";
 			$arrDBInfo = GetDBInfo "AgentActivity";
 			#$strSQL = "SELECT * FROM NetPath WHERE Name like '" + $sName + "'";
 			if ($sName -eq "all"){
@@ -609,6 +614,7 @@
 		#Check if File and DB failed.
 		if (($objReturn.Results -eq $False) -or ($objReturn.Results -lt 1)){
 			#Both the Config file and the DB process failed, so return the default hard coded values.
+			#Write-Host "Hard coded values";
 			#Create the DataTable to return
 			$objTable = New-Object System.Data.DataTable;
 			$col1 = New-Object System.Data.DataColumn Name,([String]);
