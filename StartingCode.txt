@@ -22,39 +22,23 @@
 	$strMessage = "Starting " + $strProjName + ", ver " + $strVer + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
 	Write-Host $strMessage;
 
-	#GetPathing(), WriteLogFile(), and LoadRequired() are functions in Common.ps1, that are all used before Loading the Required Modules/Scripts.
+	#GetPathing(), VerifyPathing(), WriteLogFile(), and LoadRequired() are functions in Common.ps1, that are all used before Loading the Required Modules/Scripts.
 	#It Must be defined before we can use it.
 	. ($ScriptDir + "\..\PS-CFW\" + "Common.ps1")
 
 	#Get pathing info.
 	$strPathing = GetPathing $strLogLoc;
 	if ($strPathing.Results -gt 0){
+		#Share Path
 		$strLogDirS = $strPathing.Returns.Rows[0].Path + $strProjName + "\";
 	}
 	$strPathing = GetPathing $strLocalLoc;
 	if ($strPathing.Results -gt 0){
+		#Local Path
 		$strLogDirL = $strPathing.Returns.Rows[0].Path + "Logs\" + $strProjName + "\";
 	}
 	#Make sure the log directories exist.
-	if (!(Test-Path -Path $strLogDirL)){
-		#Need to create the directory
-		#PS mkdir, will create any parent folders needed.
-		$strResults = mkdir $strLogDirL;
-	}
-	if ((!(Test-Path -Path $strLogDirS)) -and ($strLogDirS -ne "")){
-		#Need to create the directory
-		if ((Test-Path -Path ("\\" + $strLogDirS.Split("\")[2] + "\" + $strLogDirS.Split("\")[3]))){
-			#PS mkdir, will create any parent folders needed.
-			$strResults = mkdir $strLogDirS;
-		}
-	}
-	#Set logging path
-	if ((!(Test-Path -Path $strLogDirS)) -or ($strLogDirS -eq "")){
-		$strLogDir = $strLogDirL;
-	}
-	else{
-		$strLogDir = $strLogDirS;
-	}
+	$strLogDir = VerifyPathing $strLogDirL $strLogDirS;
 
 	WriteLogFile $strMessage $strLogDir $strLogFile;
 
