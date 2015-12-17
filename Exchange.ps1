@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	24 November 2015
+# Updated Date:	17 December 2015
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process, 
@@ -572,6 +572,16 @@
 
 	function EWSCreateSubscriptionPull{
 		#Maybe some day.
+		<#
+			. C:\Projects\PS-CFW\Exchange.ps1;
+			$MailboxName = "henry.schade@nmci-isf.com";
+
+
+			$objActionScript = [scriptblock]::create($function:EWSOnEventDisplay);
+			$objReturn = EWSCreateSubscriptionStream $MailboxName $objActionScript;
+			$objReturn
+		#>
+
 	}
 
 	function EWSCreateSubscriptionStream{
