@@ -580,6 +580,7 @@
 			$objActionScript = [scriptblock]::create($function:EWSOnEventDisplay);
 			$objReturn = EWSCreateSubscriptionStream $MailboxName $objActionScript;
 			$objReturn
+
 		#>
 
 	}

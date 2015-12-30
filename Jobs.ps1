@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	2 December 2015
+# Updated Date:	17 December 2015
 # Purpose:		Background Job and RunSpace Functions.
 # Requirements: None
 #				All this code is based on info from the following URLs:
@@ -70,7 +70,7 @@
 		$objJob1 = CreateJob -JobName "GetMemberships" -InitScript $objJobCode -JobScript {param($Name) GetGroups $Name} -ArgumentList @($env:UserName, @());
 	}
 
-	function SampleRunSpaceCalls1{
+	function SampleRunSpaceCalls{
 		$objPool = CreateRunSpace 3;
 		$objJobs = @();								#Collection of the Jobs that get run in the RunSpacePool.
 
@@ -272,7 +272,10 @@
 
 		For ($intX = 0; $intX -lt $objJobs.Count; $intX++){
 			if ($objJobs[$intX].Name -eq $strJobName){
+				$strResults = $objJobs[$intX].PowerShell.EndInvoke($objJobs[$intX].Results);		#Makes sure the Async job is Complete. Which returns the Results of the job.
 				$objJobs[$intX].PowerShell.Dispose();
+				$objJobs[$intX].PowerShell = $null;
+				$objJobs[$intX].Results = $null;
 				$objJobs[$intX].Name = "";
 				#$objJobs[$intX] = $null;		#CAN NOT DO THIS!!!!
 			}
@@ -285,6 +288,7 @@
 		#http://www.nivot.org/post/2009/01/22/CTP3TheRunspaceFactoryAndPowerShellAccelerators
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)]$intMax = 3
+			#[ValidateNotNull()][Parameter(Mandatory=$False)][Hashtable]$hashColl
 		)
 		$intMin = 1;
 		#$intMax = 3;
@@ -299,15 +303,26 @@
 		#https://gallery.technet.microsoft.com/scriptcenter/Gather-Generic-WMI-Data-474f788b
 		#$Creds = Get-Credential;
 		#$objInitSessState.Variables.Add(New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList 'Credential', $Creds);
-
-		#objInitSessState.AddParameter("Credential", $Creds);
+		#$objInitSessState.AddParameter("Credential", $Creds);
+		#if (($hashColl -ne "") -and ($hashColl -ne $null)){
+		#	#$objInitSessState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList 'Hash', $hashColl));
+		#	#$objInitSessState.AddParameter("Hash", $hashColl);
+		#	$objInitSessState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList 'Hash', $hashColl, ''));
+		#}
 
 		$objPool = [RunSpaceFactory]::CreateRunspacePool($intMin, $intMax, $objInitSessState, $Host);		#$Host = local host.
 		#$objPool = [RunSpaceFactory]::CreateRunspacePool($intMin, $intMax);
 		#If need the RunSpacePool to be STA, instead of the default MTA.
 		#http://blogs.msdn.com/b/powershell/archive/2008/05/22/wpf-powershell-part-1-hello-world-welcome-to-the-week-of-wpf.aspx
 		#$objPool.ApartmentState, $objPool.ThreadOptions = “STA”, “ReuseThread”;
+		#$objPool.ApartmentState = "STA";
+		#$objPool.ThreadOptions = "ReuseThread";
 		$objPool.Open();
+
+		#if (($hashColl -ne "") -and ($hashColl -ne $null)){
+		#	#http://learn-powershell.net/2013/04/19/sharing-variables-and-live-objects-between-powershell-runspaces/
+		#	#$objPool.SessionStateProxy.SetVariable('Hash', $hashColl);
+		#}
 
 		#Write-Host "Created a Pool of $($objPool.GetAvailableRunspaces()) Runspaces.";
 
@@ -378,6 +393,7 @@
 			Powershell = $objPowershell
 			Results = $strResults
 			#Results = $objPowershell.BeginInvoke()
+				#.IsCompleted
 		}
 
 		return $objJobReturning;

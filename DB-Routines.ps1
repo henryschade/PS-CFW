@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	14 December 2015
+# Updated Date:	30 December 2015
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -419,17 +419,19 @@
 
 			if (($strSQL.IndexOf("@") -gt 1) -and (($Files -ne "") -and ($Files -ne $null))){
 				foreach ($sEntry in $Files.Keys){
-					if (($sEntry -ne "") -and ($Files.$sEntry -ne "")){
+					if (($sEntry -ne "") -and ($sEntry -ne $null) -and ($Files.$sEntry -ne "") -and ($Files.$sEntry -ne $null)){
 						#Read in the file(s)
 						$objFile = [System.IO.File]::OpenRead($Files.$sEntry);
 						$strFileByteArr = New-Object System.Byte[] $objFile.Length;
 						$objResult = $objFile.Read($strFileByteArr, 0, $objFile.Length);
 						$objResult = $objFile.Close();
 
-						#$objCommand.Parameters.Add("@File_Binary", $strFileByteArr);
-						#	#$objCommand.Parameters.Add("@File_Binary", [System.Data.SqlDbType]"VarBinary", $buffer.Length);
-						#	#$objCommand.Parameters["@File_Binary"].Value = $buffer;
-						$objCommand.Parameters.Add("@" + $sEntry, $strFileByteArr);
+						if (($objFile.Length -gt 0) -and ($strFileByteArr -ne "") -and ($strFileByteArr -ne $null)){
+							#$objCommand.Parameters.Add("@File_Binary", $strFileByteArr);
+							#	#$objCommand.Parameters.Add("@File_Binary", [System.Data.SqlDbType]"VarBinary", $buffer.Length);
+							#	#$objCommand.Parameters["@File_Binary"].Value = $buffer;
+							$objCommand.Parameters.Add("@" + $sEntry, $strFileByteArr);
+						}
 					}
 				}
 			}

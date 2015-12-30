@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	16 December 2015
+# Updated Date:	18 December 2015
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -923,6 +923,8 @@
 			#i.e.:
 			#5/13/2015 9:23:15 - NMCI-ISF\henry.schade - ADIDBO226572 (00:24:81:21:CA:CC) - 10.12.21.80 - 8989765 -- $Message
 
+		$intRetry = 5;
+
 		#Make sure the log directory exist.
 		if (!(Test-Path -Path $LogDir)){
 			#Need to create the directory
@@ -955,7 +957,12 @@
 			}
 
 			#Write to log file
-			$Message | Out-File -filepath ($LogDir + $LogFile) -Encoding Default -Append;
+			$intTries = 0;
+			do {
+				$intTries++;
+				$Error.Clear();
+				$Message | Out-File -filepath ($LogDir + $LogFile) -Encoding Default -Append;
+			} while (($Error) -and ($intTries -lt $intRetry))
 		}
 	}
 
