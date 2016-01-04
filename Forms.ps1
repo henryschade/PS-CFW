@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	23 November 2015
+# Updated Date:	4 January 2016
 # Purpose:		My functions to create PS Forms and Controls
 # Requirements: None
 # Web sites that helped me:
@@ -486,6 +486,49 @@
 						#If the XML (XAML) includes a default namespace, you must add a prefix and namespace URI.
 						#https://msdn.microsoft.com/en-us/library/h0hw012b(v=vs.110).aspx
 						$objNS = $True;
+					}
+
+					if ($strLine.Contains("{Binding ")){
+						#If have bindings setup, PS v2 wants them in brackets []:
+							#DisplayMemberBinding ="{Binding [ChangeDate]}"
+						# PS v3+ will take them "plain" or in ticks '', BUT NOT in brackets []:
+							# DisplayMemberBinding ="{Binding ChangeDate}"
+							# or:
+							#DisplayMemberBinding ="{Binding 'ChangeDate'}"
+
+						#Sample line is:
+							#$strLine = "<GridViewColumn Header="Date Time" Width="73" DisplayMemberBinding ="{Binding ChangeDate}"/>";
+							#$strLine = "<GridViewColumn Header='Date Time' Width='73' DisplayMemberBinding ='{Binding 'ChangeDate'}'/>";
+							#$strLine = "<GridViewColumn Header='Date Time' Width='73' DisplayMemberBinding ='{Binding [ChangeDate]}'/>";
+						$intStartLoc = $strLine.IndexOf("{Binding ");
+						$strBegining = $strLine.SubString(0, $intStartLoc);
+						$strEnding = $strLine.SubString($intStartLoc);
+						$strMiddle = $strEnding.SubString(0, $strEnding.IndexOf("}") + 1);
+						$strEnding = $strEnding.Replace($strMiddle, "");
+						#$strMiddle now is something like "{Binding ChangeDate}"
+
+						if ($strMiddle.Contains("[")){
+							#PS 2 likes em this way
+							if ($PSVersionTable.PSVersion.Major -ne 2){
+								#But NOT 3+.
+								$strMiddle = $strMiddle.Replace("[", "'");
+								$strMiddle = $strMiddle.Replace("]", "'");
+							}
+						}
+						else{
+							if ($PSVersionTable.PSVersion.Major -eq 2){
+								#PS v2 MUST have the brackets.
+								if ($strMiddle.Contains("'")){
+									$strMiddle = $strMiddle.Replace("'", "");
+								}
+
+								$strMiddle = $strMiddle.Replace("{Binding ", "{Binding [");
+								$strMiddle = $strMiddle.Replace("}", "]}");
+							}
+						}
+
+						#Now put it all back together.
+						$strLine = $strBegining + $strMiddle + $strEnding;
 					}
 				}
 
