@@ -1,6 +1,6 @@
 #Requires -Version 2.0
 ###########################################
-# Updated Date:	9 December 2015
+# Updated Date:	24 February 2016
 # Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
@@ -15,7 +15,7 @@
 	$strGUIFile = $strProjName + "_GUI\MainWindow.xaml";
 	$strLogFile = $strProjName + ".log";
 	$strLogDirS = "";
-	$strLogDirL = "C:\ITSS-Tools\Logs\" + $strProjName + "\";
+	$strLogDirL = "C:\Users\ITSS-Tools\Logs\" + $strProjName + "\";
 	$strLogDir = "";
 	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 
@@ -42,42 +42,9 @@
 
 	WriteLogFile $strMessage $strLogDir $strLogFile;
 
-	#Load/Include $arrIncludes Scripts/Files/modules.
-	$bResults = (. LoadRequired $arrIncludes $ScriptDir $strLogDir $strLogFile);
-	if ($bResults -ne $True){
-		$strMessage = "Failed to load all the required modules/scripts.  Aborting.";
-		Write-Host $strMessage;
-		WriteLogFile $strMessage $strLogDir $strLogFile;
-		#MsgBox "Failed to load all the required modules/scripts.  Aborting." "Missing Required Files";
-
-		Write-Host "Press any key to continue ...";
-		$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
-
-		return 1;
-		exit;
-	}
-
-	#$objRet = (. CheckVer "Includes" "");		#To make sure the Required/Included files are running latest ver.
-	$objRet = CheckVer $strProjName $strVer;
-	if (($objRet.Message -eq "Disable") -or ($objRet.Results -eq $False)){
-		if (($strVer.EndsWith("b")) -or ($strVer.EndsWith("B")) -or ($strVer.EndsWith("beta")) -or ($strVer.EndsWith("Beta"))){
-			$strMessage = $objRet.Returns[1];
-		}
-		else{
-			$strMessage = $objRet.Returns[0];
-		}
-		$strMessage = "You do not appear to be running the latest version of $strProjName." + "`r`n" + "The latest version is $strMessage, and you are running ver $strVer.";
-		Write-Host "`r`n$strMessage `r`n" -foregroundcolor red -background black;
-		WriteLogFile $strMessage $strLogDir $strLogFile;
-
-		Write-Host "Press any key to continue ...";
-		$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
-		exit;
-	}
-
 	#Ensure .NET 4.x support is "turned on".
 	if ($PSVersionTable.CLRVersion.Major -lt 4){
-		$bResults = EnableDotNet4;
+		$bResults = EnableDotNet4 $True $MyInvocation.MyCommand.Path;
 		if ($bResults){
 			$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
 
@@ -97,6 +64,40 @@
 			Stop-Process -Id $PID;
 		}
 	}
+
+	#Load/Include $arrIncludes Scripts/Files/modules.
+	$bResults = (. LoadRequired $arrIncludes $ScriptDir $strLogDir $strLogFile);
+	if ($bResults -ne $True){
+		$strMessage = "Failed to load all the required modules/scripts.  Aborting.";
+		Write-Host $strMessage;
+		WriteLogFile $strMessage $strLogDir $strLogFile;
+		#MsgBox "Failed to load all the required modules/scripts.  Aborting." "Missing Required Files";
+
+		Write-Host "Press any key to continue ...";
+		$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
+
+		return 1;
+		exit;
+	}
+
+	#Commented out the following, as we are going to an xCopy update method, and checking ver #'s becomes obsolete.
+	##$objRet = (. CheckVer "Includes" "");		#To make sure the Required/Included files are running latest ver.
+	#$objRet = CheckVer $strProjName $strVer;
+	#if (($objRet.Message -eq "Disable") -or ($objRet.Results -eq $False)){
+	#	if (($strVer.EndsWith("b")) -or ($strVer.EndsWith("B")) -or ($strVer.EndsWith("beta")) -or ($strVer.EndsWith("Beta"))){
+	#		$strMessage = $objRet.Returns[1];
+	#	}
+	#	else{
+	#		$strMessage = $objRet.Returns[0];
+	#	}
+	#	$strMessage = "You do not appear to be running the latest version of $strProjName." + "`r`n" + "The latest version is $strMessage, and you are running ver $strVer.";
+	#	Write-Host "`r`n$strMessage `r`n" -foregroundcolor red -background black;
+	#	WriteLogFile $strMessage $strLogDir $strLogFile;
+
+	#	Write-Host "Press any key to continue ...";
+	#	$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
+	#	exit;
+	#}
 
 	# ---=== Start Add project code functions here ===---
 	function btnGetValidated_Click{

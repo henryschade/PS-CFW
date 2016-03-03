@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	17 December 2015
+# Updated Date:	25 February 2016
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process, 
@@ -69,7 +69,7 @@
 
 		#permissions to a mailbox:
 		#SetupConn
-		#& "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\PS-CFW\Exchange.ps1" SetUp
+		#& "C:\Projects\PS-CFW\Exchange.ps1" SetUp
 		#$MailboxName = "henry.schade@nmci-isf.com";
 		#$strUserToAdd = "henry.schade.adm";
 		#Check permissions:
@@ -380,7 +380,8 @@
 					UpdateResults "$strMessage `r`n" $False;
 				}
 			}
-		}else{
+		}
+		else{
 			$strMessage = "Starting Mailbox creation for user '$strUserName'.`r`n";
 			#$strMessage = $strMessage + "   " + ([System.DateTime]::Now).ToString();
 			if ($bUpdateResults -eq $True){
@@ -402,7 +403,8 @@
 						UpdateResults "$strMessage `r`n" $False;
 					}
 				}
-			}else{
+			}
+			else{
 				#$strEmail = $txbEmail.Text.Trim();
 				#$strAlias = $txbAlias.Text.Trim();
 				$strOtherName = "";
@@ -444,7 +446,7 @@
 
 				$Error.Clear();
 				#$bDoBackGround = $chkBackGrndMB.Checked;
-				if ($bDoBackGround -eq $False){
+				if ($bDoBackGround -ne $True){
 					#Need Exchange commands from here on...
 					if ((!(Get-PSSession)) -or (!(Get-Command "Enable-Mailbox" -ErrorAction SilentlyContinue)) -or (!(Get-Command "Remove-MailboxPermission" -ErrorAction SilentlyContinue))){
 						$strMessage = "  Importing Exchange commands.  " + ([System.DateTime]::Now).ToString() + "`r`n";
@@ -454,19 +456,19 @@
 
 						Switch ($strDomain){
 							"nadsusea"{
-								SetupConn "e" "Random";
+								$objResult = SetupConn "e" "Default";
 							}
 							"nadsuswe"{
-								SetupConn "w" "Random";
+								$objResult = SetupConn "w" "Default";
 							}
 							"pads"{
-								SetupConn "p" "Random";
+								$objResult = SetupConn "p" "Default";
 							}
 							"nmci-isf"{
-								SetupConn "e" "Random";
+								$objResult = SetupConn "e" "Default";
 							}
 							default{
-								SetupConn "w" "Random";
+								$objResult = SetupConn "w" "Default";
 							}
 						}
 						$strMessage = "  Done importing Exchange commands.  " + ([System.DateTime]::Now).ToString() + "`r`n";
@@ -477,14 +479,18 @@
 
 					$Error.Clear();
 					#From Ecxhange GUI
-					#$strResults = CreateMailBox ($strDomain + "\" + $strUserName) $strExchMBDB $strAlias $True;
+					#$objResult = CreateMailBox ($strDomain + "\" + $strUserName) $strExchMBDB $strAlias $True;
 					if ($strAlias.EndsWith(".ctr", 1)){				#the 1 makes it case-insensitive.
-						Enable-Mailbox $strUserName -Alias $strAlias -Database $strExchMBDB -DomainController $strDC -PrimarySmtpAddress $strEmail;
-						Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $False;
-						Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias@nmci-isf.com"};
-						Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $True;
+						$objResult = Enable-Mailbox $strUserName -Alias $strAlias -Database $strExchMBDB -DomainController $strDC -PrimarySmtpAddress $strEmail;
+
+						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $False;
+						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias@navy.mil"}
+						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias@nmci-isf.com"};
+						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias.ctr@navy.mil"}
+						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias.ctr@nmci-isf.com"}
+						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $True;
 					}else{
-						Enable-Mailbox $strUserName -Alias $strAlias -Database $strExchMBDB -DomainController $strDC;
+						$objResult = Enable-Mailbox $strUserName -Alias $strAlias -Database $strExchMBDB -DomainController $strDC;
 					}
 
 					if ($Error){
@@ -495,20 +501,16 @@
 					}else{
 						$bDidMailBox = $True;
 						if (($strOtherName -ne "") -and ($strOtherName -ne $null)){
-							#Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $False;
-							#Remove-MailboxPermission -Identity $strUserName -DomainController $strDC -User ($strUserName.SubString(0, ($strUserName.Length - 5))) -AccessRights "FullAccess";
 							#Remove-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess";
-							Remove-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess" -Confirm:$False | Out-Null;
-							#Add-MailboxPermission -Identity $strUserName -DomainController $strDC -User ($strUserName.SubString(0, ($strUserName.Length - 5))) -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False;
+							$objResult = Remove-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess" -Confirm:$False | Out-Null;
 							#Add-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False;
-							Add-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False | Out-Null;
-							#Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $True;
+							$objResult = Add-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False | Out-Null;
 						}
 
 						$Error.Clear();
 						#Hide the email in the GAL.
 						if ($strUserName.EndsWith(".nnpi", 1)){		#the 1 makes it case-insensitive.
-							$strResults = Set-Mailbox -Identity $strUserName -DomainController $strDC -HiddenFromAddressListsEnabled $True;
+							$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -HiddenFromAddressListsEnabled $True;
 						}
 
 						$strMessage = "Successfully Created MailBox for '" + $strUserName + "' (Alias: " + $strAlias + ") on '" + $strExchServer + "\";
@@ -520,7 +522,8 @@
 						#$strMessage = $strMessage + "   " + ([System.DateTime]::Now).ToString();
 						$strMessage = $strMessage + "`r`n";
 					}
-				}else{
+				}
+				else{
 					$Error.Clear();
 					if ($strAlias.EndsWith(".ctr", 1)){				#the 1 makes it case-insensitive.
 						#if ($strUserName.EndsWith(".nnpi")){
@@ -1203,7 +1206,6 @@
 			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
 			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
 		}
-		#$strTemp = "EWSVerifyInstall(" + $strTemp.Trim() + ")";
 		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
 		$objReturn = New-Object PSObject -Property @{
 			Name = $strTemp
@@ -1215,13 +1217,18 @@
 		#http://www.getautomationmachine.com/en/company/news/item/embedding-files-in-powershell-scripts
 		#Talks about using base85 for smaller data --> http://trevorsullivan.net/2012/07/24/powershell-embed-binary-data-in-your-script/
 
-		#$strFileFile = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\PS-Scripts\EWS-Files.txt";
-		$strFileFile = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\PS-CFW\EWS-Files.txt";
-		if (Test-Path -Path ("C:\Projects\PS-Scripts\EWS-Files.txt")){
-			$strFileFile = "C:\Projects\PS-Scripts\EWS-Files.txt";
+		if (!(Get-Command "GetPathing" -ErrorAction SilentlyContinue)){
+			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+			if ((Test-Path ($ScriptDir + "\Common.ps1"))){
+				. ($ScriptDir + "\Common.ps1")
+			}
 		}
-		if (Test-Path -Path ("C:\Projects\PS-CFW\EWS-Files.txt")){
-			$strFileFile = "C:\Projects\PS-CFW\EWS-Files.txt";
+		$strFileFile = (GetPathing "CFW").Returns.Rows[0]['Path'];
+		if ([String]::IsNullOrWhiteSpace($strFileFile)){
+			$strFileFile = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\EWS-Files.txt";
+		}
+		else{
+			$strFileFile = $strFileFile + "EWS-Files.txt";
 		}
 
 		if (($strDesiredVer -eq "1.2") -or ($strDesiredVer -eq "2.1") -or ($strDesiredVer -eq "2.2")){
@@ -1355,7 +1362,6 @@
 	}
 
 	function GetExchangeServers{
-		#From PS-ExchConn.ps1.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Boolean]$bolRetRoleNames = $False
 		)
@@ -1738,7 +1744,6 @@
 	}
 
 	function SetupConn{
-		#From PS-ExchConn.ps1.
 		Param(
 			[Parameter(Mandatory=$False)][String]$WhatSide, 
 			[Parameter(Mandatory=$False)][String]$strServer

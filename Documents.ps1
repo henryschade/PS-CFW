@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	15 December 2015
+# Updated Date:	25 February 2016
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
@@ -94,7 +94,7 @@
 
 
 		#What file to open/create
-		$strFilePath = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\BackUpLocation\USN_Server_Farms-Testing.xls";
+		$strFilePath = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\SRM\SupportFiles\BackUpLocation\USN_Server_Farms-Testing.xls";
 		$strFilePath = "C:\Projects\PS-Scripts\Testing\CIVMAR Bulk MAC.xls";
 		$WorkSheetName = "Create User Account";
 
@@ -701,7 +701,7 @@
 	}
 
 
-	function URLSaveFile{
+	function URLSaveToFile{
 		Param(
 			[Parameter(Mandatory=$True)][String]$strUrl,
 			[Parameter(Mandatory=$True)][String]$strDestFolder
@@ -709,20 +709,20 @@
  
 		$objResponse = $null;
 		$Error.Clear();
-		$objResponse = Invoke-WebRequest -Uri $strUrl
-		if ((!($Error)) -and ($objResponse -ne "") -and ($objResponse -ne $null)){
-			$strFilename = [System.IO.Path]::GetFileName($objResponse.BaseResponse.ResponseUri.OriginalString)
-			$strFilename = $strFilename.Replace("%20", " ")
-			$objFilepath = [System.IO.Path]::Combine($strDestFolder, $strFilename)
+		$objResponse = Invoke-WebRequest -Uri $strUrl;
+		if ((!($Error)) -and (!([String]::IsNullOrWhiteSpace($objResponse)))){
+			$strFilename = [System.IO.Path]::GetFileName($objResponse.BaseResponse.ResponseUri.OriginalString);
+			$strFilename = $strFilename.Replace("%20", " ");
+			$objFilepath = [System.IO.Path]::Combine($strDestFolder, $strFilename);
 			try{
 				$Error.Clear();
-				$objFilename = [System.IO.File]::Create($objFilepath)
+				$objFilename = [System.IO.File]::Create($objFilepath);
 				if ($Error){
-					$objFilepath = [System.IO.Path]::Combine($strDestFolder, ((([System.DateTime]::Now).Ticks).ToString()))
-					$objFilename = [System.IO.File]::Create($objFilepath)
+					$objFilepath = [System.IO.Path]::Combine($strDestFolder, ((([System.DateTime]::Now).Ticks).ToString()));
+					$objFilename = [System.IO.File]::Create($objFilepath);
 				}
-				$objResponse.RawContentStream.WriteTo($objFilename)
-				$objFilename.Close()
+				$objResponse.RawContentStream.WriteTo($objFilename);
+				$objFilename.Close();
 			}
 			finally{
 				if ($objFilename){

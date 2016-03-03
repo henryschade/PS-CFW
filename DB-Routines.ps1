@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	30 December 2015
+# Updated Date:	25 February 2016
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -110,21 +110,24 @@
 
 		#Set some defaults
 		$strRawData = "";
-		$strConfigFile = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\MiscSettings.txt";
+		if (!(Get-Command "GetPathing" -ErrorAction SilentlyContinue)){
+			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+			if ((Test-Path ($ScriptDir + "\Common.ps1"))){
+				. ($ScriptDir + "\Common.ps1")
+			}
+		}
+		$strConfigFile = ((GetPathing "SupportFiles").Returns.Rows[0].Path);
+		if ([String]::IsNullOrWhiteSpace($strConfigFile)){
+			$strConfigFile = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\SupportFiles\MiscSettings.txt";
+		}
+		else{
+			$strConfigFile = $strConfigFile + "MiscSettings.txt";
+		}
 
-		#if (!(Get-Command "GetPathing" -ErrorAction SilentlyContinue)){
-		#	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-		#	if ((Test-Path ($ScriptDir + "\Common.ps1"))){
-		#		. ($ScriptDir + "\Common.ps1")
-		#	}
-		#}
-		#$strConfigFile = ((GetPathing "SupportFiles").Returns.Rows[0].Path) + "MiscSettings.txt";
-
-		#$strRawData = ((GetPathing $strWhatSystem).Returns.Rows[0].Path);				#AND eliminate the HardCoded values here.
+		#Some defaults, incase the MiscSettings file can not be read.
 		Switch ($strWhatSystem){
 			"AgentActivity"{
-				#Same as "Score".
-				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkFcU1E3MlZBSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==";
+				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==";
 			}
 			"CDR"{
 				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAyDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h";
@@ -133,16 +136,13 @@
 				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTUzXFNRNTNJTlNUMDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==";
 			}
 			"Score"{
-				#$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcxVkFcU1E3MVZBSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==";
-				#New value for the DB migration on 20150421.1700
-				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkFcU1E3MlZBSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==";
+				#Same as "AgentActivity".
+				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==";
 			}
 			"Sites"{
 				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTc1VkFcU1E3NVZBSU5TVDAxDQpzdHJEQk5hbWUgPSBTaXRlQ29kZXMNCnN0ckRCTG9naW5SID0gS0J1c2VyDQpzdHJEQlBhc3NSID0ga2M1JHNxMDI=";
 			}
 			"SRMDB"{
-				#$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcxVkJcU1E3MVZCSU5TVDAxDQpzdHJEQk5hbWUgPSBTUk1fQXBwc19Ub29scw0Kc3RyREJMb2dpblIgPSBTUk1fQXBwc19Ub29sc19XRk0NCnN0ckRCUGFzc1IgPSAhU1JNX0FwcHNfVG9vbHNfV0ZNNjkNCnN0ckRCTG9naW5XID0gU1JNX0FwcHNfVG9vbHMNCnN0ckRCUGFzc1cgPSAhU1JNX0FwcHNfVG9vbHM2OQ==";
-				#New value for the DB migration on 20150421.1700
 				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBTUk1fQXBwc19Ub29scw0Kc3RyREJMb2dpblIgPSBTUk1fQXBwc19Ub29sc19XRk0NCnN0ckRCUGFzc1IgPSAhU1JNX0FwcHNfVG9vbHNfV0ZNNjkNCnN0ckRCTG9naW5XID0gU1JNX0FwcHNfVG9vbHMNCnN0ckRCUGFzc1cgPSAhU1JNX0FwcHNfVG9vbHM2OQ==";
 			}
 		}
@@ -182,7 +182,7 @@
 						$strDBLoginR = $strVal
 					}
 					"strDBPassR"{
-						if ($strWhatSystem -eq "Score"){
+						if (($strWhatSystem -eq "Score") -or ($strWhatSystem -eq "AgentActivity")){
 							$strDBPassR = "@!0" + $strVal
 						}else{
 							$strDBPassR = $strVal
@@ -192,7 +192,7 @@
 						$strDBLoginW = $strVal
 					}
 					"strDBPassW"{
-						if ($strWhatSystem -eq "Score"){
+						if (($strWhatSystem -eq "Score") -or ($strWhatSystem -eq "AgentActivity")){
 							$strDBPassW = "@!0" + $strVal
 						}else{
 							$strDBPassW = $strVal
@@ -201,6 +201,7 @@
 				}
 			}
 		}
+
 		$arrDBInfo = @($strDBType, $strDBServer, $strDBName, $strDBLoginR, $strDBPassR, $strDBLoginW, $strDBPassW);
 
 		return $arrDBInfo;
@@ -407,8 +408,12 @@
 			$objTable.columns.add($col2);
 			$row = $objTable.NewRow();
 			$row.Message = "Error";
-			#$row.Results = $Error[0];
-			$row.Results = $Error;
+			#$row.Results = $Error;
+			#$row.Results = $Error[0].ToString();
+			$row.Results = "Error";
+			foreach ($MsgError in $Errors){
+				$row.Results = $row.Results + "`r`n" + "Error $($MsgError.Number), Line $($MsgError.Line): $($MsgError.Message)";
+			}
 			$objTable.Rows.Add($row);
 		}
 		else{
@@ -449,8 +454,12 @@
 				$objTable.columns.add($col2);
 				$row = $objTable.NewRow();
 				$row.Message = "Error";
-				#$row.Results = $Error[0];
-				$row.Results = $Error;
+				#$row.Results = $Error;
+				#$row.Results = $Error[0].ToString();
+				$row.Results = "Error";
+				foreach ($MsgError in $Errors){
+					$row.Results = $row.Results + "`r`n" + "Error $($MsgError.Number), Line $($MsgError.Line): $($MsgError.Message)";
+				}
 				$objTable.Rows.Add($row);
 			}
 			else{
@@ -467,8 +476,12 @@
 						$objTable.columns.add($col2);
 						$row = $objTable.NewRow();
 						$row.Message = "Error";
-						#$row.Results = $Error[0];
-						$row.Results = $Error;
+						#$row.Results = $Error;
+						#$row.Results = $Error[0].ToString();
+						$row.Results = "Error";
+						foreach ($MsgError in $Errors){
+							$row.Results = $row.Results + "`r`n" + "Error $($MsgError.Number), Line $($MsgError.Line): $($MsgError.Message)";
+						}
 						$objTable.Rows.Add($row);
 					}
 				}

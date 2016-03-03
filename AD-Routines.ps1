@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	5 December 2015
+# Updated Date:	25 February 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 ##########################################
@@ -37,36 +37,53 @@
 	}
 
 	function TestRoutine{
-		#Some users are having issues that the command "(Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster" is NOT getting the RIDMaster, 
-			#returns an error simular to "internal error, the server is busy."
-		#In talking w/ Chris he suggested the .NET methods instead.
-		#http://mikefrobbins.com/2013/04/18/powershell-function-to-determine-the-active-directory-fsmo-role-holders-via-the-net-framework/
 
-		#. "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\PS-Scripts\AD-Routines.ps1"
+		#. C:\Projects\PS-CFW\AD-Routines.ps1;
 
-		$InitializeDefaultDrives=$False;
-		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
+		#$InitializeDefaultDrives=$False;
+		#if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
 
-		$strDomain = "nadsuswe"
-		$Error.Clear();
-		(Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
-		if ($Error){
-			Write-Host "WOOT it errored, so now try the .NET method."
-			[System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
+		$UserName = "margaret.matthews";		# "margaret.toelken" has the following email address "margaret.matthews@navy.mil"
+		#$UserName = "redirect.test";
+		$strDomain = "nadsuswe";
+		$strDomain = "nadsusea";
+		$strFilter = "(&(objectCategory=user)(proxyAddresses=*" + $UserName + "*))";
+		#$strFilter = "(&(objectCategory=user)(EDIPI=*" + "EDIPI#" + "*))";
+		#$strFilter = "(&(objectCategory=user)(UserPrincipalName=*" + "redirect.test@mil" + "*))";
+		#$strFilter = "(&(objectCategory=user)(UserPrincipalName=*" + "1158784609" + "*))";
+		#$strFilter = "(&(objectCategory=user)(|(UserPrincipalName=*" + "1158784609" + "*)(EDIPI=*" + "1158784609" + "*)))";
+		[Array]$arrDesiredProps = @("name", "proxyAddresses", "mail", "EDIPI", "UserPrincipalName");
+		$objResults = $Null;
+
+		(Get-Date).ToString("yyyy-MM-dd HH:mm:ss");
+		$objResults = ADSearchADO $UserName $strDomain $strFilter $arrDesiredProps $True;
+		(Get-Date).ToString("yyyy-MM-dd HH:mm:ss");
+		#Run times (search proxyAddresses for username):
+			#2 min 15 sec
+			#1 min 51 sec
+			#1 min 51 sec
+			#1 min 44 sec
+			#1 min 47 sec
+			#1 min 55 sec
+			#2 min 17 sec
+		#Run times (search for EDIPI):
+			#1 min 49 sec
+		#Run times (search for UserPrincipalName):
+			#2 min 30 sec
+			#1 min 20 sec
+			#1 min 42sec
+			#0 min 15 sec		(nmci-isf)
+			#0 min 15 sec		(nmci-isf)
+		$objResults | FL;
+		$objResults.Returns;
+		$objResults.Returns | FL;
+
+		$objResults.Returns[0].proxyaddresses;
+
+		if ($objResults.Returns[0].proxyaddresses -Match $UserName){
+			Write-Host "Found a match, so the Email in use already.";
 		}
 
-		$strDomain = "nadsusea"
-		$Error.Clear();
-		(Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
-		if ($Error){
-			Write-Host "WOOT it errored, so now try the .NET method."
-			[System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
-		}
-
-		#So then my RIDMaster commands go from:
-		#$strRIDMaster = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
-		#to:
-		#$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
 	}
 
 	
@@ -757,17 +774,22 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Username, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strFilter, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Array]$arrDesiredProps = @("name")
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Array]$arrDesiredProps = @("name"), 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bPSobj = $False
 		)
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= # of objects found.
 			#$objReturn.Message		= A verbose message of the results (The error message).
-			#$objReturn.Returns		= The object(s) found.   (System.DirectoryServices.SearchResult)  or  (SearchResultCollection)
+			#$objReturn.Returns		= The object(s) found.   (System.DirectoryServices.SearchResult)  or  (SearchResultCollection)  or  PowerShell Object(s).
 		#$Username = The user name to search for, if $strFilter is NOT provided.
 		#$strDomain = The domain to search for $Username on/in.  i.e. "nadsuswe", or "DC=nadsusea,DC=nads,DC=navy,DC=mil"
-		#$strFilter = A custom LDAP search filter, instead of the default we use.
-		#$arrDesiredProps = A list of Properties you want returned instead of "name".  (adsPath is default w/ all options.)
+		#$strFilter = A custom LDAP search filter, instead of the default.   Default is  -->  "(&(objectCategory=user)(name=*" + $Username + "*))"
+			#$strFilter = "(&(objectCategory=user))";
+			#$strFilter = "(&(objectCategory=user)(mail=*" + $Username + "*))";
+			#$strFilter = "(&(objectCategory=user)(proxyAddresses=*))";
+		#$arrDesiredProps = A list of Properties you want returned instead of just "name" and "adsPath".  (adsPath is default w/ all options.)
+		#$bPSobj = $True to return a [collection of] PowerShell Object(s) instead of a System.DirectoryServices.SearchResult.
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -824,7 +846,7 @@
 		$objSearcher.SearchScope = "Subtree";
 
 		#$arrDesiredProps = "name", "proxyAddresses";
-		foreach ($i in $colPropList){$strResults = $objSearcher.PropertiesToLoad.Add($i)};
+		foreach ($i in $arrDesiredProps){$strResults = $objSearcher.PropertiesToLoad.Add($i)};
 
 		$colResults = $objSearcher.FindAll();
 
@@ -832,9 +854,28 @@
 			$objReturn.Message = "Error" + "`r`n" + $Error;
 		}else{
 			$objReturn.Message = "Success";
-			$objReturn.Results = $colResults.Count;
+			$objReturn.Results = [Int]$colResults.Count;
 			if ($colResults.Count -gt 0){
 				$objReturn.Returns = $colResults;
+
+				if ($bPSobj -eq $True){
+					$objItems = @();
+					foreach ($objResult in $objReturn.Returns){
+						$objItm = $objResult.Properties;
+						#$objItm;
+						#Write-Host $objItm.name;
+						#Write-Host $objItm.proxyAddresses;
+						#Write-Host $objItm.mail;
+
+						$objItem = New-Object PSObject;
+						foreach ($prop in $objItm.PropertyNames){
+							$objItem | Add-Member -MemberType NoteProperty -Name $prop -Value $objItm.$prop;
+						}
+
+						$objItems += $objItem;
+					}
+					$objReturn.Returns = $objItems;
+				}
 			}
 		}
 
@@ -1089,15 +1130,19 @@
 		#$FirstName = First Name.
 		#$MI = Middle Initial.
 		#$Rank = Rank.  NOT E/O Grade.
-		#$Dep = Department.
-		#$Office = Office.
+		#$Dep = Department, or GalCMD.
+		#$Office = Office, or GalOff.
 		#$Company = The company (USN, USMC, etc).  Used to determine the exact format of things.
 		#$KnownBy = KnownBy Name.  i.e. Tony for Anthony.
 		#$Gen = Generation.  i.e. Jr, Sr, etc.
 		#$FNcc = Foreign National Country Code.  i.e. FR, GE.
+		#$bCNNPI = $True or $False.  Is this for a Classified NNPI account?  (Future feature)
+
+		#$strDisplayName = (BuildDisplayName $LastName $FirstName $MI $Rank $Dep $Office $Company $KnownBy $Gen $FNcc).Returns;
 
 		#Display Names - per NMCI Naming Standards (D400 11939.01 section 3.9.4.1)
 		#Navy --> Last, First[or KnownBy] MI [Generation] [FORNATL-cc] Rank Department [or GalCMD], Office [or GalOff]
+		#C-NNPI --> Last, First[or KnownBy] MI [Generation] Rank NNPI Department [or GalCMD], Office [or GalOff]
 			#The Standards say to use "http://www.nima.mil/gns/html/fips_10_digraphs.html" for CC values, but it is dead.
 			#SRM uses "http://www.state.gov/s/inr/rls/4250.htm".
 
@@ -1118,8 +1163,12 @@
 			Returns = ""
 		}
 
+		if ($bCNNPI){
+			#Check if running on Classified network.  If not set the $bCNNPI "flag" to $False.
+			#If running on Classified network, set the $FNcc to "US" (or blank).
+		}
+
 		$Error.Clear();
-		#BuildDisplayName
 		$strDisplayName = "";
 		#Display Names done per NMCI Naming Standards (D400 11939.01 section 3.9.4.1)
 		if ($Company -eq "USN"){
@@ -1148,7 +1197,7 @@
 				$strDisplayName = $strDisplayName + $Rank + " ";
 			}
 			#CC / FORNATL
-			if (($FNcc -ne "US") -and ($FNcc -ne "") -and ($FNcc -ne $null)){
+			if (($FNcc.Trim() -ne "US") -and ($FNcc -ne "") -and ($FNcc -ne $null)){
 				if ($FNcc.Trim().Length -gt 2){
 					$FNcc = $FNcc.Trim();
 					$FNcc = $FNcc.SubString(0, 2);
@@ -1167,7 +1216,7 @@
 
 		if ($Error){
 			$objReturn.Results = $False;
-			$objReturn.Message = $Error;
+			$objReturn.Message = "Error: `r`n" + $Error;
 		}else{
 			$objReturn.Results = $True;
 			$objReturn.Message = "Success";
@@ -1339,85 +1388,222 @@
 	}
 
 	function CreateADUser{
-		#http://www.howtogeek.com/50187/how-to-create-multiple-users-in-server-2008-with-powershell/
-		#$objOU = [ADSI]"LDAP://[DomainController/]OU=People,DC=sysadmingeek,DC=com"
-		#Taking about 6 seconds in my initial testing.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)]$oADInfo, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)]$strOU, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)]$strDomain, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)]$strDC
 		)
-		#Adds/Updates $oADInfo.TheResults with the results of the Create process.
-		#$oADInfo = Cutom PowerShell Object that has all the AD fields to be set.
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters.
+			#$objReturn.Results		= $True or $False.  Did the AD User get created?
+			#$objReturn.Message		= A verbose message of the results (Or the error message).
+			#$objReturn.Returns		= The User object.
+		#$oADInfo = Cutom PowerShell Object that has all the AD fields to be set. (Minimum of "CN", "givenName" (First), "sAMAccountName", "SN" (Last), "userPrincipalName")
 			#$oADInfo = New-Object PSObject;
 			#Add-Member -InputObject $oADInfo -MemberType NoteProperty -Name "CN" -Value "";
-			#Add-Member -InputObject $oADInfo -MemberType NoteProperty -Name "sAMAccountName" -Value "";
-			#Add-Member -InputObject $oADInfo -MemberType NoteProperty -Name "userPrincipalName" -Value "";
 			#Add-Member -InputObject $oADInfo -MemberType NoteProperty -Name "givenName" -Value "";
+			#Add-Member -InputObject $oADInfo -MemberType NoteProperty -Name "sAMAccountName" -Value "";
 			#Add-Member -InputObject $oADInfo -MemberType NoteProperty -Name "SN" -Value "";
+			#Add-Member -InputObject $oADInfo -MemberType NoteProperty -Name "userPrincipalName" -Value "";
 		#$strOU = The LDAP OU path. i.e. "OU=USERS,OU=BASE,OU=CMD".
-		#$strDomain = The Domain to create the account on.  i.e. "sysadmingeek", or "sysadmingeek.com".
+		#$strDomain = The Domain to create the account on.  i.e. "sysadmingeek", or "sysadmingeek.com" or "DC=nadsusea,DC=nads,DC=navy,DC=mil".
 		#$strDC = The Domain Controller to create the account at.  FQDN or just the server name.
+		#Taking about 6 seconds in my initial testing.
 
-		$strMessage = "";
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $False
+			Message = ""
+			Returns = ""
+		}
 
 		#MUST have the following fields, no matter what, to create a User Object.
-		if ((($oADInfo.CN -eq "") -or ($oADInfo.CN -eq $null)) -or (($oADInfo.SN -eq "") -or ($oADInfo.SN -eq $null)) -or (($oADInfo.givenName -eq "") -or ($oADInfo.givenName -eq $null)) -or (($oADInfo.userPrincipalName -eq "") -or ($oADInfo.userPrincipalName -eq $null)) -or (($oADInfo.sAMAccountName -eq "") -or ($oADInfo.sAMAccountName -eq $null))){
+		if (([String]::IsNullOrWhiteSpace($oADInfo.CN)) -or ([String]::IsNullOrWhiteSpace($oADInfo.givenName)) -or ([String]::IsNullOrWhiteSpace($oADInfo.sAMAccountName)) -or ([String]::IsNullOrWhiteSpace($oADInfo.SN)) -or ([String]::IsNullOrWhiteSpace($oADInfo.userPrincipalName))){
 			#CN, sAMAccountName, userPrincipalName, givenName (First), SN (Last)
 			$strMessage = "Required AD fields are missing.`r`n(CN, sAMAccountName, userPrincipalName, givenName, SN)";
-			Add-Member -InputObject $oADInfo -MemberType NoteProperty -Name "TheResults" -Value $strMessage -Force;
-			return;
+
+			#Add-Member -InputObject $oADInfo -MemberType NoteProperty -Name "TheResults" -Value $strMessage -Force;
+			#return;
+
+			$objReturn.Message = "Error" + "`r`n" + $strMessage;
 		}
 
-		$InitializeDefaultDrives=$False;
-		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
+		if ($objReturn.Message -eq ""){
+			$strMessage = "";
+			$strRunningWorkLog = "";
 
-		#$objOU = [ADSI]"LDAP://DomainController/OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil"
-		#if (($strDC -eq "") -or ($strDC -eq $null)){
-		#	#$objOU = [ADSI]"LDAP://OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil";
-		#}else{
-		#	#$objOU = [ADSI]"LDAP://$strDC/OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil";
-		#}
+			$InitializeDefaultDrives=$False;
+			if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
 
-		#Get the Domain DistinguishedName from $strDomain.
-		if (!($strMessage.StartsWith("DC="))){
-			$strDomain = (Get-ADDomain $strDomain).DistinguishedName;
-		}
+			#Get the Domain DistinguishedName from $strDomain.
+			if (!($strDomain.StartsWith("DC="))){
+				$strDomain = (Get-ADDomain $strDomain).DistinguishedName;
+			}
 
-		$objOU = [ADSI]"LDAP://";
-		if (($strDC -ne "") -and ($strDC -ne $null)){
-			$objOU = $objOU + $strDC + "/";
-		}
-		$objOU = $objOU + $strOU;
-		$objOU = $objOU + "," + $strDomain;
+			#$objOU = [ADSI]"LDAP://DomainController/OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil"
+			#if ([String]::IsNullOrWhiteSpace($strDC)){
+			#	#$objOU = [ADSI]"LDAP://OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil";
+			#}else{
+			#	#$objOU = [ADSI]"LDAP://$strDC/OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil";
+			#}
 
-		#$cn = $oADInfo.CN;
-		#$objUser = $objOU.Create("user", "CN=" + $cn);
-		$objUser = $objOU.Create("user", "CN=" + $oADInfo.CN);
+			$objOU = [ADSI]"LDAP://";
+			if (!([String]::IsNullOrWhiteSpace($strDC))){
+				$objOU = $objOU + $strDC + "/";
+			}
+			$objOU = $objOU + $strOU;
+			$objOU = $objOU + "," + $strDomain;
 
-		#http://stackoverflow.com/questions/17927525/accessing-values-of-object-properties-in-powershell
-		#$oADInfo.psobject.properties | % {$_.Name + " = " + $_.Value};
-		foreach ($oProp in $oADInfo.PsObject.Properties){
-			if (!(($oProp.Name -eq "cn") -or ($oProp.Name -eq "password") -or ($oProp.Name -eq "AccountDisabled"))){
-				#$oProp.Name + " = " + $oProp.Value;
-				$objUser.Put($oProp.Name, $oProp.Value);
+			#$cn = $oADInfo.CN;
+			#$objUser = $objOU.Create("user", "CN=" + $cn);
+			$objUser = $objOU.Create("user", "CN=" + $oADInfo.CN);
+
+			#http://stackoverflow.com/questions/17927525/accessing-values-of-object-properties-in-powershell
+			#$oADInfo.psobject.properties | % {$_.Name + " = " + $_.Value};
+			foreach ($oProp in $oADInfo.PsObject.Properties){
+				if (!(($oProp.Name -eq "cn") -or ($oProp.Name -eq "password") -or ($oProp.Name -eq "AccountDisabled"))){
+					$Error.Clear();
+					#$oProp.Name + " = " + $oProp.Value;
+					$objUser.Put($oProp.Name, $oProp.Value);
+					if ($Error){
+						if ([String]::IsNullOrWhiteSpace($strMessage)){
+							$strMessage = "Error populating the following AD fields: `r`n";
+						}
+						$strMessage = $strMessage + $oProp.Name + " with '" + $oProp.Value + "'" + "`r`n";
+					}
+				}
+			}
+			if (!([String]::IsNullOrWhiteSpace($strMessage))){
+				$strMessage = $strMessage + "`r`n";
+			}
+			#$objUser.Put("sAMAccountName", $sAMAccountName);
+			#$objUser.Put("userPrincipalName", $userPrincipalName);
+			#$objUser.Put("displayName", $displayName);
+			#$objUser.Put("givenName", $FirstName);
+			#$objUser.Put("sn", $LastName);
+			$Error.Clear();
+			$objUser.SetInfo();
+			if ($Error){
+				$strMessage = $strMessage + "Error saving AD User properties.`r`n" + $Error;
+				$strMessage = $strMessage + "`r`n";
+			}
+			else{
+				$strMessage = "Created the following account: `r`n";
+				if (!([String]::IsNullOrWhiteSpace($strDC))){
+					$strMessage = $strMessage + $strDC + "   ";
+				}
+				$strMessage = $strMessage + "CN=" + $objUser.CN + "`r`n";
+				$objReturn.Results = $True;
+				$strSID = $objUser.Sid;
+			}
+			$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+			$strMessage = "";
+
+			$Error.Clear();
+			if (!([String]::IsNullOrWhiteSpace($strSID))){
+				if (([String]::IsNullOrWhiteSpace($oADInfo.password))){
+					#$objUser.SetPassword('S0me.P@$$w0rd4Y0u');
+
+					#Set a random password on the account.
+					$strMessage = "Set a random password for the account.`r`n";
+					$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+					#UpdateResults $strMessage $False;
+					$Error.Clear();
+					#Generate a random password (19 to 24 chars).
+					$strSomePass = [String](Get-Random -Maximum 999 -Minimum 10) + '_NMCI.P@$$w0rd.' + (Get-Random -Maximum 100000 -Minimum 0);
+					if ($Error){
+						$strSomePass = 'Re@][Y.!S0.R@nd0m.' + (Get-Date).ToString("yyyyMMdd");
+					}
+				}else{
+					#$objUser.SetPassword($oADInfo.password);
+					$strSomePass = $oADInfo.password;
+				}
+				$Error.Clear();
+				if (([String]::IsNullOrWhiteSpace($strDC))){
+					$strResult = Set-ADAccountPassword -Identity $strSID -Reset -NewPassword (ConvertTo-SecureString -AsPlainText $strSomePass -Force);
+				}
+				else{
+					#Set-ADAccountPassword -Identity $strSID -Reset -NewPassword (ConvertTo-SecureString -AsPlainText $strSomePass -Force) -Server $strDC -PassThru | Enable-ADAccount;
+					$strResult = Set-ADAccountPassword -Identity $strSID -Reset -NewPassword (ConvertTo-SecureString -AsPlainText $strSomePass -Force) -Server $strDC;
+				}
+				#$objUser.SetPassword($strSomePass);
+				if ($Error){
+					$strMessage = "  Error setting a password on the account.`r`n" + $Error;
+					$strMessage = $strMessage + "`r`n";
+					$strMessage = "" + ("-" * 100) + "`r`n" + $strMessage + "`r`n";
+					#UpdateResults $strMessage $False;
+					$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+				}
+
+				$Error.Clear();
+				#$objUser.psbase.InvokeSet("AccountDisabled", $False);
+				if (([String]::IsNullOrWhiteSpace($strDC))){
+					$strResult = Enable-ADAccount -Identity $strSID;
+				}
+				else{
+					$strResult = Enable-ADAccount -Identity $strSID -Server $strDC;
+				}
+				if ($Error){
+					$strMessage = "Error setting the AccountDisabled property.`r`n" + $Error;
+					$strMessage = $strMessage + "`r`n";
+					$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+				}
+
+				#Do the "User must change password at next logon" checkbox.
+				$bolMustChange = $oADInfo.ChangePasswordAtLogon;
+				#if ($strWhatToDo.StartsWith("Create-Fct-Mail")){
+				#	#$bolMustChange = $False;
+				#	#Set LogonHours to Deny ALL.
+				#	#Set Mailbox permissions.
+				#		#http://support.microsoft.com/kb/304935/
+				#	$txbPhoneNotes.Text = $txbPhoneNotes.Text + "`r`nPOCs/Owners: " + $dgvBulk.SelectedRows[0].Cells["OwnerPOC"].Value;
+
+				#	if ($txbCompany.Text -eq "USMC"){
+				#		#"User Cannot Change Password"  =  $True
+				#			#Should use ACEs to do it, otherwise can fail. http://msdn.microsoft.com/en-us/library/aa746398(VS.85).aspx
+				#		#"Password Never Expires"  =  $True
+				#	}
+				#}
+				$strMessage = "Set 'User must change password at next logon' to $bolMustChange.`r`n";
+				$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+				#UpdateResults $strMessage $False;
+				$Error.Clear();
+				if (([String]::IsNullOrWhiteSpace($strDC))){
+					$strResult = Set-ADUser -Identity $strSID -ChangePasswordAtLogon $bolMustChange;
+				}
+				else{
+					$strResult = Set-ADUser -Identity $strSID -Server $strDC -ChangePasswordAtLogon $bolMustChange;
+				}
+				if ($Error){
+					$strMessage = "  Error setting 'User must change password at next logon'.`r`n" + $Error + "`r`n";
+					$strMessage = "" + ("-" * 100) + "`r`n" + $strMessage + "`r`n";
+					#UpdateResults $strMessage $False;
+					$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+				}
+
+				#$Error.Clear();
+				#$objUser.SetInfo();
+				#if ($Error){
+				#	$strMessage = "Error saving AD User object.`r`n" + $Error + "`r`n";
+				#	$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+				#}
 			}
 		}
-		#$objUser.Put("sAMAccountName", $sAMAccountName);
-		#$objUser.Put("userPrincipalName", $userPrincipalName);
-		#$objUser.Put("displayName", $displayName);
-		#$objUser.Put("givenName", $FirstName);
-		#$objUser.Put("sn", $LastName);
-		$objUser.SetInfo();
-		if (($oADInfo.password -ne "") -and ($oADInfo.password -ne $null)){
-			$objUser.SetPassword($oADInfo.password);
-		}else{
-			$objUser.SetPassword('S0me.P@$$w0rd4Y0u');
-		}
-		$objUser.psbase.InvokeSet("AccountDisabled", $False);
-		$objUser.SetInfo();
 
+		$objReturn.Returns = $objUser;
+		$objReturn.Message = $strRunningWorkLog;
+		return $objReturn;
 	}
 
 	function Check4OU{
@@ -2100,7 +2286,6 @@
 			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
 			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
 		}
-		#$strTemp = "MoveUser(" + $strTemp.Trim() + ")";
 		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
 		$objReturn = New-Object PSObject -Property @{
 			Name = $strTemp
@@ -2169,7 +2354,29 @@
 
 			if (($objUser -ne "") -and ($objUser -ne $null)){
 				#Can do the actual move, once we pull all the parts together
-				$strConfigFile = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\MiscSettings.txt";
+				if ((!(Get-Command "GetPathing" -ErrorAction SilentlyContinue))){
+					#Include following Script/File.
+					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+					#$PSCmdlet.MyInvocation.InvocationName;
+					$arrIncludes = @("Common.ps1");
+					foreach ($strInclude in $arrIncludes){
+						$Error.Clear();
+						if (Test-Path -Path ($ScriptDir + "\..\PS-CFW\" + $strInclude)){
+							. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
+						}
+						else{
+							. ($ScriptDir + "\" + $strInclude)
+						}
+					}
+				}
+				#$strConfigFile = "\\...\ITSS-Tools\SupportFiles\MiscSettings.txt";
+				$strConfigFile = (GetPathing "SupportFiles").Returns.Rows[0]['Path'];
+				if ([String]::IsNullOrWhiteSpace($strConfigFile)){
+					$strConfigFile = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\SupportFiles\MiscSettings.txt";
+				}
+				else{
+					$strConfigFile = $strConfigFile + "MiscSettings.txt";
+				}
 
 				$strDestDomain = $strDomain;
 				$strTempError = $null;
@@ -3636,6 +3843,22 @@ if ($PSVersionTable.CLRVersion.Major -ge 4){
 					ExtensionSet("wWWHomePage", value);
 				}
 			}
+			//Create the formData property.
+			[DirectoryProperty("formData")]
+			public string FormData
+			{
+				get
+				{
+					if(ExtensionGet("formData").Length != 1)
+						return null;
+					return System.Text.Encoding.UTF8.GetString((byte[])ExtensionGet("formData")[0]);
+				}
+				set
+				{
+					((DirectoryEntry)this.GetUnderlyingObject()).Properties["formData"].Value = (System.Text.Encoding.UTF8).GetBytes(value);
+				}
+			}
+
 			// Implement the overloaded search method FindByIdentity.
 			public static new NMCIUserPrincipal FindByIdentity(PrincipalContext context,
 														   string identityValue)

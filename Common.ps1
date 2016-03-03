@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	18 December 2015
+# Updated Date:	25 February 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -230,8 +230,8 @@
 		#		I want to make this support a ; seperated list of file types too.   i.e. ".mdb; .zip; .xlsx"
 		#$HowOld = How many days old does the file need to be, to be deleted.
 
-		$strSettingFile = "\\nawesdnifs08.nadsuswe.nads.navy.mil\NMCIISF\NMCIISF-SDCP-MAC\MAC\Entr_SRM\Support Files\MiscSettings.txt";
-		#$strSettingFile = "MiscSettings.txt";
+		$strSettingFile = (GetPathing "SupportFiles").Returns.Rows[0]['Path'];
+		$strSettingFile = $strSettingFile + "MiscSettings.txt";
 
 		if (($HowOld -lt -1) -or ($HowOld -eq "") -or ($HowOld -eq $null)){
 			if ((Test-Path $strSettingFile)){
@@ -341,7 +341,8 @@
 
 	function EnableDotNet4{
 		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bISE2 = $False
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bISE2 = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$strProjPath
 		)
 		#Checks if .NET 4 is enabled, and if NOT then creates the *.xml config file to enable .NET4 support.
 		#$bISE2 = $True or $False.  Create the "*\powershell_ise.exe.config" files along with the "*\powershell.exe.config" files.
@@ -357,15 +358,6 @@
 			if ($bolAsAdmin -ne $True){
 				$strMessage = "You should run this PS Script with admin permissions." + "`r`n" + "Want us to restart this PS Script for you?";
 				if ((!(Get-Command "MsgBox" -ErrorAction SilentlyContinue))){
-					#if ((Test-Path (".\Forms.ps1"))){
-					#	. (".\Forms.ps1")
-					#}
-					#else{
-					#	if ((Test-Path (".\..\PS-CFW\Forms.ps1"))){
-					#		. (".\..\PS-CFW\Forms.ps1")
-					#	}
-					#}
-
 					Write-Host "`r`n$strMessage ([Y]es, [N]o)";
 					#Write-Host "Press any key to continue ..."
 					$strResponse = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
@@ -374,21 +366,33 @@
 					$strResponse = MsgBox $strMessage "Not running with Admin perms" 4;
 				}
 
-				if (($strResponse -eq "yes") -or ($strResponse -eq "y") -or ($strResponse -eq "Y")){
-					$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
+				if (($strResponse -eq "yes") -or ($strResponse -eq "y") -or ($strResponse -eq "Y") -or ($strResponse.Character -eq "yes") -or ($strResponse.Character -eq "y") -or ($strResponse.Character -eq "Y")){
+					$strCommand = $MyInvocation.MyCommand.Path;
+					if ([String]::IsNullOrWhiteSpace($strCommand)){
+					#if (($strCommand -eq "") -or ($strCommand -eq $Null)){
+						if (!([String]::IsNullOrWhiteSpace($strProjPath))){
+						#if (($strProjPath -ne "") -and ($strProjPath -ne $Null)){
+							$strCommand = $strProjPath;
+						}
+					}
 
-					$strMessage = "Restarting as Admin.";
-					WriteLogFile $strMessage $strLogDirL $strLogFile;
+					if (!([String]::IsNullOrWhiteSpace($strCommand))){
+					#if (($strCommand -ne "") -and ($strCommand -ne $Null)){
+						$strCommand = "& '" + $strCommand + "'";
 
-					#method 1.  Uses Windows UAC to get creds.
-					#Start-Process $PSHOME\powershell.exe -verb runas -Wait -ArgumentList "-Command $strCommand";				#When I use " -Wait" kicks "Access Denied" error.
-					Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-ExecutionPolicy ByPass -Command $strCommand";
-					#Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
-					exit;
+						$strMessage = "Restarting as Admin.";
+						WriteLogFile $strMessage $strLogDirL $strLogFile;
 
-					#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
-					$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
-					Stop-Process -Id $PID;
+						#method 1.  Uses Windows UAC to get creds.
+						#Start-Process $PSHOME\powershell.exe -verb runas -Wait -ArgumentList "-Command $strCommand";				#When I use " -Wait" kicks "Access Denied" error.
+						Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-ExecutionPolicy ByPass -Command $strCommand";
+						#Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
+						exit;
+
+						#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
+						$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
+						Stop-Process -Id $PID;
+					}
 				}else{
 					$bolAsAdmin = $True;
 				}
@@ -484,7 +488,7 @@
 
 		$arrDefaults = @{};
 		#DB Info
-		$arrDefaults.Add("AgentActivity", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkFcU1E3MlZBSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==");
+		$arrDefaults.Add("AgentActivity", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==");
 		$arrDefaults.Add("AssMan", "c3RyREJTZXJ2ZXIgPSBubWNpbnJma2FzMDEubmFkc3VzZWEubmFkcy5uYXZ5Lm1pbA0Kc3RyREJTZXJ2ZXIyID0gbm1jaXNkbmlhczAxLm5hZHN1c3dlLm5hZHMubmF2eS5taWwNCnN0clBvcnQgPSAxNTIxDQpzdHJEQlR5cGUgPSBPcmFjbGUNCnN0ckRCTmFtZSA9IEFDUFJPRA0Kc3RyREJMb2dpblIgPSBpYnVsaw0Kc3RyREJQYXNzUiA9IGdCMjAlNGt1bGEyMyFBQw0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==");
 		$arrDefaults.Add("CDR", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAyDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h");
 		$arrDefaults.Add("ECMD", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTUzXFNRNTNJTlNUMDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==");
@@ -492,16 +496,18 @@
 		$arrDefaults.Add("Sites", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTc1VkFcU1E3NVZBSU5TVDAxDQpzdHJEQk5hbWUgPSBTaXRlQ29kZXMNCnN0ckRCTG9naW5SID0gS0J1c2VyDQpzdHJEQlBhc3NSID0ga2M1JHNxMDI=");
 		$arrDefaults.Add("SRMDB", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBTUk1fQXBwc19Ub29scw0Kc3RyREJMb2dpblIgPSBTUk1fQXBwc19Ub29sc19XRk0NCnN0ckRCUGFzc1IgPSAhU1JNX0FwcHNfVG9vbHNfV0ZNNjkNCnN0ckRCTG9naW5XID0gU1JNX0FwcHNfVG9vbHMNCnN0ckRCUGFzc1cgPSAhU1JNX0FwcHNfVG9vbHM2OQ==");
 		#File Share Info ( MUST end in \ )
-		$arrDefaults.Add("Beta", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Beta\");
+		$arrDefaults.Add("BackUps", "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\BackUps\");
+		$arrDefaults.Add("Beta", "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\Beta\");
+		$arrDefaults.Add("CFW", "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\");
 		$arrDefaults.Add("Dev", "C:\Projects\");
-		$arrDefaults.Add("ITSS-Tools", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\");
-		$arrDefaults.Add("Local", "C:\ITSS-Tools\");
+		$arrDefaults.Add("Local", "C:\Users\Public\ITSS-Tools\");
 		$arrDefaults.Add("Logs", "\\NAWESPSCFS101V.NADSUSWE.NADS.NAVY.MIL\ISF-IOS$\IOS-LOGS\");
-		$arrDefaults.Add("Logs_ITSS", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Logs\");
-		$arrDefaults.Add("Reports", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\Reports\");
-		$arrDefaults.Add("Root", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\");
-		$arrDefaults.Add("Scripts", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\PS-Scripts\");
-		$arrDefaults.Add("SupportFiles", "\\NAWESDNIFS08.NADSUSWE.NADS.NAVY.MIL\NMCIISF\NMCIISF-SDCP-HELPDESK\ITSS-Tools\SupportFiles\");
+		$arrDefaults.Add("Logs_ITSS", "\\NAWESPSCFS101V.NADSUSWE.NADS.NAVY.MIL\ISF-IOS$\ITSS-Tools\Logs\");
+		$arrDefaults.Add("Reports", "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\Reports\");
+		$arrDefaults.Add("Root", "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\");
+		$arrDefaults.Add("Scripts", "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-Scripts\");
+		$arrDefaults.Add("SupportFiles", "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\SupportFiles\");
+		$arrDefaults.Add("ITSS-Tools", $arrDefaults.Root);
 
 		$strConfigFile = $arrDefaults.SupportFiles + $strConfigFile;
 
@@ -828,7 +834,8 @@
 			}
 
 			if ($Error){
-				$strMessage = "------- Error 'loading' '$strInclude.ps1'." + "`r`n" + $Error;
+				#$strMessage = "------- Error 'loading' '$strInclude.ps1'." + "`r`n" + $Error;
+				$strMessage = "------- Error 'loading' '$strInclude'." + "`r`n" + $Error;
 				Write-Host $strMessage;
 				$bLoaded = $False;
 
@@ -923,7 +930,7 @@
 			#i.e.:
 			#5/13/2015 9:23:15 - NMCI-ISF\henry.schade - ADIDBO226572 (00:24:81:21:CA:CC) - 10.12.21.80 - 8989765 -- $Message
 
-		$intRetry = 5;
+		$intRetry = 12;
 
 		#Make sure the log directory exist.
 		if (!(Test-Path -Path $LogDir)){
@@ -961,7 +968,11 @@
 			do {
 				$intTries++;
 				$Error.Clear();
-				$Message | Out-File -filepath ($LogDir + $LogFile) -Encoding Default -Append;
+				try{
+					$Message | Out-File -filepath ($LogDir + $LogFile) -Encoding Default -Append;
+				}
+				catch{
+				}
 			} while (($Error) -and ($intTries -lt $intRetry))
 		}
 	}
