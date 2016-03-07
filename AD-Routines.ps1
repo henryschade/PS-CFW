@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	4 March 2016
+# Updated Date:	7 March 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 ##########################################
@@ -1112,7 +1112,7 @@
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$LastName, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$FirstName, 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$MI = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$MI = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Rank, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Dep, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Office, 
