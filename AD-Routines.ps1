@@ -1,7 +1,8 @@
 ###########################################
-# Updated Date:	7 March 2016
+# Updated Date:	10 March 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
+#				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
 ##########################################
 
 
@@ -1113,9 +1114,9 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$LastName, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$FirstName, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$MI = "", 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Rank, 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Dep, 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Office, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Rank = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Dep = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Office = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Company = "USN", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$KnownBy = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Gen = "", 
@@ -1229,21 +1230,48 @@
 	function CheckNameAvail{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strSamName, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolDoIncr = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bInteractive = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strMI = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$intMaxLen = 20, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bCheckEmail2 = $True
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bCheckEmail = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bCheckEDIPI = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bForceInc = $False
 		)
+		#CheckNameAvail() requires isNumeric() in Common.ps1.
+
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters.
+			#$objReturn.Results		= $True or $False.  Found a new "good" name.
+			#$objReturn.Message		= A verbose message of the results (The error message).
+			#$objReturn.Returns		= The Verified/New Name.
 		#$strSamName = sAMAccountName (String) to look for.
-		#$bolDoIncr = $True or $False.  Have this routine provide an incremented name if supplied one is found.
+		#$bInteractive = $True or $False.  If supplied name is found should we prompt for new name.  If $False this routine will autoincrement the name and return the new name.
 		#$strMI = The Middle Initial of the user account being created (only needed if the provided SamName does not have it).
 		#$intMaxLen = The Max length the name can be.
-		#$bCheckEmail2 = $True or $False.  Use ADO Search to check ProxyAddresses too.  Can add up to about 2 minutes to each search.
+		#$bCheckEmail = $True or $False.  Use ADO Search to check ProxyAddresses too.  Can add up to about 2 minutes (per domain) to the search.
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $False
+			Message = "Error"
+			Returns = ""
+		}
 
 		$strSamName = $strSamName.Trim();
 		$strOrigName = $strSamName;
 		$strNewName = "";
 		$bolNameOK = $False;
+		$strWorkLog = "";
 
 		#For Check for email in use
 		[Array]$arrDesiredProps = @("name", "proxyAddresses", "mail", "EDIPI", "UserPrincipalName");
@@ -1269,18 +1297,58 @@
 		$strSamName = $strSamName.SubString(0, ($strSamName.Length - $strCustEnd.Length));
 
 		#Get any ending #'s already provided.
+		#Make sure MsgBox() is available.
+		if (!(Get-Command "isNumeric" -ErrorAction SilentlyContinue)){
+			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+			if (Test-Path ($ScriptDir + "\Common.ps1")){
+				. ($ScriptDir + "\Common.ps1")
+			}
+			else{
+				if (Test-Path ($ScriptDir + "\..\PS-CFW\Common.ps1")){
+					. ($ScriptDir + "\..\PS-CFW\Common.ps1")
+				}
+			}
+		}
+
 		$intNameCount = 0;
 		for ($intY = 1; $intY -le $strSamName.Length; $intY++){
+			#$Error.Clear();
 			if (isNumeric ($strSamName.SubString(($strSamName.Length - $intY), $intY))){
 				$intNameCount = $strSamName.SubString(($strSamName.Length - $intY), $intY);
 			}
+			#if ($Error){
+			#	$objReturn.Results = $bolNameOK;
+			#	$objReturn.Returns = $strSamName;
+			#	$objReturn.Message = "Error:" + $Error;
+			#	return $objReturn;
+			#}
+
+			$Error.Clear();		#The if statements errors when ever a number is NOT found.
 		}
-		$strSamName = $strSamName.SubString(0, ($strSamName.Length - $intNameCount.ToString().Length));
+		if ($bForceInc){
+			$intNameCount++;
+			if ($intNameCount -eq 1){
+				$strOrigName = $strOrigName.Replace($strSamName, $strSamName + [String]$intNameCount);
+				$strSamName = $strSamName + [String]$intNameCount
+			}
+			if ($intNameCount -gt 1){
+				$strOrigName = $strOrigName.Replace($strSamName, $strSamName.SubString(0, (($strSamName.Length - $intNameCount.ToString().Length))));
+				$strSamName = $strSamName.SubString(0, (($strSamName.Length - $intNameCount.ToString().Length))) + [String]$intNameCount;
+			}
+		}
+		if ($intNameCount -gt 0){
+			#$strSamName = $strSamName.SubString(0, ($strSamName.Length - $intNameCount));
+			#The above does characters equal to the #, not characters equal to the # "width".
+				#i.e. a # of 3 would remove 3 characters rather than just the last 1 char.  The next also accomodates 2 dig #'s.
+			$strSamName = $strSamName.SubString(0, ($strSamName.Length - $intNameCount.ToString().Length));
+		}
 
 		#Break the name down to the last parts.
 		$bHadMI = $False;
+		$MidName = "";
 		$FirstName = $strSamName.SubString(0, ($strSamName.IndexOf(".")));
-		$LastName = $strSamName.SubString(($strSamName.IndexOf(".") + 1));
+		$intCount = ($strSamName.IndexOf(".") + 1);
+		$LastName = $strSamName.SubString($intCount);
 		if ($LastName.IndexOf(".") -gt 0){
 			$bHadMI = $True;
 			$MidName = $LastName.SubString(0, ($LastName.IndexOf(".")));
@@ -1312,8 +1380,8 @@
 				
 				#Compare $MidName and $strMI.
 				if ($strMI -ne $MidName){
-					$strMessage = "The Middle Initial in the SamAccountName, and the Middle Initial provided do not match.  We will be using the one out of the SamAccountName.";
-					#Write-Host $strMessage;
+					$strMessage = "The Middle Initial in the SamAccountName ($MidName), and the Middle Initial provided ($strMI) do not match." + "`r`n" + "We will be using the one out of the SamAccountName (as needed).";
+					$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
 					$strMI = $MidName;
 				}
 			}
@@ -1323,6 +1391,7 @@
 		$UserADInfo = $null;
 		if ($strOrigName.Length -gt $intMaxLen){
 			$UserADInfo = "Over $intMaxLen chars.";
+			$strWorkLog = $strWorkLog + "`r`n" + "Over $intMaxLen chars.";
 		}
 		else{
 			$UserADInfo = FindUser $strOrigName;
@@ -1330,7 +1399,7 @@
 			if ([String]::IsNullOrWhiteSpace($UserADInfo)){
 				#$strSamName not found.
 				#Check for email in use
-				if ($bCheckEmail2 -eq $True){
+				if ($bCheckEmail -eq $True){
 					$strFilter = "(&(objectCategory=user)(proxyAddresses=*" + $strOrigName + "*))";
 					foreach ($strDomain in $arrDomains){
 						$objResults = $null;
@@ -1339,7 +1408,7 @@
 							#Found email in use
 							$UserADInfo = "Email in use.";
 							$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address " + $strOrigName + "@navy.mil" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
-							#Write-Host $strMessage;
+							$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
 							break;
 						}
 					}
@@ -1349,51 +1418,19 @@
 
 		if ([String]::IsNullOrWhiteSpace($UserADInfo)){
 			#$strSamName not found.
+			$strNewName = $strSamName;
+			$bolNameOK = $True;
 		}
 		else{
 			#$strSamName found in use, or too long, or email in use.
-			do{
-				if ($strNewName -eq ""){
-					$strMessage = "Found an existing AD account with a SamAccountName of '" + $strOrigName + "'.`r`n";
-				}else{
-					$strMessage = "Found an existing AD account with a SamAccountName of '" + $strNewName + "'.`r`n";
-				}
-				$bolNameOK = $True;
-				#Piece together a new account name suggestion.
-
-				if ([String]::IsNullOrWhiteSpace($strMI)){
-					$strNewName = ($FirstName + "." + $LastName).ToLower();
-				}else{
-					$strNewName = ($FirstName + "." + $strMI + "." + $LastName).ToLower();
-				}
-				if ($intNameCount -gt 0){
-					$strNewName = $strNewName + [string]$intNameCount;
-				}
-
-				#Add the "custom" ending.  $strCustEnd
-				if ($strCustEnd -ne ""){
-					$strNewName = CheckNameEnding $strNewName $strCustEnd;
-				}
-				else{
-					#These checks will need to stay in ASCII.  This routine should catch these situations though.
-					#-------------------------------------------------------------------------------------------------------------------------------------
-					##Developer accounts must end in ".dev".
-					#if (($bolDev -eq $True) -and (!($strUserName.EndsWith(".dev"))) -and ($bolNameOK -eq $True)){
-					#	$strNewName = CheckNameEnding $strNewName ".dev";
-					#}
-					##Check that Fct Org GAL accounts end in ".cel".
-					#if (($strWhatToDo -eq "Create-Fct-Org") -and ($bolNameOK -eq $True)){
-					#	$strNewName = CheckNameEnding $strNewName ".cel";
-					#}
-				}
-
-				if ($bHadMI){
-					$intNameCount++;
-				}
-
+			if ($bInteractive){
+				#Prompt/confirm the proposed name looks good. 
 				#Make sure MsgBox() is available.
 				if (!(Get-Command "MsgBox" -ErrorAction SilentlyContinue)){
 					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+					if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+						$ScriptDir = (Get-Location).ToString();
+					}
 					if ((Test-Path ($ScriptDir + "\Forms.ps1"))){
 						. ($ScriptDir + "\Forms.ps1")
 					}
@@ -1403,19 +1440,59 @@
 						}
 					}
 				}
+			}
 
-				$strMessage = $strMessage + "Provide a new Login Name (SamAccountName) to use.`r`n`r`n" + "Type 'exit' to abort the process.";
-				$strNewName = MsgBox $strMessage "Name already in use." 6 $strNewName;
-				$strNewName = $strNewName.Trim();
-				if ($strNewName -eq "exit"){
-					$bolNameOK = $False;
-					$bolDoWork = $False;
-					#UpdateResults "Exiting $strWhatToDo process.`r`n" $False;
-					#EnableBtns $True;
-					#return;
-					#MsgBox "Should have exited function." "Not exiting error";
-					break;
+			do{
+				#if ($strNewName -eq ""){
+				if ([String]::IsNullOrWhiteSpace($strNewName)){
+					$strMessage = "Found an existing AD account with a SamAccountName of '" + $strOrigName + "'.`r`n";
+				}else{
+					$strMessage = "Found an existing AD account with a SamAccountName of '" + $strNewName + "'.`r`n";
 				}
+				#$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
+
+				#Piece together a new account name suggestion.
+				$bolNameOK = $True;
+				if ([String]::IsNullOrWhiteSpace($strMI)){
+					$strNewName = ($FirstName + "." + $LastName).ToLower();
+				}else{
+					$strNewName = ($FirstName + "." + $strMI + "." + $LastName).ToLower();
+				}
+				if ($intNameCount -gt 0){
+					$strNewName = $strNewName + [String]$intNameCount;
+				}
+
+				#Add the "custom" ending.  $strCustEnd
+				if (!([String]::IsNullOrWhiteSpace($strCustEnd))){
+					#$strNewName = CheckNameEnding $strNewName $strCustEnd;
+					$strNewName = $strNewName + $strCustEnd;
+				}
+
+				if ($bHadMI){
+					$intNameCount++;
+				}
+
+				if ($bInteractive){
+					$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
+					$strWorkLog = $strWorkLog + "Prompted for / Confirmed new name.";
+					#Prompt/confirm the proposed name looks good. 
+					$strMessage = $strMessage + "Provide a new Login Name (SamAccountName) to use.`r`n`r`n" + "Type 'exit' to abort the process.";
+					$strNewName = MsgBox $strMessage "Name already in use." 6 $strNewName;
+					$strNewName = $strNewName.Trim();
+					if ($strNewName -eq "exit"){
+						$bolNameOK = $False;
+						$bolDoWork = $False;
+						break;
+					}
+				}
+				else{
+					#Automatically increment name w/out prompting/confirming.
+					#OCM wanted this, and it can be useful for "Automated" processes.
+					$strNewName = $strNewName.Trim();
+					$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
+					$strWorkLog = $strWorkLog + "Assumed the proposed name '$strNewName' is good.";
+				}
+
 				if (([String]::IsNullOrWhiteSpace($strNewName)) -or ($strNewName -eq "exit")){
 					$bolNameOK = $False;
 				}
@@ -1424,9 +1501,27 @@
 				if (($strNewName.Length -gt $intMaxLen) -and ($bolNameOK -eq $True)){
 					#$strNewName = $strNewName.SubString(0, 20);
 					$strMessage = $strMessage + "`r`n" + "The name provided is over $intMaxLen characters long, please shorten it.";
+					$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
 					$strTempName = $strNewName;
 					do{
-						$strNewName = MsgBox $strMessage "Login Names can only be $intMaxLen Characters" 6 $strTempName;
+						if ($bInteractive){
+							$strNewName = MsgBox $strMessage "Login Names can only be $intMaxLen Characters" 6 $strTempName;
+							$strWorkLog = $strWorkLog + "`r`n" + "User shortened name.";
+						}
+						else{
+							$intShortF = $strNewName.Length - $intMaxLen;
+							if ($intShortF -lt $FirstName.Length){
+								$strNewName = $strNewName.Replace(($FirstName + "."), (($FirstName.Substring(0, ($FirstName.Length - $intShortF))) + "."));
+							}
+							else{
+								#Need to shorten First and Last.
+								$intShortF = $FirstName.Length - 1;
+								$strNewName = $strNewName.Replace(($FirstName + "."), (($FirstName.Substring(0, ($FirstName.Length - $intShortF))) + "."));
+								$intShortL = $strNewName.Length - $intMaxLen;
+								$strNewName = $strNewName.Replace(("." + $LastName), ("." + ($LastName.Substring(0, ($LastName.Length - $intShortL)))));
+							}
+							$strWorkLog = $strWorkLog + "`r`n" + "Shortened name automatically.";
+						}
 					} while(($strNewName.Length -gt $intMaxLen));
 					$strTempName = "";
 				}
@@ -1446,7 +1541,7 @@
 				}
 
 				#Check for email in use
-				if (($bCheckEmail2 -eq $True) -and ($bolNameOK -eq $True)){
+				if (($bCheckEmail -eq $True) -and ($bolNameOK -eq $True)){
 					$strFilter = "(&(objectCategory=user)(proxyAddresses=*" + $strNewName + "*))";
 					foreach ($strDomain in $arrDomains){
 						$objResults = $null;
@@ -1455,7 +1550,7 @@
 							#Found email in use
 							$bolNameOK = $False;
 							$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address " + $strNewName + "@navy.mil" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
-							#Write-Host $strMessage;
+							$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
 							break;
 						}
 					}
@@ -1468,10 +1563,14 @@
 				#If we did not have it, we have now used it.
 				$bHadMI = $True;
 			} while (($bolNameOK -eq $False) -or ([String]::IsNullOrWhiteSpace($strNewName)))
-			$strNewName = $strNewName.ToLower();
+			$strNewName = $strNewName.ToLower().Trim();
 		}
 
-		return $strNewName;
+		#return $strNewName;
+		$objReturn.Results = $bolNameOK;
+		$objReturn.Returns = $strNewName;
+		$objReturn.Message = $strWorkLog.Trim();
+		return $objReturn;
 
 	}
 
