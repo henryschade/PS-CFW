@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	25 February 2016
+# Updated Date:	17 March 2016
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -220,7 +220,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$intQuant, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)]$dteStart, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strToolName, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strQuoteNum
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strQuoteNum, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strBONum
 		)
 		#Returns the SQL command that should be used.
 			#Needs to be updated to use the SP Andrew created.
@@ -231,12 +232,13 @@
 		#strAssignment = i.e. UA
 		#strTicketNum = A Ticket #.
 		#strAction = The Action being done. i.e. "Disable", "Create Account".   	[taskDesc]
-		#strCTI = The CTI/CAS of the ticket being worked.							[cas]
+		#strCTI = The CTI/CAS/CI of the ticket being worked.						[cas]
 		#strSummary = The Ticket Summary/Short Desc.
 		#intQuant = The Quantity on the Ticket.
 		#dteStart = The time the work started.
 		#strToolName = The name of the Tool doing the work.
-		#$strQuoteNum = A Quote/BO #.
+		#$strQuoteNum = The Quote #.
+		#$strBONum = BuildOut #.
 
 		if (($strSource -eq "") -or ($strSource -eq $null)){
 			$strSource = "Ticket";
@@ -248,7 +250,7 @@
 			$strAssignment = "UA";
 		}
 		if (($intQuant -eq "") -or ($intQuant -lt 0) -or ($intQuant -eq $null)){
-			$intQuant = 1;
+			$intQuant = 0;
 		}
 		if (($strToolName -eq "") -or ($strToolName -eq $null)){
 			#$strToolName = "PS GUI";
@@ -256,17 +258,33 @@
 			$strToolName = $strToolName.Replace("PS-", "");
 			$strToolName = $strToolName.Replace(".ps1", "");
 		}
+		$strCI = $strCTI;
 		if (($strCTI -ne "") -and ($strCTI -ne $null)){
-			#if ($strCTI.Contains("Service Request")){
-				#$strCTI = $strCTI.Replace("Service Request", "SR");
-				#$strCTI = $strCTI.Replace("Premier Support", "PS");
-				#$strCTI = $strCTI.Replace("User Account Services", "UAS");
-			#}
+			$strCTI = $strCTI.Replace("Service Request", "SR");
+			$strCTI = $strCTI.Replace("Premier Support", "PS");
+			$strCTI = $strCTI.Replace("User Account Services", "UAS");
 		}else{
-			$strCTI = "No CTI\CAS";
+			$strCTI = "No CTI/CAS/CI";
+			$strCI = $strCTI;
 		}
 		if (($strAction -eq "") -or ($strAction -eq $null)){
 			$strAction = "SRM Work";
+		}
+		if ([String]::IsNullOrWhiteSpace($strCOI)){
+			$strCOI = $env:UserDomain;
+			$strCOI = "USN";
+		}
+		if ([String]::IsNullOrWhiteSpace($strTicketNum)){
+			$strTicketNum = "No-Num";
+		}
+		if ([String]::IsNullOrWhiteSpace($strBONum)){
+			$strBONum = "No-Num";
+		}
+		if ([String]::IsNullOrWhiteSpace($strQuoteNum)){
+			$strQuoteNum = "No-Num";
+		}
+		if ([String]::IsNullOrWhiteSpace($strSummary)){
+			$strSummary = "No Title/Summary Provided";
 		}
 
 		#Make sure the values are not too long
@@ -282,11 +300,14 @@
 		if ($strAssignment.Length -gt 20){
 			$strAssignment = $strAssignment.SubString(0, 20)
 		}
-		if ($strTicketNum.Length -gt 15){
-			$strTicketNum = $strTicketNum.SubString(0, 15)
+		if ($strTicketNum.Length -gt 128){
+			$strTicketNum = $strTicketNum.SubString(0, 128)
 		}
-		if ($strQuoteNum.Length -gt 15){
-			$strQuoteNum = $strQuoteNum.SubString(0, 15)
+		if ($strQuoteNum.Length -gt 128){
+			$strQuoteNum = $strQuoteNum.SubString(0, 128)
+		}
+		if ($strBONum.Length -gt 128){
+			$strBONum = $strBONum.SubString(0, 128)
 		}
 		if ($strToolName.Length -gt 20){
 			$strToolName = $strToolName.SubString(0, 20)
@@ -300,11 +321,14 @@
 		if ($strSummary.Length -gt 128){
 			$strSummary = $strSummary.SubString(0, 128)
 		}
+		$intTimeOffset = [Int][System.DateTime]::Now.Hour - [Int]([System.DateTime]::Now).ToUniversalTime().Hour;
 
-		[String]$strSQL = "INSERT INTO Transactions (login_name, date_time, Zone, site, coi, Source, Team, Assignment, ticket, QuoteNumber, Type, cas, taskDesc, taskRef, title, res, QTY, credit_time, handle_time) VALUES ("
+		[String]$strSQL = "INSERT INTO Transactions (login_name, date_time, UTC_date_time, UTC_Offset, Zone, site, coi, Source, Team, Assignment, ticket, QuoteNumber, BuildOutNum, Type, cas, CI, taskDesc, taskRef, title, res, QTY, credit_time, handle_time) VALUES ("
 		#[Environment]::UserDomainName
 		$strSQL = $strSQL + "'" + [Environment]::UserName + "', "   														#login_name
 		$strSQL = $strSQL + "'" + [System.DateTime]::Now + "', "      														#date_time
+		$strSQL = $strSQL + "'" + ([System.DateTime]::Now).ToUniversalTime().ToString() + "', "      						#UTC_date_time
+		$strSQL = $strSQL + "'" + $intTimeOffset + "', "      																#UTC_Offset
 		$strSQL = $strSQL + "'" + (-join ([System.TimeZoneInfo]::Local.Id.Split(" ") | Foreach-Object {$_[0]})) + "', "		#Zone
 		$strSQL = $strSQL + "'" + [Environment]::MachineName.SubString(2, 4) + "', "   										#site
 		$strSQL = $strSQL + "'" + $strCOI + "', " 																			#coi
@@ -313,8 +337,10 @@
 		$strSQL = $strSQL + "'" + $strAssignment + "', "																	#Assignment
 		$strSQL = $strSQL + "'" + $strTicketNum + "', "																		#Ticket
 		$strSQL = $strSQL + "'" + $strQuoteNum + "', "																		#QuoteNumber
+		$strSQL = $strSQL + "'" + $strBONum + "', "																			#BuildOutNum
 		$strSQL = $strSQL + "'" + $strToolName + "', "																		#type
 		$strSQL = $strSQL + "'" + $strCTI + "', " 					   														#cas  (CTI or Category.Area.Sub-Area)
+		$strSQL = $strSQL + "'" + $strCI + "', " 					   														#CI
 		$strSQL = $strSQL + "'" + $strAction + "', "																		#taskDesc
 		$strSQL = $strSQL + "'" + "0" + "', "                 																#taskRef
 		$strSQL = $strSQL + "'" + $strSummary + "', "																		#title
@@ -322,15 +348,31 @@
 		$strSQL = $strSQL + "" + $intQuant + ", "              																#QTY
 		$strSQL = $strSQL + "" + "0" + ", "               																	#credit_time
 		if (($dteStart -eq "") -or ($dteStart -eq $null) -or ($dteStart -eq 0)){
-			$strSQL = $strSQL + "0"																							#handle_time (minutes)
+			$intHandleTime = 0;
+			#$strSQL = $strSQL + "0"																							#handle_time (minutes)
 		}else{
-			$intTime = ([System.DateTime]::Now - $dteStart).TotalMinutes;
-			#if ([Math]::Round($intTime, 2) -gt 0){
-				$intTime = [Math]::Round($intTime, 2);
-			#}
-			$strSQL = $strSQL + "'" + $intTime + "'"																		#handle_time (minutes)
+			$intHandleTime = ([System.DateTime]::Now - $dteStart).TotalMinutes;
+			$intHandleTime = [Math]::Round($intHandleTime, 2);
+			#$strSQL = $strSQL + "'" + $intHandleTime + "'"																		#handle_time (minutes)
 		}
+		$strSQL = $strSQL + "" + $intHandleTime + ""																		#handle_time (minutes)
 		$strSQL = $strSQL + ")"
+
+		#https://blogs.technet.microsoft.com/heyscriptingguy/2014/08/03/weekend-scripter-a-hidden-gem-in-the-powershell-ocean-get-pscallstack/
+		$objCallStack = Get-PSCallStack | Select-Object -Property *;
+		$strLastCmd = $objCallStack[1].Command;			#0 is this routine.
+		##To get the first command called do the following:
+		#if ($objCallStack.Count -eq 1){
+		#	$strFirstCmd = $objCallStack[0].Command;
+		#}
+		#else{
+		#	$strFirstCmd = $objCallStack[($objCallStack.Count - 1)].Command;
+		#}
+
+		#The SP SQL statement:
+		if ($strLastCmd -eq "RecordTransaction"){
+			$strSQL = "GetSP_spSetTransaction '" + ([Environment]::MachineName.SubString(2, 4)) + "'," + $intTimeOffset + ",'" + $strCOI + "','" + $strSource + "','" + $strTeam + "','" + $strAssignment + "','" + $strToolName + "','" + $strCI + "','" + $strAction + "'," + $intQuant + "," + $intHandleTime + ",'','" + $strTicketNum + "','" + $strQuoteNum + "','" + $strBONum + "','" + $strSummary + "'";
+		}
 
 		return [String]$strSQL;
 
@@ -411,8 +453,13 @@
 			#$row.Results = $Error;
 			#$row.Results = $Error[0].ToString();
 			$row.Results = "Error";
-			foreach ($MsgError in $Errors){
-				$row.Results = $row.Results + "`r`n" + "Error $($MsgError.Number), Line $($MsgError.Line): $($MsgError.Message)";
+			if (($Error.Count -gt 1)){
+				foreach ($MsgError in $Errors){
+					$row.Results = $row.Results + "`r`n" + "Error $($MsgError.Number), Line $($MsgError.Line): $($MsgError.Message)";
+				}
+			}
+			else{
+					$row.Results = $row.Results + "`r`n" + $Error;
 			}
 			$objTable.Rows.Add($row);
 		}
@@ -441,6 +488,7 @@
 				}
 			}
 
+			$Error.Clear();
 			$objResult = $null;
 			#The Try() below causes a SELECT query to error when doing the Load [.Load($objResult)] of data into the DataTable.
 			#$objResult = Try{$objCommand.ExecuteReader();}Catch{}
@@ -457,8 +505,13 @@
 				#$row.Results = $Error;
 				#$row.Results = $Error[0].ToString();
 				$row.Results = "Error";
-				foreach ($MsgError in $Errors){
-					$row.Results = $row.Results + "`r`n" + "Error $($MsgError.Number), Line $($MsgError.Line): $($MsgError.Message)";
+				if (($Error.Count -gt 1)){
+					foreach ($MsgError in $Errors){
+						$row.Results = $row.Results + "`r`n" + "Error $($MsgError.Number), Line $($MsgError.Line): $($MsgError.Message)";
+					}
+				}
+				else{
+					$row.Results = $row.Results + "`r`n" + $Error;
 				}
 				$objTable.Rows.Add($row);
 			}
@@ -479,8 +532,13 @@
 						#$row.Results = $Error;
 						#$row.Results = $Error[0].ToString();
 						$row.Results = "Error";
-						foreach ($MsgError in $Errors){
-							$row.Results = $row.Results + "`r`n" + "Error $($MsgError.Number), Line $($MsgError.Line): $($MsgError.Message)";
+						if (($Error.Count -gt 1)){
+							foreach ($MsgError in $Errors){
+								$row.Results = $row.Results + "`r`n" + "Error $($MsgError.Number), Line $($MsgError.Line): $($MsgError.Message)";
+							}
+						}
+						else{
+							$row.Results = $row.Results + "`r`n" + $Error;
 						}
 						$objTable.Rows.Add($row);
 					}
@@ -521,14 +579,16 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strCTI, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strSummary, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$intQuant, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)]$dteStart, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$dteStart = 0, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strToolName, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strQuoteNum
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strQuoteNum, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strBONum
 		)
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with the paramaters passed in.
 			#$objReturn.Results		= $True or $False.
 			#$objReturn.Message		= "Success" or the error message.
+			#$objReturn.Returns		= The recordset, if any.
 		#strCOI = Domain/Network.
 		#strSource = The source that is initiating this work.  i.e "Ticket", "Email"
 		#strTeam = i.e. SRM
@@ -540,7 +600,8 @@
 		#intQuant = The Quantity on the Ticket.
 		#dteStart = The time the work started.
 		#strToolName = The name of the Tool doing the work.
-		#$strQuoteNum = A Quote/BO #.
+		#$strQuoteNum = The Quote #.
+		#$strBONum = BuildOut #.
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -556,11 +617,12 @@
 			Name = $strTemp
 			Results = $True
 			Message = "Success";
+			Returns = "rs"
 		}
 		#Assume success
 
 		$arrDBInfo = GetDBInfo "Score";
-		$strSQL = Prep4ScoreCard $strCOI $strSource $strTeam $strAssignment $strTicketNum $strAction $strCTI $strSummary $intQuant $dteStart $strToolName $strQuoteNum;
+		$strSQL = Prep4ScoreCard $strCOI $strSource $strTeam $strAssignment $strTicketNum $strAction $strCTI $strSummary $intQuant $dteStart $strToolName $strQuoteNum $strBONum;
 
 		$Error.Clear();
 		$objResults = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True;
@@ -577,6 +639,7 @@
 			$objReturn.Results = $False;
 			$objReturn.Message = $strMessage;
 		}
+		$objReturn.Returns = $objResults;
 
 		return $objReturn;
 	}

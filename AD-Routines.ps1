@@ -1,49 +1,23 @@
 ###########################################
-# Updated Date:	10 March 2016
+# Updated Date:	14 March 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
 ##########################################
 
 
-	function SampleUsage{
-		$DomainName = "NMCI-ISF";
-
-		#To create a new blank user object:
-		Add-Type -AssemblyName System.DirectoryServices.AccountManagement;
-		#http://stackoverflow.com/questions/13688779/force-principalcontext-to-connect-to-a-specific-server
-		$PrincipalContext = New-Object System.DirectoryServices.AccountManagement.PrincipalContext("DOMAIN", $DomainName_or_DCName);  #$DomainName_or_DCName = the Domain the new account will be create on;
-		$NMCIUser = New-Object NMCI.AD.NMCIUserPrincipal($PrincipalContext);
-		#$NMCIUser will now contain all NMCI AD Schema Attribs.
-
-		#Write
-		$NMCIUser.l = "City";
-		$NMCIUser.City = "City";
-
-		#Read
-		foreach ($oPropInfo in $NMCIUser.GetType().GetProperties()){
-			#$oPropInfo.Name;
-			#$oPropInfo.GetValue($NMCIUser, $null);
-
-			$strName = $oPropInfo.Name;
-			$strValue = $oPropInfo.Attributes;
-			#$strValue = $oPropInfo.GetValue($NMCIUser, $null);
-			if (($strName -eq "") -or ($strName -eq $null)){
-				$oPropInfo;
-			}else{
-				Write-Host $strName " = " $strValue;
-			}
-		}
-
-	}
-
 	function TestRoutine{
 
-		#. C:\Projects\PS-CFW\AD-Routines.ps1;
+		. C:\Projects\PS-CFW\AD-Routines.ps1;
+		. C:\Projects\PS-CFW\Common.ps1;
 
 		#$InitializeDefaultDrives=$False;
 		#if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
 
+
+
+		#---=== Test 1 ===---
+		<#
 		$UserName = "margaret.matthews";		# "margaret.toelken" has the following email address "margaret.matthews@navy.mil"
 		#$UserName = "redirect.test";
 		$strDomain = "nadsuswe";
@@ -84,7 +58,28 @@
 		if ($objResults.Returns[0].proxyaddresses -Match $UserName){
 			Write-Host "Found a match, so the Email in use already.";
 		}
+		#>
+		#---=== Test 1 ===---
 
+
+		#---=== Test 2 ===---
+		$strName = "redirect.test";
+		$strMid = "m";
+		$bolInter = $False;
+		$strEDIPI = "1158784609";
+
+		$objRet = CheckNameAvail $strName $bolInter $strMid -strEDIPI $strEDIPI;
+		$objRet | FL;
+
+		$strNewName = $objRet.Returns;
+		$objRet = CheckNameAvail $strNewName $bolInter $strMid;
+		$objRet | FL;
+
+		$strNewName = $objRet.Returns;
+		$objRet = CheckNameAvail $strNewName $bolInter $strMid -bForceInc $True;
+		$objRet | FL;
+
+		#---=== Test 2 ===---
 	}
 
 	
@@ -823,7 +818,9 @@
 		}else{
 			#$objDomain = New-Object System.DirectoryServices.DirectoryEntry("LDAP://DC=nads,DC=navy,DC=mil");
 			if ($strDomain.IndexOf("DC=") -eq 0){
-				$strDomain = "DC=" + $strDomain + ",DC=nads,DC=navy,DC=mil";
+				#$strDomain = "DC=" + $strDomain + ",DC=nads,DC=navy,DC=mil";
+				$strDomain = ([System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain)))).name;
+				$strDomain = "DC=" + $strDomain.Replace(".", ",DC=");
 			}
 			$strDomain = "LDAP://" + $strDomain;
 		}
@@ -1234,7 +1231,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strMI = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$intMaxLen = 20, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bCheckEmail = $False, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bCheckEDIPI = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strEDIPI = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bForceInc = $False
 		)
 		#CheckNameAvail() requires isNumeric() in Common.ps1.
@@ -1249,6 +1246,8 @@
 		#$strMI = The Middle Initial of the user account being created (only needed if the provided SamName does not have it).
 		#$intMaxLen = The Max length the name can be.
 		#$bCheckEmail = $True or $False.  Use ADO Search to check ProxyAddresses too.  Can add up to about 2 minutes (per domain) to the search.
+		#$strEDIPI = The EDIPI to look for in AD.  If blank (default), the check is skipped.
+		#$bForceInc = $True or $False.  Force the name to be incremented before searching AD.  (Mainly for use when CDR has "reserved" the next available name).
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -1273,7 +1272,7 @@
 		$bolNameOK = $False;
 		$strWorkLog = "";
 
-		#For Check for email in use
+		#For Check for email in use, and EDIPI (if flagged).
 		[Array]$arrDesiredProps = @("name", "proxyAddresses", "mail", "EDIPI", "UserPrincipalName");
 		$arrDomains = GetDomains;
 
@@ -1316,15 +1315,9 @@
 			if (isNumeric ($strSamName.SubString(($strSamName.Length - $intY), $intY))){
 				$intNameCount = $strSamName.SubString(($strSamName.Length - $intY), $intY);
 			}
-			#if ($Error){
-			#	$objReturn.Results = $bolNameOK;
-			#	$objReturn.Returns = $strSamName;
-			#	$objReturn.Message = "Error:" + $Error;
-			#	return $objReturn;
-			#}
-
 			$Error.Clear();		#The if statements errors when ever a number is NOT found.
 		}
+		[Int]$intNameCount = [Int]$intNameCount;
 		if ($bForceInc){
 			$intNameCount++;
 			if ($intNameCount -eq 1){
@@ -1332,7 +1325,7 @@
 				$strSamName = $strSamName + [String]$intNameCount
 			}
 			if ($intNameCount -gt 1){
-				$strOrigName = $strOrigName.Replace($strSamName, $strSamName.SubString(0, (($strSamName.Length - $intNameCount.ToString().Length))));
+				$strOrigName = $strOrigName.Replace($strSamName, $strSamName.SubString(0, (($strSamName.Length - $intNameCount.ToString().Length))) + [String]$intNameCount);
 				$strSamName = $strSamName.SubString(0, (($strSamName.Length - $intNameCount.ToString().Length))) + [String]$intNameCount;
 			}
 		}
@@ -1388,6 +1381,26 @@
 		}
 		#$strMI
 
+		#Check EDIPI.  If the EDIPI is in use, the name does not matter.
+		if (!([String]::IsNullOrWhiteSpace($strEDIPI))){
+			$strFilter = "(&(objectCategory=user)(|(UserPrincipalName=*" + $strEDIPI + "*)(EDIPI=*" + $strEDIPI + "*)))";
+			foreach ($strDomain in $arrDomains){
+				$objResults = $null;
+				$objResults = ADSearchADO $strOrigName $strDomain $strFilter $arrDesiredProps $True;
+				if ($objResults.Results -gt 0){
+					#Found EDIPI in use
+					$strMessage = "EDIPI in use: " + ([String]($objResults.Returns)[0].name).Trim() + " (" + ([String]($objResults.Returns)[0].UserPrincipalName).Trim() + ") is using EDIPI '" + ([String]($objResults.Returns)[0].EDIPI).Trim() + "'.";
+					$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
+					#break;
+					#If the EDIPI is in use, the name does not matter.
+					$objReturn.Results = $False;
+					$objReturn.Returns = $strOrigName;
+					$objReturn.Message = $strWorkLog.Trim();
+					return $objReturn;
+				}
+			}
+		}
+
 		$UserADInfo = $null;
 		if ($strOrigName.Length -gt $intMaxLen){
 			$UserADInfo = "Over $intMaxLen chars.";
@@ -1397,7 +1410,7 @@
 			$UserADInfo = FindUser $strOrigName;
 
 			if ([String]::IsNullOrWhiteSpace($UserADInfo)){
-				#$strSamName not found.
+				#$strOrigName not found.
 				#Check for email in use
 				if ($bCheckEmail -eq $True){
 					$strFilter = "(&(objectCategory=user)(proxyAddresses=*" + $strOrigName + "*))";
@@ -1407,7 +1420,7 @@
 						if ($objResults.Results -gt 0){
 							#Found email in use
 							$UserADInfo = "Email in use.";
-							$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address " + $strOrigName + "@navy.mil" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
+							$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address *" + $strOrigName + "*" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
 							$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
 							break;
 						}
@@ -1417,12 +1430,12 @@
 		}
 
 		if ([String]::IsNullOrWhiteSpace($UserADInfo)){
-			#$strSamName not found.
-			$strNewName = $strSamName;
+			#$strOrigName not found.
+			$strNewName = $strOrigName;
 			$bolNameOK = $True;
 		}
 		else{
-			#$strSamName found in use, or too long, or email in use.
+			#$strOrigName found in use, or too long, or email in use.
 			if ($bInteractive){
 				#Prompt/confirm the proposed name looks good. 
 				#Make sure MsgBox() is available.
@@ -1455,9 +1468,15 @@
 				$bolNameOK = $True;
 				if ([String]::IsNullOrWhiteSpace($strMI)){
 					$strNewName = ($FirstName + "." + $LastName).ToLower();
+					$bHadMI = $True;
 				}else{
 					$strNewName = ($FirstName + "." + $strMI + "." + $LastName).ToLower();
 				}
+
+				if ($bHadMI){
+					$intNameCount++;
+				}
+
 				if ($intNameCount -gt 0){
 					$strNewName = $strNewName + [String]$intNameCount;
 				}
@@ -1466,10 +1485,6 @@
 				if (!([String]::IsNullOrWhiteSpace($strCustEnd))){
 					#$strNewName = CheckNameEnding $strNewName $strCustEnd;
 					$strNewName = $strNewName + $strCustEnd;
-				}
-
-				if ($bHadMI){
-					$intNameCount++;
 				}
 
 				if ($bInteractive){
@@ -1527,6 +1542,7 @@
 				}
 
 				#Check if CDR is OK with the new Name.
+				#The CDR check needs to be done outside this routine, so this routine remains generic enough to be used "everywhere".
 
 				#Check AD again
 				if ($bolNameOK -eq $True){
@@ -1549,7 +1565,7 @@
 						if ($objResults.Results -gt 0){
 							#Found email in use
 							$bolNameOK = $False;
-							$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address " + $strNewName + "@navy.mil" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
+							$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address *" + $strNewName + "*" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
 							$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
 							break;
 						}
@@ -1560,12 +1576,15 @@
 					break;
 				}
 
-				#If we did not have it, we have now used it.
+				#If we did not have a MI, we have now used it now (if available).
 				$bHadMI = $True;
 			} while (($bolNameOK -eq $False) -or ([String]::IsNullOrWhiteSpace($strNewName)))
 			$strNewName = $strNewName.ToLower().Trim();
 		}
 
+		if ($strWorkLog.Trim() -eq ""){
+			$strWorkLog = "Success";
+		}
 		#return $strNewName;
 		$objReturn.Results = $bolNameOK;
 		$objReturn.Returns = $strNewName;
