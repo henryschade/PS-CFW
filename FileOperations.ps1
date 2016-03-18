@@ -1,5 +1,5 @@
 ﻿##########################################
-# Updated Date:	4 February 2016
+# Updated Date:	18 March 2016
 # Purpose:		Routines to set NTFS permissions, set owners on files/folders, create/delete shares, and set share permissions.
 ##########################################
 
@@ -181,8 +181,9 @@ function SetOwner_EXAMPLE_USAGE{
 	}
 	#$objACL.SetOwner([System.Security.Principal.NTAccount]"BUILTIN\Administrators");
 	#$objACL.SetOwner([System.Security.Principal.NTAccount]$strUserName);
-	$objACL.SetOwner($strSID);
 	#$objACL.SetOwner([System.Security.Principal.NTAccount]$strSID);
+	#$objACL.SetOwner($strSID);
+	$objACL.SetOwner([System.Security.Principal.SecurityIdentifier]$strSID);
 
 	#Merge the proposed changes (new owner) into the folder's ACL
 	$objItem.SetAccessControl($objACL);

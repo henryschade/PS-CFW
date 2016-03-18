@@ -788,12 +788,12 @@
 	function LoadRequired{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][Array]$RequiredFiles, 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$ScriptDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$RootDir, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogDir, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$LogFile
 		)
 		#Loads/includes ("dot" sources) all the files specified in $RequiredFiles.
-			#This routine checks to see if the file to include exists in "..\PS-CFW\", if not assumes the files are in $ScriptDir.
+			#This routine checks to see if the file to include exists in "..\PS-CFW\", if not assumes the files are in $RootDir.
 		#Because this is a function the routines loaded are only available in this scope and NOT in the calling routines (the project).
 		#So based on the following URL can either read in the files, and update all functions to "Global:Function" or we can update ALL the scripts to have the "Global:" value.
 			#http://stackoverflow.com/questions/15187510/dot-sourcing-functions-from-file-to-global-scope-inside-of-function
@@ -802,7 +802,7 @@
 		#Returns $True or $False.  $True if no errors, else $False.
 		#Updates $global:LoadedFiles.
 		#$RequiredFiles = An array of the files to "dot" source / include.
-		#$ScriptDir = The (Split-Path $MyInvocation.MyCommand.Path) of the running project.
+		#$RootDir = The (Split-Path $MyInvocation.MyCommand.Path) of the running project.
 		#$LogDir = The log Directory, that contains $LogFile, that any errors will be reported to.
 		#$LogFile = The Log file that any errors will be reported to.
 		#The following have some good ideas:
@@ -811,31 +811,31 @@
 
 		$bLoaded = $True;
 
-		#Make sure $ScriptDir does NOT have a trailing slash.
-		if ($ScriptDir.EndsWith("\")){
-			$ScriptDir = $ScriptDir.SubString(0, $ScriptDir.Length - 1);
+		#Make sure $RootDir does NOT have a trailing slash.
+		if ($RootDir.EndsWith("\")){
+			$RootDir = $RootDir.SubString(0, $RootDir.Length - 1);
 		}
 
 		foreach ($strInclude in $RequiredFiles){
 			$Error.Clear();
-			if (Test-Path -Path ($ScriptDir + "\..\PS-CFW\" + $strInclude)){
-				if (($ScriptDir.EndsWith("\PS-CFW")) -and ((Test-Path -Path ($ScriptDir + "\" + $strInclude)))){
-					. ($ScriptDir + "\" + $strInclude);
-					$strFile = ($ScriptDir + "\" + $strInclude);
+			if (Test-Path -Path ($RootDir + "\..\PS-CFW\" + $strInclude)){
+				if (($RootDir.EndsWith("\PS-CFW")) -and ((Test-Path -Path ($RootDir + "\" + $strInclude)))){
+					. ($RootDir + "\" + $strInclude);
+					$strFile = ($RootDir + "\" + $strInclude);
 				}
 				else{
-					. ($ScriptDir + "\..\PS-CFW\" + $strInclude);
-					$strFile = ($ScriptDir + "\..\PS-CFW\" + $strInclude);
+					. ($RootDir + "\..\PS-CFW\" + $strInclude);
+					$strFile = ($RootDir + "\..\PS-CFW\" + $strInclude);
 				}
 			}
 			else{
-				if (Test-Path -Path ($ScriptDir + "\PS-CFW\" + $strInclude)){
-					. ($ScriptDir + "\PS-CFW\" + $strInclude);
-					$strFile = ($ScriptDir + "\PS-CFW\" + $strInclude);
+				if (Test-Path -Path ($RootDir + "\PS-CFW\" + $strInclude)){
+					. ($RootDir + "\PS-CFW\" + $strInclude);
+					$strFile = ($RootDir + "\PS-CFW\" + $strInclude);
 				}
 				else{
-					. ($ScriptDir + "\" + $strInclude);
-					$strFile = ($ScriptDir + "\" + $strInclude);
+					. ($RootDir + "\" + $strInclude);
+					$strFile = ($RootDir + "\" + $strInclude);
 				}
 			}
 
