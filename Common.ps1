@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	25 February 2016
+# Updated Date:	18 March 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -829,8 +829,14 @@
 				}
 			}
 			else{
-				. ($ScriptDir + "\" + $strInclude);
-				$strFile = ($ScriptDir + "\" + $strInclude);
+				if (Test-Path -Path ($ScriptDir + "\PS-CFW\" + $strInclude)){
+					. ($ScriptDir + "\PS-CFW\" + $strInclude);
+					$strFile = ($ScriptDir + "\PS-CFW\" + $strInclude);
+				}
+				else{
+					. ($ScriptDir + "\" + $strInclude);
+					$strFile = ($ScriptDir + "\" + $strInclude);
+				}
 			}
 
 			if ($Error){
