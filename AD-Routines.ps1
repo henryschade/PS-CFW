@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	14 March 2016
+# Updated Date:	21 March 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -1141,7 +1141,7 @@
 		#Display Names - per NMCI Naming Standards (D400 11939.01 section 3.9.4.1)
 		#Navy --> Last, First[or KnownBy] MI [Generation] [FORNATL-cc] Rank Department [or GalCMD], Office [or GalOff]
 		#C-NNPI --> Last, First[or KnownBy] MI [Generation] Rank NNPI Department [or GalCMD], Office [or GalOff]
-			#The Standards say to use "http://www.nima.mil/gns/html/fips_10_digraphs.html" for CC values, but it is dead.
+			#The Standards say to use "http://www.nima.mil/gns/html/fips_10_digraphs.html" for FORNATL-cc values, but it is dead.
 			#SRM uses "http://www.state.gov/s/inr/rls/4250.htm".
 
 		#Setup the PSObject to return.
@@ -1169,7 +1169,7 @@
 		$Error.Clear();
 		$strDisplayName = "";
 		#Display Names done per NMCI Naming Standards (D400 11939.01 section 3.9.4.1)
-		if ($Company -eq "USN"){
+		if (($Company -eq "USN") -or ($Company -eq "usn")){
 			#USN Display Name
 				#Last, First[or KnownBy] MI Gen FORNATL-cc Rank GalCMD [or Department], GalOff [or Office]
 			#Last, First[or KnownBy]
@@ -1212,9 +1212,13 @@
 			}
 		}
 
-		if ($Error){
+		if (($Error) -or ([String]::IsNullOrWhiteSpace($strDisplayName))){
 			$objReturn.Results = $False;
-			$objReturn.Message = "Error: `r`n" + $Error;
+			if ($Error){
+				$objReturn.Message = "Error: `r`n" + $Error;
+			}else{
+				$objReturn.Message = "Error: Display Name is blank, make sure you provided a valid Company. `r`n";
+			}
 		}else{
 			$objReturn.Results = $True;
 			$objReturn.Message = "Success";

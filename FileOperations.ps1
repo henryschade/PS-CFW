@@ -1,5 +1,5 @@
 ﻿##########################################
-# Updated Date:	18 March 2016
+# Updated Date:	21 March 2016
 # Purpose:		Routines to set NTFS permissions, set owners on files/folders, create/delete shares, and set share permissions.
 ##########################################
 
@@ -196,6 +196,47 @@ function SetOwner_EXAMPLE_USAGE{
 	Write-Host $strMessage;
 
 }
+
+function SetOwner_Recursive_EXAMPLE_USAGE{
+	Param(
+		[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strDirectory
+	)
+
+	$strSID = "S-1-5-21-1202660629-1770027372-725345543-64833";
+	$strUserName = "henry.schade";
+	if (($strDirectory -eq "") -or ($strDirectory -eq $null)){
+		$strDirectory = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF-SDCP-HELPDESK$\SMPad";
+	}
+
+	if (Test-Path $strDirectory){
+		#$objDirectory = Get-ChildItem -Path $strDirectory -ErrorAction SilentlyContinue -Force;			#force is necessary to get hidden files/folders;
+		$objDirectory = Get-Item -LiteralPath $strDirectory -Force -ErrorAction SilentlyContinue;
+		if ($objDirectory.PSIsContainer){
+			#Directory
+			Write-Host "Taking ownership of directory: " $objDirectory.Name;
+			$objACL = New-Object System.Security.AccessControl.DirectorySecurity;
+			$objACL.SetOwner([System.Security.Principal.SecurityIdentifier]$strSID);
+			$objDirectory.SetAccessControl($objACL);
+
+			$objDirectory = Get-ChildItem -Path $strDirectory -ErrorAction SilentlyContinue -Force;
+			foreach ($objItem in $objDirectory){
+				if ($objItem -ne $null){
+					#$objSubItem = Get-Item -LiteralPath $objItem.Fullname -Force -ErrorAction SilentlyContinue;			#force is necessary to get hidden files/folders
+					#SetOwner_Recursive_EXAMPLE_USAGE $objSubItem.FullName;
+					SetOwner_Recursive_EXAMPLE_USAGE $objItem.FullName;
+				}
+			}
+		}else{
+			#File
+			Write-Host "Taking ownership of file: " $objDirectory.Name;
+			$objACL = New-Object System.Security.AccessControl.FileSecurity;
+			$objACL.SetOwner([System.Security.Principal.SecurityIdentifier]$strSID);
+			$objDirectory.SetAccessControl($objACL);
+		}
+	}
+
+}
+
 
 $WinShare_CS = @"
 using System;
