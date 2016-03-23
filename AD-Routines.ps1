@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	21 March 2016
+# Updated Date:	23 March 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -779,7 +779,8 @@
 			#$objReturn.Message		= A verbose message of the results (The error message).
 			#$objReturn.Returns		= The object(s) found.   (System.DirectoryServices.SearchResult)  or  (SearchResultCollection)  or  PowerShell Object(s).
 		#$Username = The user name to search for, if $strFilter is NOT provided.
-		#$strDomain = The domain to search for $Username on/in.  i.e. "nadsuswe", or "DC=nadsusea,DC=nads,DC=navy,DC=mil"
+		#$strDomain = The domain to search for $Username on/in. (Defaults to GC).
+			#i.e. "nadsuswe", or "DC=nadsusea,DC=nads,DC=navy,DC=mil", or "GC" (super fast) if the attribute gets replicated.
 		#$strFilter = A custom LDAP search filter, instead of the default.   Default is  -->  "(&(objectCategory=user)(name=*" + $Username + "*))"
 			#$strFilter = "(&(objectCategory=user))";
 			#$strFilter = "(&(objectCategory=user)(mail=*" + $Username + "*))";
@@ -806,26 +807,42 @@
 
 		#https://technet.microsoft.com/en-us/library/ff730967.aspx
 
+		$bolGC = $False;
 		$Error.Clear();
-		#Can we use "rootDSE" with PS?
 		if (($strDomain -eq "") -or ($strDomain -eq $null)){
-			#$strDomain = "nadsuswe";
-			#$objDomain = New-Object System.DirectoryServices.DirectoryEntry;
-			$strDomain = "LDAP://rootDSE";											#Looking like this does NOT work.
+			#Can we use "rootDSE" with PS?
+				#Nope.   :-(
+			##$strDomain = "nadsuswe";
+			##$objDomain = New-Object System.DirectoryServices.DirectoryEntry;
+			#$strDomain = "LDAP://rootDSE";											#Looking like this does NOT work.
+			##Maybe this will work.
+			#$strDomain = ([ADSI]"LDAP://RootDse").configurationNamingContext;		#Looking like this does NOT work either.
 
-			#Maybe this will work.
-			$strDomain = ([ADSI]"LDAP://RootDse").configurationNamingContext;		#Looking like this does NOT work either.
-		}else{
-			#$objDomain = New-Object System.DirectoryServices.DirectoryEntry("LDAP://DC=nads,DC=navy,DC=mil");
-			if ($strDomain.IndexOf("DC=") -eq 0){
-				#$strDomain = "DC=" + $strDomain + ",DC=nads,DC=navy,DC=mil";
-				$strDomain = ([System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain)))).name;
-				$strDomain = "DC=" + $strDomain.Replace(".", ",DC=");
-			}
-			$strDomain = "LDAP://" + $strDomain;
+			$bolGC = $True;
+			#Jason's code....
+			$strForestName = ([System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest()).Name;
+			$strDomain = [ADSI]"GC://$strForestName"; 
 		}
-		#$objDomain = New-Object System.DirectoryServices.DirectoryEntry("LDAP://DC=" + $strDomain + ",DC=nads,DC=navy,DC=mil");
-		$objDomain = New-Object System.DirectoryServices.DirectoryEntry($strDomain);
+		else{
+			if ($strDomain -eq "GC"){
+				$bolGC = $True;
+				$strForestName = ([System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest()).Name;
+				$strDomain = [ADSI]"GC://$strForestName"; 
+				#$Search = New-Object System.DirectoryServices.DirectorySearcher($strDomain);
+			}
+			else{
+				#$objDomain = New-Object System.DirectoryServices.DirectoryEntry("LDAP://DC=nads,DC=navy,DC=mil");
+				if ($strDomain.IndexOf("DC=") -eq 0){
+					#$strDomain = "DC=" + $strDomain + ",DC=nads,DC=navy,DC=mil";
+					$strDomain = ([System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain)))).name;
+					$strDomain = "DC=" + $strDomain.Replace(".", ",DC=");
+				}
+				$strDomain = "LDAP://" + $strDomain;
+
+				#$objDomain = New-Object System.DirectoryServices.DirectoryEntry("LDAP://DC=" + $strDomain + ",DC=nads,DC=navy,DC=mil");
+				$objDomain = New-Object System.DirectoryServices.DirectoryEntry($strDomain);
+			}
+		}
 
 		if (($strFilter -eq "") -or ($strFilter -eq $null)){
 			#$strFilter = "(&(objectCategory=person))";
@@ -837,8 +854,13 @@
 			#$strFilter = "(&(name=*" + $Username + "*))";
 		}
 
-		$objSearcher = New-Object System.DirectoryServices.DirectorySearcher;
-		$objSearcher.SearchRoot = $objDomain;
+		if ($bolGC -eq $True){
+			$objSearcher = New-Object System.DirectoryServices.DirectorySearcher($strDomain);
+		}
+		else{
+			$objSearcher = New-Object System.DirectoryServices.DirectorySearcher;
+			$objSearcher.SearchRoot = $objDomain;
+		}
 		$objSearcher.PageSize = 1000;
 		$objSearcher.Filter = $strFilter;
 		$objSearcher.SearchScope = "Subtree";
