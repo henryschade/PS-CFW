@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	23 March 2016
+# Updated Date:	24 March 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -27,7 +27,7 @@
 		#$strFilter = "(&(objectCategory=user)(UserPrincipalName=*" + "redirect.test@mil" + "*))";
 		#$strFilter = "(&(objectCategory=user)(UserPrincipalName=*" + "1158784609" + "*))";
 		#$strFilter = "(&(objectCategory=user)(|(UserPrincipalName=*" + "1158784609" + "*)(EDIPI=*" + "1158784609" + "*)))";
-		[Array]$arrDesiredProps = @("name", "proxyAddresses", "mail", "EDIPI", "UserPrincipalName");
+		[Array]$arrDesiredProps = @("samAccountName", "name", "proxyAddresses", "mail", "EDIPI", "UserPrincipalName");
 		$objResults = $null;
 
 		(Get-Date).ToString("yyyy-MM-dd HH:mm:ss");
@@ -1299,7 +1299,7 @@
 		$strWorkLog = "";
 
 		#For Check for email in use, and EDIPI (if flagged).
-		[Array]$arrDesiredProps = @("name", "proxyAddresses", "mail", "EDIPI", "UserPrincipalName");
+		[Array]$arrDesiredProps = @("samAccountName", "name", "proxyAddresses", "mail", "EDIPI", "UserPrincipalName");
 		$arrDomains = GetDomains;
 
 		#Get any "custom" endings.
@@ -1415,7 +1415,13 @@
 				$objResults = ADSearchADO $strOrigName $strDomain $strFilter $arrDesiredProps $True;
 				if ($objResults.Results -gt 0){
 					#Found EDIPI in use
-					$strMessage = "EDIPI in use: " + ([String]($objResults.Returns)[0].name).Trim() + " (" + ([String]($objResults.Returns)[0].UserPrincipalName).Trim() + ") is using EDIPI '" + ([String]($objResults.Returns)[0].EDIPI).Trim() + "'.";
+					#$strMessage = "EDIPI in use: " + ([String]($objResults.Returns)[0].samAccountName).Trim() + " (UPN: " + ([String]($objResults.Returns)[0].UserPrincipalName).Trim() + ") is using EDIPI ";
+					#if ([String]::IsNullOrWhiteSpace(([String]($objResults.Returns)[0].EDIPI).Trim())){
+					#	$strMessage = $strMessage + "'" + $strEDIPI + "'.";
+					#}else{
+					#	$strMessage = $strMessage + "'" + ([String]($objResults.Returns)[0].EDIPI).Trim() + "'.";
+					#}
+					$strMessage = "EDIPI in use: " + ([String]($objResults.Returns)[0].samAccountName).Trim() + " (UPN: " + ([String]($objResults.Returns)[0].UserPrincipalName).Trim() + ") is using EDIPI " + "'" + $strEDIPI + "'.";
 					$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
 					#break;
 					#If the EDIPI is in use, the name does not matter.
