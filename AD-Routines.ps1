@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	24 March 2016
+# Updated Date:	25 March 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -1139,7 +1139,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Company = "USN", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$KnownBy = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Gen = "", 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$FNcc = "US"
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$FNcc = "US", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bNNPI = $False
 		)
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
@@ -1156,13 +1157,15 @@
 		#$KnownBy = KnownBy Name.  i.e. Tony for Anthony.
 		#$Gen = Generation.  i.e. Jr, Sr, etc.
 		#$FNcc = Foreign National Country Code.  i.e. FR, GE.
-		#$bCNNPI = $True or $False.  Is this for a Classified NNPI account?  (Future feature)
+		#$bNNPI = $True or $False.  Is an NNPI Display Name being built?
+			#20160325 - Naming standards are being updated. - The NNPI display name for NIPR should be like the display name for SIPR:
+			#LastName<COMMA><SPACE>FirstName<SPACE>Initials<SPACE>GenerationQualifier<SPACE>Rank<SPACE>NNPI<HYPHEN>Department<COMMA><SPACE>Office
 
 		#$strDisplayName = (BuildDisplayName $LastName $FirstName $MI $Rank $Dep $Office $Company $KnownBy $Gen $FNcc).Returns;
 
 		#Display Names - per NMCI Naming Standards (D400 11939.01 section 3.9.4.1)
 		#Navy --> Last, First[or KnownBy] MI [Generation] [FORNATL-cc] Rank Department [or GalCMD], Office [or GalOff]
-		#C-NNPI --> Last, First[or KnownBy] MI [Generation] Rank NNPI Department [or GalCMD], Office [or GalOff]
+		#NNPI --> Last, First[or KnownBy] MI [Generation] Rank NNPI-Department [or GalCMD], Office [or GalOff]
 			#The Standards say to use "http://www.nima.mil/gns/html/fips_10_digraphs.html" for FORNATL-cc values, but it is dead.
 			#SRM uses "http://www.state.gov/s/inr/rls/4250.htm".
 
@@ -1183,9 +1186,7 @@
 			Returns = ""
 		}
 
-		if ($bCNNPI){
-			#Check if running on Classified network.  If not set the $bCNNPI "flag" to $False.
-			#If running on Classified network, set the $FNcc to "US" (or blank).
+		if ($bNNPI -eq $True){
 		}
 
 		$Error.Clear();
@@ -1216,16 +1217,26 @@
 			if (($Rank -ne "") -and ($Rank -ne $null)){
 				$strDisplayName = $strDisplayName + $Rank + " ";
 			}
-			#CC / FORNATL
-			if (($FNcc.Trim() -ne "US") -and ($FNcc -ne "") -and ($FNcc -ne $null)){
-				if ($FNcc.Trim().Length -gt 2){
-					$FNcc = $FNcc.Trim();
-					$FNcc = $FNcc.SubString(0, 2);
+			if ($bNNPI -eq $True){
+				if ([String]::IsNullOrWhiteSpace($Dep)){
+					$strDisplayName = $strDisplayName + "NNPI";
 				}
-				$strDisplayName = $strDisplayName + "FORNATL-" + $FNcc + " ";
+				else{
+					$strDisplayName = $strDisplayName + "NNPI-";
+				}
+			}
+			else{
+				#CC / FORNATL
+				if (($FNcc.Trim() -ne "US") -and ($FNcc -ne "") -and ($FNcc -ne $null)){
+					if ($FNcc.Trim().Length -gt 2){
+						$FNcc = $FNcc.Trim();
+						$FNcc = $FNcc.SubString(0, 2);
+					}
+					$strDisplayName = $strDisplayName + "FORNATL-" + $FNcc + " ";
+				}
 			}
 			#GALCmd / Department
-			if (($Dep -ne "") -and ($Dep -ne $null)){
+			if (!([String]::IsNullOrWhiteSpace($Dep))){
 				$strDisplayName = $strDisplayName + $Dep;
 			}
 			#GALOffice / Office

@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	18 March 2016
+# Updated Date:	25 March 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -36,6 +36,220 @@
 		}
 
 		return $bolAsAdmin;
+	}
+
+	function BackUpDir{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strSourceDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strDestDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bSubs = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bPrompts = $True, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bSkip = $True, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strBackUpDir = ""
+		)
+		#Copies/Backups Source Directory files to Destination Directory.
+			#The SrcFile.LastWriteTime MUST be greater than the DestFileLastWriteTime, or the file is NOT copied/backedup.
+			#(If a file starts with a 2 digit #, it is assumed to be a backup file, and is NOT copied/backedup.)
+		#$strSourceDir = The Source Directory.
+		#$strDestDir = The Destination Directory.
+		#$bSubs = $True or $False.  Also backup subdirectories.
+		#$bPrompts = $True or $False.  Prompt before copying missing files.  ($False will copy all missing files.)
+		#$bSkip = $True or $False.  Skip "Special" files.  ("*.lnk", "*.db", "*.md", "*.sln", "*.pssproj", ".git*", "*Test*")
+		#$strBackUpDir = The Directory to create BackUp copies in. [Defaults to ($strDestDir + "..\BackUps\").]
+
+		$arrSkipEndings = @(".lnk", ".db", ".md", ".sln", ".pssproj");
+		$arrSkipStarts = @(".git");
+		$arrSkipContains = @("Test");
+		$bDoAll = $False;
+
+		if ($bPrompts -eq $True){
+			if ([String]::IsNullOrWhiteSpace($strSourceDir.Trim())){
+				$strTempPath = "";
+				$strTempPath = (GetPathing "Dev").Returns.Rows[0]['Path'];
+				$strTempPath = $strTempPath + "PS-Scripts\";
+				$strSourceDir = Read-Host "What is the Source Directory? `r`n  (defaults to: $strTempPath) `r`n";
+				if ([String]::IsNullOrWhiteSpace($strSourceDir.Trim())){
+					$strSourceDir = $strTempPath + "PS-Scripts\";
+				}
+			}
+			if ([String]::IsNullOrWhiteSpace($strDestDir.Trim())){
+				$strTempPath = "";
+				$strTempPath = (GetPathing "Scripts").Returns.Rows[0]['Path'];
+				$strTempPath = Read-Host "What is the Destination Directory? `r`n  (defaults to: $strDestDir) `r`n";
+				if ([String]::IsNullOrWhiteSpace($strDestDir.Trim())){
+					$strDestDir = strTempPath;
+				}
+			}
+		}
+		else{
+			if (([String]::IsNullOrWhiteSpace($strSourceDir)) -or ([String]::IsNullOrWhiteSpace($strDestDir))){
+				return $False;
+			}
+
+			#If no prompting, then copy all.
+			$bDoAll = $True;
+		}
+
+		#Setup $strBackUpDir.
+		if ([String]::IsNullOrWhiteSpace($strBackUpDir)){
+			#$strBackUpDir = (GetPathing "BackUps").Returns.Rows[0]['Path'];
+			$strBackUpDir = $strDestDir + "..\";
+			$objDir = Get-Item $strBackUpDir -Force;
+			if ($objDir.Name -eq "Beta"){
+				$strBackUpDir = $strBackUpDir + "..\";
+			}
+			$strBackUpDir = $strBackUpDir + "BackUps\";
+			if (!(Test-Path -Path $strBackUpDir)){
+				Write-Host "Creating BackUp Directory: " $strBackUpDir;
+				mkdir $strBackUpDir | Out-Null;
+			}
+		}
+
+		#Make sure directory paths end with "\".
+		if (!($strSourceDir.EndsWith("\"))){
+			$strSourceDir = $strSourceDir + "\";
+		}
+		if (!($strDestDir.EndsWith("\"))){
+			$strDestDir = $strDestDir + "\";
+		}
+		if (!($strBackUpDir.EndsWith("\"))){
+			$strBackUpDir = $strBackUpDir + "\";
+		}
+
+		$objSrcSubItems = Get-ChildItem $strSourceDir -Force;		#force is necessary to get hidden files/folders
+		$objDestSubItems = Get-ChildItem $strDestDir -Force;		#force is necessary to get hidden files/folders
+
+		$intFileCount = 0;
+		$intCount = 0;
+		foreach ($objSrcItem in $objSrcSubItems){
+			if (!([String]::IsNullOrWhiteSpace($objSrcItem))){
+				if ($objSrcItem.PSIsContainer -eq $False){
+					#A File
+					$intFileCount ++;
+					$bolSkipFile = $False;
+					foreach ($strCheckSkip in $arrSkipEndings){
+						if ($bolSkipFile){
+							break;
+						}
+						if ($objSrcItem.Name.EndsWith($strCheckSkip)){
+							$bolSkipFile = $True;
+						}
+					}
+					foreach ($strCheckSkip in $arrSkipStarts){
+						if ($bolSkipFile){
+							break;
+						}
+						if ($objSrcItem.Name.StartsWith($strCheckSkip)){
+							$bolSkipFile = $True;
+						}
+					}
+					foreach ($strCheckSkip in $arrSkipContains){
+						if ($bolSkipFile){
+							break;
+						}
+						if ($objSrcItem.Name.Contains($strCheckSkip)){
+							$bolSkipFile = $True;
+						}
+					}
+
+					if (($bolSkipFile -eq $False) -and ((isNumeric $objSrcItem.Name.SubString(0, 2)) -eq $False)){
+						<#
+							#Write-Host $objSrcItem;			#Same as .Name
+							#Write-Host $objSrcItem.Name;
+							#Write-Host $objSrcItem.FullName;
+							#Write-Host $objSrcItem.Attributes;
+							#Write-Host $objSrcItem.Length;
+							#Write-Host $objSrcItem.CreationTime;
+							#Write-Host $objSrcItem.LastWriteTime;
+							#Write-Host $objSrcItem.LastAccessTime;
+							#Write-Host $objSrcItem.VersionInfo;
+
+							#(Get-Date -format "MM/dd/yyyy")
+							#(Get-Date).ToString("yyyyMMdd")
+							#$intTime = ([System.DateTime]::Now - $dteStart).TotalMinutes;
+							#$intTime = [Math]::Round($intTime, 2);
+						#>
+
+						$bolFoundFile = $False;
+						#Check if the SrcFile is in the Dest Dir already.
+						foreach ($objDestItem in $objDestSubItems){
+							if ($objSrcItem.Name -eq $objDestItem.Name){
+								#Found the file in the Destination Directory.
+								$bolFoundFile = $True;
+								if (($objSrcItem.LastWriteTime -gt $objDestItem.LastWriteTime) -and ($objSrcItem.LastWriteTime -ne $objDestItem.LastWriteTime)){
+									#Source file is newer
+									Write-Host "`r`n" $objSrcItem.Name "(" $objSrcItem.LastWriteTime ") is newer than" $objDestItem.Name "(" $objDestItem.LastWriteTime ")";
+
+									#Check if have a backup file, for today.
+									if (!([String]::IsNullOrWhiteSpace($strBackUpDir))){
+										$strDateCode = (Get-Date).ToString("yyyyMMdd");
+										if (($strDestDir.Contains("\beta")) -or ($strDestDir.Contains("\Beta")) -or ($strDestDir.Contains("\BETA")) -or ($strDestDir -Match "\beta") -or ($strDestDir -Match "\Beta") -or ($strDestDir -Match "\BETA")){
+											$strDateCode = $strDateCode + "b";
+										}
+
+										if (!(Test-Path -Path ($strBackUpDir + $strDateCode + "_" + $objSrcItem.Name))){
+											Write-Host "    Creating a backup copy of" $objDestItem.Name;
+											Copy-Item -Path $objDestItem.FullName -Destination ($strBackUpDir + $strDateCode + "_" + $objDestItem.Name);
+										}
+									}
+									Write-Host "    Copying" $objSrcItem.Name;
+									Copy-Item -Path $objSrcItem.FullName -Destination $objDestItem.FullName;
+									$intCount ++;
+								}
+								else{
+									Write-Host "      File" $objDestItem.Name "is up to date.";
+								}
+							}
+
+							if ($bolFoundFile -eq $True){
+								break;
+							}
+						}
+
+						if ($bolFoundFile -eq $False){
+							#SrcFile was NOT found in Dest Dir.
+							if ($bDoAll -eq $False){
+								Write-Host "`r`n" $objSrcItem.Name "was not found in the destination directory.";
+								Write-Host " Do you want to copy this file? `r`n [Y]es or [N]o or [A]ll"
+								$objResponse = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
+								if (($objResponse.Character -eq "A") -or ($objResponse.Character -eq "a")){
+									$bDoAll = $True;
+								}
+							}
+							if (($objResponse.Character -eq "Y") -or ($objResponse.Character -eq "y") -or ($bDoAll -eq $True)){
+								Write-Host "    Copying" $objSrcItem.Name;
+								Copy-Item -Path $objSrcItem.FullName -Destination ($strDestDir + $objSrcItem.Name);
+								$intCount ++;
+							}
+						}
+					}
+					else{
+						#Files to skip, or that start with 2 digit #'s.
+						Write-Host "      Skipping" $objSrcItem.Name;
+					}
+				}
+				else{
+					#A Directory
+					if ($bSubs -eq $True){
+						$strNewSrc = $strSourceDir + $objSrcItem.Name;
+						$strNewDest = $strDestDir + $objSrcItem.Name;
+
+						if (!(Test-Path -Path $strNewDest)){
+							Write-Host "Creating Directory: " $strNewDest;
+							mkdir $strNewDest | Out-Null;
+						}
+						BackUpDir $strNewSrc $strNewDest $bSubs $bPrompts $bSkip $strBackUpDir;
+					}
+				}
+			}
+		}
+
+		if (($bolFoundFile -eq $True) -or ($intFileCount -gt 0)){
+			$strMessage = "Copied " + $intCount + " of " + $intFileCount + " files.`r`n";
+			Write-Host "`r`n" $strMessage;
+		}
+
+		return $strMessage;
 	}
 
 	function CheckVer{
