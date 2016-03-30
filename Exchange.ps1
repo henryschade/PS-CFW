@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	25 February 2016
+# Updated Date:	29 March 2016
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process, 
@@ -1761,7 +1761,20 @@
 			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom)';
 		}
 		if ($WhatSide.Length -gt 1){
-			$WhatSide.substring(0, 1)
+			if (($WhatSide -eq "nadsusea") -or ($WhatSide -eq "nadsuswe") -or ($WhatSide -eq "pads")){
+				if ($WhatSide -eq "nadsusea"){
+					$WhatSide = "e";
+				}
+				if ($WhatSide -eq "nadsuswe"){
+					$WhatSide = "w";
+				}
+				if ($WhatSide -eq "pads"){
+					$WhatSide = "p";
+				}
+			}
+			else{
+				$WhatSide.substring(0, 1)
+			}
 		}
 		if (($WhatSide -ne "e") -and ($WhatSide -ne "w") -and ($WhatSide -ne "p")){
 			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom)';

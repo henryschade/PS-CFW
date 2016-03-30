@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	25 March 2016
+# Updated Date:	30 March 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -13,6 +13,38 @@
 
 		#$InitializeDefaultDrives=$False;
 		#if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
+
+
+
+		#. C:\Projects\PS-CFW\Exchange.ps1;
+		##if (!(Get-Command "Get-Recipient" -ErrorAction SilentlyContinue)){
+		#if ((!(Get-Command "Get-Recipient" -ErrorAction SilentlyContinue)) -or (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue))){
+		#	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+		#	if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+		#		$ScriptDir = (Get-Location).ToString();
+		#	}
+		#	if (Test-Path ($ScriptDir + "\Exchange.ps1")){
+		#		. ($ScriptDir + "\Exchange.ps1")
+		#	}
+		#	else{
+		#		if (Test-Path ($ScriptDir + "\..\PS-CFW\Exchange.ps1")){
+		#			. ($ScriptDir + "\..\PS-CFW\Exchange.ps1")
+		#		}
+		#	}
+		#}
+
+		#$UserName = "margaret.matthews";
+		#$bolInUse = $False;
+		##Need to do each domain
+		#foreach ($strDom in $arrDom){
+		#	#SetupConn "e" "d";
+		#	SetupConn $strDom "d";
+		#	if (Get-Recipient -Identity ($UserName + "@navy.mil") -ErrorAction SilentlyContinue){
+		#		#in use.
+		#		$bolInUse = $True;
+		#		break;
+		#	}
+		#}
 
 
 
@@ -125,6 +157,9 @@
 			#Need to get Domains.  GetDomains() requires "AD-Routines.ps1".
 			if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
 				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+				if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+					$ScriptDir = (Get-Location).ToString();
+				}
 				if ((Test-Path ($ScriptDir + "\AD-Routines.ps1"))){
 					. ($ScriptDir + "\AD-Routines.ps1")
 				}
@@ -168,6 +203,9 @@
 				}else{
 					if (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue)){
 						$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+						if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+							$ScriptDir = (Get-Location).ToString();
+						}
 						if ((Test-Path ($ScriptDir + "\Exchange.ps1"))){
 							. ($ScriptDir + "\Exchange.ps1")
 						}
@@ -259,6 +297,9 @@
 			#Need to get Domains.  GetDomains() requires "AD-Routines.ps1".
 			if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
 				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+				if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+					$ScriptDir = (Get-Location).ToString();
+				}
 				if ((Test-Path ($ScriptDir + "\AD-Routines.ps1"))){
 					. ($ScriptDir + "\AD-Routines.ps1")
 				}
@@ -373,6 +414,9 @@
 					if (($Session -eq "") -or ($Session -eq $null) -or ($Session.State -ne "Opened")){
 						if (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue)){
 							$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+							if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+								$ScriptDir = (Get-Location).ToString();
+							}
 							if ((Test-Path ($ScriptDir + "\Exchange.ps1"))){
 								. ($ScriptDir + "\Exchange.ps1")
 							}
@@ -1333,9 +1377,12 @@
 		$strSamName = $strSamName.SubString(0, ($strSamName.Length - $strCustEnd.Length));
 
 		#Get any ending #'s already provided.
-		#Make sure MsgBox() is available.
+		#Make sure isNumeric() is available.
 		if (!(Get-Command "isNumeric" -ErrorAction SilentlyContinue)){
 			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+			if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+				$ScriptDir = (Get-Location).ToString();
+			}
 			if (Test-Path ($ScriptDir + "\Common.ps1")){
 				. ($ScriptDir + "\Common.ps1")
 			}
@@ -1456,16 +1503,31 @@
 				#$strOrigName not found.
 				#Check for email in use
 				if ($bCheckEmail -eq $True){
-					$strFilter = "(&(objectCategory=user)(proxyAddresses=*" + $strOrigName + "*))";
-					foreach ($strDomain in $arrDomains){
-						$objResults = $null;
-						$objResults = ADSearchADO $strOrigName $strDomain $strFilter $arrDesiredProps $True;
-						if ($objResults.Results -gt 0){
-							#Found email in use
-							$UserADInfo = "Email in use.";
-							$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address *" + $strOrigName + "*" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
-							$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
-							break;
+					if ((!(Get-Command "Get-Recipient" -ErrorAction SilentlyContinue)) -and (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue))){
+						#$bolInUse = $null;
+						#foreach ($strDomain in $arrDomains){
+						#	SetupConn $strDomain "d";
+						#	if (Get-Recipient -Identity ($strOrigName + "@navy.mil") -ErrorAction SilentlyContinue){
+						#		#in use.
+						#		$UserADInfo = "Email in use.";
+						#		$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address *" + $strOrigName + "*" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
+						#		$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
+						#		break;
+						#	}
+						#}
+					}
+					else{
+						$strFilter = "(&(objectCategory=user)(proxyAddresses=*" + $strOrigName + "*))";
+						foreach ($strDomain in $arrDomains){
+							$objResults = $null;
+							$objResults = ADSearchADO $strOrigName $strDomain $strFilter $arrDesiredProps $True;
+							if ($objResults.Results -gt 0){
+								#Found email in use
+								$UserADInfo = "Email in use.";
+								$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address *" + $strOrigName + "*" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
+								$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
+								break;
+							}
 						}
 					}
 				}
@@ -1601,16 +1663,31 @@
 
 				#Check for email in use
 				if (($bCheckEmail -eq $True) -and ($bolNameOK -eq $True)){
-					$strFilter = "(&(objectCategory=user)(proxyAddresses=*" + $strNewName + "*))";
-					foreach ($strDomain in $arrDomains){
-						$objResults = $null;
-						$objResults = ADSearchADO $strNewName $strDomain $strFilter $arrDesiredProps $True;
-						if ($objResults.Results -gt 0){
-							#Found email in use
-							$bolNameOK = $False;
-							$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address *" + $strNewName + "*" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
-							$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
-							break;
+					if ((!(Get-Command "Get-Recipient" -ErrorAction SilentlyContinue)) -and (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue))){
+						#$bolInUse = $null;
+						foreach ($strDomain in $arrDomains){
+							SetupConn $strDomain "d";
+							if (Get-Recipient -Identity ($strNewName + "@navy.mil") -ErrorAction SilentlyContinue){
+								#in use.
+								$UserADInfo = "Email in use.";
+								$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address *" + $strNewName + "*" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
+								$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
+								break;
+							}
+						}
+					}
+					else{
+						$strFilter = "(&(objectCategory=user)(proxyAddresses=*" + $strNewName + "*))";
+						foreach ($strDomain in $arrDomains){
+							$objResults = $null;
+							$objResults = ADSearchADO $strNewName $strDomain $strFilter $arrDesiredProps $True;
+							if ($objResults.Results -gt 0){
+								#Found email in use
+								$bolNameOK = $False;
+								$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address *" + $strNewName + "*" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
+								$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
+								break;
+							}
 						}
 					}
 				}
@@ -2763,10 +2840,12 @@
 
 			if (($objUser -ne "") -and ($objUser -ne $null)){
 				#Can do the actual move, once we pull all the parts together
+				#Include following Script/File.
 				if ((!(Get-Command "GetPathing" -ErrorAction SilentlyContinue))){
-					#Include following Script/File.
 					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-					#$PSCmdlet.MyInvocation.InvocationName;
+					if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+						$ScriptDir = (Get-Location).ToString();
+					}
 					$arrIncludes = @("Common.ps1");
 					foreach ($strInclude in $arrIncludes){
 						$Error.Clear();
