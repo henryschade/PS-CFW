@@ -17,7 +17,11 @@
 	$strLogDirS = "";
 	$strLogDirL = "C:\Users\ITSS-Tools\Logs\" + $strProjName + "\";
 	$strLogDir = "";
+	$Error.Clear();
 	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+	if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+		$ScriptDir = (Get-Location).ToString();
+	}
 
 	$strMessage = "Starting " + $strProjName + ", ver " + $strVer + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
 	Write-Host $strMessage;
