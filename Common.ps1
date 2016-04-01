@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	25 March 2016
+# Updated Date:	1 April 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -247,6 +247,9 @@
 		if (($bolFoundFile -eq $True) -or ($intFileCount -gt 0)){
 			$strMessage = "Copied " + $intCount + " of " + $intFileCount + " files.`r`n";
 			Write-Host "`r`n" $strMessage;
+			if ($intCount -lt 1){
+				$strMessage = "";
+			}
 		}
 
 		return $strMessage;
