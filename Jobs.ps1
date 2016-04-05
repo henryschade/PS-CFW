@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	17 December 2015
+# Updated Date:	4 April 2016
 # Purpose:		Background Job and RunSpace Functions.
 # Requirements: None
 #				All this code is based on info from the following URLs:
@@ -99,7 +99,15 @@
 
 
 
-		#If I create an Exchange Session in the Pool, then the Exchange cmdlets are only available in the Pool.
+		#URL's about setting up Event driven updates:
+		#http://stackoverflow.com/questions/15501938/powershell-multi-runspace-event-passing
+		#https://blogs.msdn.microsoft.com/powershell/2011/04/04/scaling-and-queuing-powershell-background-jobs/
+
+
+
+
+
+		#If I create an Exchange Session in the Pool, then the Exchange cmdlets are only available in that Pool.
 		$objJobCode = [scriptblock]::create($function:GetPSCmds);		#create an Exchange Session, and returns all imported commands.
 		$objJobs += CreateRunSpaceJob -RSPool $objPool -JobName "GetPSCmds" -JobScript $objJobCode;
 		$strResults = WaitForRunSpaceJob $objJobs[($objJobs.Count) - 1].Name $objJobs;
@@ -236,11 +244,12 @@
 
 
 	function CheckRunSpaceJob{
-		#Returns Job State.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strJobName,
 			[ValidateNotNull()][Parameter(Mandatory=$True)]$Jobs
 		)
+		#Returns Job State.
+
 		$objJobs = $Jobs
 
 		$bolFoundJob = $False;
@@ -268,6 +277,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strJobName,
 			[ValidateNotNull()][Parameter(Mandatory=$True)]$Jobs
 		)
+		#Cleans a job that has run, or Cancles a job, (strJobName) out of the $Jobs collection.
 		$objJobs = $Jobs
 
 		For ($intX = 0; $intX -lt $objJobs.Count; $intX++){
@@ -287,9 +297,9 @@
 	function CreateRunSpace{
 		#http://www.nivot.org/post/2009/01/22/CTP3TheRunspaceFactoryAndPowerShellAccelerators
 		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True)]$intMax = 3
-			#[ValidateNotNull()][Parameter(Mandatory=$False)][Hashtable]$hashColl
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$intMax = 3
 		)
+
 		$intMin = 1;
 		#$intMax = 3;
 
@@ -298,17 +308,8 @@
 
 		$objInitSessState = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
 		$objInitSessState.ImportPSModule("ActiveDirectory");
-		#$objInitSessState.ImportPSModule({"ServerManager"})
-
-		#https://gallery.technet.microsoft.com/scriptcenter/Gather-Generic-WMI-Data-474f788b
-		#$Creds = Get-Credential;
-		#$objInitSessState.Variables.Add(New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList 'Credential', $Creds);
-		#$objInitSessState.AddParameter("Credential", $Creds);
-		#if (($hashColl -ne "") -and ($hashColl -ne $null)){
-		#	#$objInitSessState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList 'Hash', $hashColl));
-		#	#$objInitSessState.AddParameter("Hash", $hashColl);
-		#	$objInitSessState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList 'Hash', $hashColl, ''));
-		#}
+		#$objInitSessState.ImportPSModule({"ServerManager"});
+		#$objInitSessState.ImportPSModule($Path + "\File.ps1")
 
 		$objPool = [RunSpaceFactory]::CreateRunspacePool($intMin, $intMax, $objInitSessState, $Host);		#$Host = local host.
 		#$objPool = [RunSpaceFactory]::CreateRunspacePool($intMin, $intMax);
@@ -319,21 +320,18 @@
 		#$objPool.ThreadOptions = "ReuseThread";
 		$objPool.Open();
 
-		#if (($hashColl -ne "") -and ($hashColl -ne $null)){
-		#	#http://learn-powershell.net/2013/04/19/sharing-variables-and-live-objects-between-powershell-runspaces/
-		#	#$objPool.SessionStateProxy.SetVariable('Hash', $hashColl);
-		#}
-
 		#Write-Host "Created a Pool of $($objPool.GetAvailableRunspaces()) Runspaces.";
 
 		return $objPool;
 	}
 
 	function CreateRunSpaceJob{
-		#http://www.nivot.org/post/2009/01/22/CTP3TheRunspaceFactoryAndPowerShellAccelerators
-		##http://thesurlyadmin.com/2013/02/11/multithreading-powershell-scripts/
-		##http://blogs.technet.com/b/heyscriptingguy/archive/2013/09/29/weekend-scripter-max-out-powershell-in-a-little-bit-of-time-part-2.aspx
-
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$RSPool,
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$JobName,
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$JobScript,
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$Arguments
+		)
 		#Returns PSObject
 			#Name   	: NameSupplied
 			#Powershell : System.Management.Automation.PowerShell
@@ -350,13 +348,10 @@
 				#AsyncState             :
 				#AsyncWaitHandle        : System.Threading.ManualResetEvent
 
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True)]$RSPool,
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$JobName,
-			#[ValidateNotNull()][Parameter(Mandatory=$True)][ScriptBlock]$JobScript,
-			[ValidateNotNull()][Parameter(Mandatory=$True)]$JobScript,
-			[ValidateNotNull()][Parameter(Mandatory=$False)]$Arguments
-		)
+		#http://www.nivot.org/post/2009/01/22/CTP3TheRunspaceFactoryAndPowerShellAccelerators
+		##http://thesurlyadmin.com/2013/02/11/multithreading-powershell-scripts/
+		##http://blogs.technet.com/b/heyscriptingguy/archive/2013/09/29/weekend-scripter-max-out-powershell-in-a-little-bit-of-time-part-2.aspx
+
 
 		#http://stackoverflow.com/questions/11000801/using-a-psdatacollection-with-begininvoke-in-powershell
 		#$pipeline = [powershell]::Create().AddScript($JobScript).AddParameter("pauseTime", 5)
@@ -399,15 +394,36 @@
 		return $objJobReturning;
 	}
 
+	function DisposeRunSpace{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$objPool,
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$objJobs
+		)
+
+		#for($intX = 0; $intX -lt $objJobs.length; $intX++){
+		#	try{
+		#		[void]$objPool[$intX].Close();
+		#	}
+		#	Catch{}
+		#		[void]$objPool[$intX].Dispose();
+		#	}
+		#}
+
+		[void]$objPool.Close();
+		[void]$objPool.Dispose();
+		[GC]::Collect();
+	}
+
 	function WaitForRunSpaceJob{
-		#Waits for a RunSpace background job to finish then returns the Job Results.
-		#If $objControl is provided it is updated w/ the progress and the results.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strJobName,
 			[ValidateNotNull()][Parameter(Mandatory=$True)]$Jobs,
 			[ValidateNotNull()][Parameter(Mandatory=$False)]$objControl, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)]$bIgnoreErr = $False
 		)
+		#Waits for a RunSpace background job to finish then returns the Job Results.
+		#If $objControl is provided it is updated w/ the progress and the results.
+
 		$objJobs = $Jobs;
 
 		$bolFoundJob = $False;
@@ -434,9 +450,6 @@
 				}
 			}Until (($objJobs[$intX].Results.IsCompleted))
 
-			#Write-Host "`r`nResults1: " $strJobResults;			#Blank
-			#Write-Host "`r`nResults2: " $objJobs[$intX].Powershell.EndInvoke($objJobs[$intX].Results);		#Results
-
 			if (($strJobResults -eq "") -or ($strJobResults -eq $null)){
 				#[String]$strJobResults = [String]$objJobs[$intX].Powershell.EndInvoke($objJobs[$intX].Results);				#Complete the Async job. Which returns the Results of the job.
 				#if (($strJobResults -eq "") -or ($strJobResults -eq $null)){
@@ -451,7 +464,6 @@
 				}
 			}
 
-			#if ((($strJobResults -eq $null) -or ($strJobResults -eq "")) -or (($objJobs[$intX].Powershell.Streams.Error.Count -gt 0) -and (($objJobs[$intX].Powershell.Streams.Error -ne $null) -and ($objJobs[$intX].Powershell.Streams.Error -ne "")))){
 			if (($strJobResults -eq $null) -or ($strJobResults -eq "") -or (($objJobs[$intX].Powershell.Streams.Error.Count -gt 0) -and ($bIgnoreErr -ne $True))){
 				#$strJobResults = "Job finished running, good or bad, and is not returning any results."
 				#Write-Host $strJobResults;
@@ -462,17 +474,14 @@
 				$strJobResults = $objJobs[$intX].Powershell.InvocationStateInfo.Reason;									#The Reason that Powershell failed.
 				if (($strJobResults -eq "") -or ($strJobResults -eq $null)){
 					#Write-Host $objJobs[$intX].Powershell.Streams.Error.Count;
-					#Write-Host $objJobs[$intX].Powershell.Streams.Error[0];
 					#Write-Host $objJobs[$intX].Powershell.Streams.Error[($objJobs[$intX].Powershell.Streams.Error.Count - 1)];
 
 					if (($objJobs[$intX].Powershell.Streams.Error.Count -gt 0) -and (($objJobs[$intX].Powershell.Streams.Error -ne $null) -and ($objJobs[$intX].Powershell.Streams.Error -ne ""))){
 						$strJobResults = "Error:`r`n" + $objJobs[$intX].Powershell.Streams.Error;
 					}
 				}
-				#$strJobResults = "Job IsComplete:$strIsComp; Job State:$strState; Job Reason:$strJobResults; Job Results:`r`n"
 				$strJobResults = $strJobResults + $objJobs[$intX].Powershell.EndInvoke($objJobs[$intX].Results);		#Complete the Async job. Which returns the Results of the job.
 
-				##$objJobs[$intX].PowerShell.Dispose();
 				#CleanRunSpace $strJobName $objJobs;
 			}else{
 				#$strTestName = $objJobs[$intX].Name;

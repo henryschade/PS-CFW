@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	17 March 2016
+# Updated Date:	4 April 2016
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -112,10 +112,14 @@
 		$strRawData = "";
 		if (!(Get-Command "GetPathing" -ErrorAction SilentlyContinue)){
 			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+			if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+				$ScriptDir = (Get-Location).ToString();
+			}
 			if ((Test-Path ($ScriptDir + "\Common.ps1"))){
 				. ($ScriptDir + "\Common.ps1")
 			}
 		}
+
 		$strConfigFile = ((GetPathing "SupportFiles").Returns.Rows[0].Path);
 		if ([String]::IsNullOrWhiteSpace($strConfigFile)){
 			$strConfigFile = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\SupportFiles\MiscSettings.txt";

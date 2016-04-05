@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	1 April 2016
+# Updated Date:	4 April 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -320,6 +320,10 @@
 		else{
 			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
 			if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
+				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+				if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+					$ScriptDir = (Get-Location).ToString();
+				}
 				if ((Test-Path (".\DB-Routines.ps1"))){
 					. (".\DB-Routines.ps1");
 				}
@@ -779,6 +783,10 @@
 			#No config file, or no entry, so check DB.
 			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
 			if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
+				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+				if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+					$ScriptDir = (Get-Location).ToString();
+				}
 				if ((Test-Path (".\DB-Routines.ps1"))){
 					. (".\DB-Routines.ps1");
 				}
