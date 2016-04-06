@@ -1,6 +1,6 @@
 #Requires -Version 2.0
 ###########################################
-# Updated Date:	24 February 2016
+# Updated Date:	6 April 2016
 # Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
@@ -18,9 +18,10 @@
 	$strLogDirL = "C:\Users\ITSS-Tools\Logs\" + $strProjName + "\";
 	$strLogDir = "";
 	$Error.Clear();
-	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-	if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+	if ([String]::IsNullOrWhiteSpace($MyInvocation.MyCommand.Path)){
 		$ScriptDir = (Get-Location).ToString();
+	}else{
+		$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 	}
 
 	$strMessage = "Starting " + $strProjName + ", ver " + $strVer + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";

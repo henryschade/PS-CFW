@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	4 April 2016
+# Updated Date:	6 April 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -320,9 +320,10 @@
 		else{
 			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
 			if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
-				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-				if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+				if ([String]::IsNullOrWhiteSpace($MyInvocation.MyCommand.Path)){
 					$ScriptDir = (Get-Location).ToString();
+				}else{
+					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 				}
 				if ((Test-Path (".\DB-Routines.ps1"))){
 					. (".\DB-Routines.ps1");
@@ -546,7 +547,11 @@
 		#$ZipFile = The zip file to create. (Full path) [i.e. "c:\path\file.zip"]
 		#$Files = An array of the files to add to the zip file. (Full paths) [i.e. @("c:\path\file.one", "c:\path\file.two")]
 
-		$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+		if ([String]::IsNullOrWhiteSpace($MyInvocation.MyCommand.Path)){
+			$ScriptDir = (Get-Location).ToString();
+		}else{
+			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+		}
 		$strInclude = "Documents.ps1";
 		if (Test-Path -Path ($ScriptDir + "\..\PS-CFW\" + $strInclude)){
 			. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
@@ -783,9 +788,10 @@
 			#No config file, or no entry, so check DB.
 			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
 			if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
-				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-				if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+				if ([String]::IsNullOrWhiteSpace($MyInvocation.MyCommand.Path)){
 					$ScriptDir = (Get-Location).ToString();
+				}else{
+					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 				}
 				if ((Test-Path (".\DB-Routines.ps1"))){
 					. (".\DB-Routines.ps1");
