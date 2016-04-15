@@ -1,46 +1,53 @@
 ###########################################
-# Updated Date:	17 July 2015
+# Updated Date:	15 April 2016
 # Purpose:		Routines that require a Computer, or that interact w/ a Computer.
 # Requirements: None
 ##########################################
 
-	function CheckIfOnline($strComp){
-		if(($strComp -eq "") -OR ($strComp -eq $null)){
-			#$strComp = "ALSDCP002656";		#Henry Laptop;
-			$strComp = Read-Host 'What computer? (i.e. ALSDCP002656)';
-		}
+	function CheckIfOnline{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strComp, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$bolUsers = $True
+		)
+		#$strComp = The computer to check.  ($Env:ComputerName)
+
+		#if ([String]::IsNullOrWhiteSpace($strComp)){
+		#	#$strComp = "ALSDCP002656";		#Henry Laptop;
+		#	$strComp = Read-Host 'What computer? (i.e. ALSDCP002656)';
+		#}
 
 		$ErrorActionPreference = 'SilentlyContinue';
 		$strIP = [System.Net.DNS]::GetHostAddresses($strComp);
 		$ErrorActionPreference = 'Continue';
 		#Write-Host $strIP;
 
-		if ($strIP -eq $null){ 
-			$Message = "Host cannot be resolved in DNS.";
+		if ([String]::IsNullOrWhiteSpace($strIP)){
+			$strRet = "Host ($strComp) cannot be resolved, by DNS.";
 		}else{
 			#host is valid; now check if it is online by pinging it
-			$ping = New-Object System.Net.NetworkInformation.Ping;
-			$Reply = $ping.send($strComp);
+			$objPing = New-Object System.Net.NetworkInformation.Ping;
+			$Reply = $objPing.Send($strComp);
 
-			if ($Reply.status -eq "Success"){
+			if ($Reply.Status -eq "Success"){
 				#Host is online
-				$Message = "Host is online.";
+				$strRet = "Host ($strComp) is online.";
 
-				$Message = LoggedInUser($strComp);
+				if ($bolUsers -eq $True){
+					$strRet = $strRet + "`r`n" + (LoggedInUser $strComp);
+				}
 
 				#ShutDown a computer.
-				#$Message = Stop-Computer -comp $strComp -force;
+				#$strRet = Stop-Computer -comp $strComp -force;
 			}else{
-				$Message = "Host not online (ping failed).";
+				$strRet = "Host ($strComp) not online (ping failed).";
 			}
 		}
 
-		#displays the result
-		#$a = new-object -comobject wscript.shell;
-		#$b = $a.popup($Message,0,"Logged In User",1);
-		#Write-Host $Message;
+		#displays the results, in a popup.
+		#$a = New-Object -comobject wscript.shell;
+		#$b = $a.Popup($strRet,0,"Logged In User",1);
 
-		return $Message;
+		return $strRet;
 	}
 
 	function CreateSchedTask{
@@ -118,13 +125,26 @@
 	}
 
 	function DoShutDown($strComp){
-		if(($strComp -eq "") -OR ($strComp -eq $null)){
+		if ([String]::IsNullOrWhiteSpace($strComp)){
 			#$strComp = "ALSDCP002656";		#Henry Laptop;
 			$strComp = Read-Host 'What computer? (i.e. ALSDCP002656)';
 		}
 
-		#$Message = Stop-Computer -comp $strComp -force;
-		$Message = Stop-Computer -comp $strComp -force -Credential $creds;
+		#$strRet = Stop-Computer -comp $strComp -force;
+		#$strRet = Stop-Computer -comp $strComp -force -Credential $objCreds;
+		$objCreds = GetCredentials;
+		$strRet = Stop-Computer -comp $strComp -force -Credential $objCreds;
+
+		return $strRet;
+	}
+
+	function EnableRPC{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strComp
+		)
+		#$strComp = The computer to Enable RPC on.  ($Env:ComputerName)
+
+		#Chris has a way.
 	}
 
 	function GetCert{
@@ -199,51 +219,225 @@
 	}
 
 	function GetCredentials($strComp){
-		if (($strComp -eq "") -or ($strComp -eq $null)){
+		if([String]::IsNullOrWhiteSpace($strComp)){
 			$strComp = $Env:ComputerName;
 		}
 
 		$strUser = $Env:UserName;
 
-		#$creds = Get-Credential $strComp\admin;				#domain\user
-		$creds = Get-Credential ($strComp + "\" + $strUser);				#domain\user
-		#$creds = Get-Credential -Credential $strComp\hyyjyg;
-		$user = $creds.UserName;
-		$password = $creds.GetNetworkCredential().Password;
-		#Write-Host $user " -- " $password
+		#$objCreds = Get-Credential $strComp\admin;				#domain\user
+		$objCreds = Get-Credential ($strComp + "\" + $strUser);				#domain\user
+		#$objCreds = Get-Credential -Credential $strComp\hyyjyg;
+		#$user = $objCreds.UserName;
+		#$password = $objCreds.GetNetworkCredential().Password;
+		##Write-Host $user " -- " $password
 
 		<#
-		if($creds -ne $null){
-			#$comp = Get-WmiObject Win32_ComputerSystem -ComputerName $strComp -Credential $creds -Authentication 6;
-			#$comp = Get-WmiObject -Namespace "root\cimv2" Win32_ComputerSystem -ComputerName $strComp -Credential $creds -Authentication 6 -Impersonation Delegate;
-			#$comp = Get-WmiObject -Namespace "root\cimv2" Win32_ComputerSystem -ComputerName $strComp -Credential $strComp\hyyjyg -Impersonation Impersonate;
-			$comp = Get-WmiObject -Namespace "root\cimv2" Win32_ComputerSystem -ComputerName $strComp -Credential ($strComp + "\" + $strUser) -Impersonation 3;
-		}else{
+		if([String]::IsNullOrWhiteSpace($objCreds)){
 			#$comp = Get-WmiObject Win32_ComputerSystem -ComputerName $strComp -Authentication PacketPrivacy;
 			#$comp = Get-WmiObject Win32_ComputerSystem -ComputerName $strComp -Authentication 6;
 			#$comp = Get-WmiObject Win32_ComputerSystem -ComputerName $strComp -Authentication PacketPrivacy -Impersonation Delegate;
 			$comp = Get-WmiObject Win32_ComputerSystem -ComputerName $strComp -Authentication PacketPrivacy -Impersonation Impersonate;
+		}else{
+			#$comp = Get-WmiObject Win32_ComputerSystem -ComputerName $strComp -Credential $objCreds -Authentication 6;
+			#$comp = Get-WmiObject -Namespace "root\cimv2" Win32_ComputerSystem -ComputerName $strComp -Credential $objCreds -Authentication 6 -Impersonation Delegate;
+			#$comp = Get-WmiObject -Namespace "root\cimv2" Win32_ComputerSystem -ComputerName $strComp -Credential $strComp\hyyjyg -Impersonation Impersonate;
+			$comp = Get-WmiObject -Namespace "root\cimv2" Win32_ComputerSystem -ComputerName $strComp -Credential ($strComp + "\" + $strUser) -Impersonation 3;
 		}
 		Write-Host "~~" $comp;
 		#>
+
+		return $objCreds;
 	}
 
-	function LoggedInUser($strComp){
-		if(($strComp -eq "") -OR ($strComp -eq $null)){
-			#$strComp = "ALSDCP002656";		#Henry Laptop;
-			$strComp = Read-Host 'What computer? (i.e. ALSDCP002656)';
+	function GetRegistry{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strRegPath, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strProp
+		)
+		#Returns an array.
+			#A "list" of Properties & "Directories" (Keys) under the "Path" provided.
+			#Data from the Property in the format of: (Name, Type/Kind, Value).
+		#$strRegPath = The Registry Path (Key) to get data from.  (i.e. "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion")
+		#$strProp = The Property, if any, to get the data out of.  If omitted returns a list of available Properties & Keys.  (i.e. "DevicePath")
+
+		#registry key = The Reg Path.
+		#registry key property = The "attributes" / "fields" under the Key.
+
+		#http://powershell.com/cs/blogs/tips/archive/2015/04/15/getting-registry-values-and-value-types.aspx
+		#https://4sysops.com/archives/interacting-with-the-registry-in-powershell/
+		#http://stackoverflow.com/questions/15511809/how-do-i-get-the-value-of-a-registry-key-and-only-the-value-using-powershell
+		#Remote Registry:
+		#http://blogs.microsoft.co.il/scriptfanatic/2010/01/10/remote-registry-powershell-module/
+		#https://psremoteregistry.codeplex.com/
+
+
+		#$strRegPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion";
+		#$strProp = "DevicePath";
+
+		if (Test-Path $strRegPath){
+			if ([String]::IsNullOrWhiteSpace($strProp)){
+				if ($strRegPath.EndsWith("\")){
+					$strRegPath = $strRegPath.SubString(0, $strRegPath.Length - 1);
+				}
+
+				$arrRet = (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).Property;
+				#$arrRet now has all the Keys/Properties under $strRegPath, BUT NOT any "child" Pathing.
+				#$arrRet is an array.
+
+				$objTemp = ((Get-ChildItem -Path $strRegPath -Force -ErrorAction SilentlyContinue) | SELECT Name);
+				for ($intX = 0; $intX -lt $objTemp.Count; $intX++){
+					$objTemp[$intX] = $objTemp[$intX].Name;
+					$objTemp[$intX] = $objTemp[$intX].Replace($strRegPath.Replace("HKLM:", "HKEY_LOCAL_MACHINE"), "");
+				}
+
+				$arrRet = $arrRet + $objTemp;
+			}
+			else{
+				$bolExist = $False;
+				$arrInfo = GetRegistry $strRegPath;
+				foreach ($strEntry in $arrInfo){
+					if ($strEntry -eq $strProp){
+						$bolExist = $True;
+						break;
+					}
+				}
+				if ($bolExist -eq $True){
+					$arrRet = @($strProp, (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).GetValueKind($strProp), (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).GetValue($strProp));
+					#$arrRet now has the Value and Type stored in/at $strProp.
+					#Although RegEdit shows "%SystemRoot%\inf", and the value returned is "C:\Windows\inf".
+					#$arrRet is an array of (Name, Type/Kind, Value).
+				}
+				else{
+					$arrRet = @("The Property '$strProp' does NOT exist under Key '$strRegPath'.", "-1");
+				}
+			}
 		}
+		else{
+			$arrRet = @("The Key '$strRegPath' does NOT exist.", "-1");
+		}
+
+		return $arrRet;
+	}
+
+	function LoggedInUser{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strComp
+		)
+		#$strComp = The computer to check.  ($Env:ComputerName)
+
+		#if([String]::IsNullOrWhiteSpace($strComp)){
+		#	#$strComp = "ALSDCP002656";		#Henry Laptop;
+		#	$strComp = Read-Host 'What computer? (i.e. ALSDCP002656)';
+		#}
 
 		#check if a user is logged in
-		$strLoggedIn = gwmi -class win32_computerSystem -computer:$strComp | Select-Object username;
+		$Error.Clear();
+		$strLoggedIn = Get-WmiObject -class win32_computerSystem -computer:$strComp | Select-Object username;
 		if ($strLoggedIn.username.Length -gt 0){
-			$Message = $strLoggedIn.username + " is currently logged in to " + $strComp + ".";
+			$strRet = $strLoggedIn.username + " is currently logged in to " + $strComp + ".";
 		}else{
-			$Message = "No user is logged in locally to " + $strComp + ".";
+			$strRet = "No user is logged in locally to " + $strComp + ".";
 		}
 
-		#Write-Host $Message;
-
-		return $Message;
+		#Write-Host $strRet;
+		return $strRet;
 	}
 
+	function SetRegistry{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strRegPath, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strProp, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strValue, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strType = "String"
+		)
+		#Returns an array with results info.
+		#$strRegPath = The Registry Path (Key) to set data to, or to create.  (i.e. "HKLM:\SOFTWARE\ITSS-Tools\ASCII")
+		#$strProp = The Registry Key Property, if any, to update/create with $strValue. (i.e. "Version").
+		#$strValue = The Value to enter.  (i.e. "0.23")
+		#$strType = The Type/Kind that strValue is to be stored as.
+			#DWord = Integer
+			#String = String
+
+		#registry key = The Reg Path.
+		#registry key property = The "attributes" / "fields" under the Key.
+
+		#Remote Registry:
+		#http://blogs.microsoft.co.il/scriptfanatic/2010/01/10/remote-registry-powershell-module/
+
+		#$strRegPath = "HKLM:\SOFTWARE\ITSS-Tools\ASCII";
+		#$strProp = "Version";
+		#$strValue = "0.23";
+
+		$arrRet = $null;
+
+		$Error.Clear();
+		if (Test-Path $strRegPath){
+			#Path exists, set/update Key.
+		}
+		else{
+			#Create/update a new Path.  Creates any neccessary parent pathing.
+			$objResults = $null;
+			#$strResults = New-Item -Path $strRegPath -Force | Out-Null;
+			$objResults = New-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue;
+			if (($Error) -or ([String]::IsNullOrWhiteSpace($objResults))){
+				$arrRet = @("Error creating the path '$strRegPath'.", $Error);
+			}
+			else{
+				$arrRet = @("Created Key '$strRegPath'.", $objResults);
+			}
+		}
+
+		if ((!([String]::IsNullOrWhiteSpace($strProp))) -and (!($Error))){
+			#Now we can create/update the Key.
+			$objResults = $null;
+			$arrInfo = GetRegistry $strRegPath $strProp;
+			$Error.Clear();
+			if ($arrInfo[0].Contains("does NOT exist")){
+				#$objResults = New-ItemProperty -Path $strRegPath -Name $strProp -Value $strValue -PropertyType $strType -Force | Out-Null;
+				$objResults = New-ItemProperty -Path $strRegPath -Name $strProp -Value $strValue -PropertyType $strType -Force -ErrorAction SilentlyContinue;
+				if (($Error) -or ([String]::IsNullOrWhiteSpace($objResults))){
+					$arrRet = @("Error creating Property '$strProp', under Key '$strRegPath'.", $Error);
+				}
+				else{
+					$arrInfo = GetRegistry $strRegPath $strProp;
+					#$strMessage = "Created Property '$arrInfo[0]', under Key '$strRegPath', with a Value of '$arrInfo[2]' (of type '$arrInfo[1]').";
+					$strMessage = "Created Property '" + $arrInfo[0] + "', under Key '$strRegPath', with a Value of '" + $arrInfo[2] + "'";
+					if ($strValue -ne $arrInfo[2]){
+						$strMessage = $strMessage + " (NOT the provided: '$strValue')";
+					}
+					$strMessage = $strMessage + " (of type '" + $arrInfo[1] + "').";
+
+					if ([String]::IsNullOrWhiteSpace($arrRet)){
+						#$arrRet = @("Created Property '$strProp', under Key '$strRegPath', with a Value of '$strValue' (of type '$strType').", $objResults);
+						$arrRet = @($strMessage, $objResults);
+					}
+					else{
+						#$arrRet[0] = $arrRet[0] + "`r`n" + "Created Property '$strProp', under Key '$strRegPath', with a Value of '$strValue' (of type '$strType').";
+						$arrRet[0] = $arrRet[0] + "`r`n" + $strMessage;
+						$arrRet = $arrRet + @($objResults)
+					}
+				}
+			}
+			else{
+				$objResults = Set-ItemProperty -Path $strRegPath -Name $strProp -Value $strValue -Type $strType -ErrorAction SilentlyContinue;
+				if (($Error) -or (!([String]::IsNullOrWhiteSpace($objResults)))){
+					$arrRet = @("Error updating Property '$strProp', under Key '$strRegPath'.", $Error);
+				}
+				else{
+					$arrInfo = GetRegistry $strRegPath $strProp;
+					#$strMessage = "Created Property '$arrInfo[0]', under Key '$strRegPath', with a Value of '$arrInfo[2]' (of type '$arrInfo[1]').";
+					$strMessage = "Updated Property '" + $arrInfo[0] + "', under Key '$strRegPath', with a Value of '" + $arrInfo[2] + "'";
+					if ($strValue -ne $arrInfo[2]){
+						$strMessage = $strMessage + " (NOT the provided: '$strValue')";
+					}
+					$strMessage = $strMessage + " (of type '" + $arrInfo[1] + "').";
+
+					#$arrRet = @("Updated Property '$strProp', under Key '$strRegPath', with a Value of '$strValue' (of type '$strType').", $objResults);
+					$arrRet = @($strMessage , $arrInfo);
+				}
+			}
+		}
+
+		return $arrRet;
+	}

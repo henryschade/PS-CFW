@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	30 March 2016
+# Updated Date:	14 April 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -1184,7 +1184,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$KnownBy = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Gen = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$FNcc = "US", 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bNNPI = $False
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$bNNPI = $False
+			#[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bNNPI = $False
 		)
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
@@ -1351,7 +1352,7 @@
 		$strOrigName = $strSamName;
 		$strNewName = "";
 		$bolNameOK = $False;
-		$strWorkLog = "";
+		$strWorkLog = "`r`n";
 
 		#For Check for email in use, and EDIPI (if flagged).
 		[Array]$arrDesiredProps = @("samAccountName", "name", "proxyAddresses", "mail", "EDIPI", "UserPrincipalName");
@@ -1457,7 +1458,7 @@
 				
 				#Compare $MidName and $strMI.
 				if ($strMI -ne $MidName){
-					$strMessage = "The Middle Initial in the SamAccountName ($MidName), and the Middle Initial provided ($strMI) do not match." + "`r`n" + "We will be using the one out of the SamAccountName (as needed).";
+					$strMessage = "  The Middle Initial in the SamAccountName ($MidName), and the Middle Initial provided ($strMI) do not match." + "`r`n" + "    We will be using the one out of the SamAccountName (as needed).`r`n";
 					$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
 					$strMI = $MidName;
 				}
@@ -1467,6 +1468,13 @@
 
 		#Check EDIPI.  If the EDIPI is in use, the name does not matter.
 		if (!([String]::IsNullOrWhiteSpace($strEDIPI))){
+			$strProgress = "  Verifying EDIPI '*" + $strEDIPI + "*' is NOT in use.`r`n";
+			if (([String]::IsNullOrWhiteSpace($txbResults))){
+				$strWorkLog = $strWorkLog + "`r`n" + $strProgress;
+			}
+			else{
+				UpdateResults $strProgress $False;
+			}
 			$strFilter = "(&(objectCategory=user)(|(UserPrincipalName=*" + $strEDIPI + "*)(EDIPI=*" + $strEDIPI + "*)))";
 			foreach ($strDomain in $arrDomains){
 				$objResults = $null;
@@ -1503,6 +1511,13 @@
 				#$strOrigName not found.
 				#Check for email in use
 				if ($bCheckEmail -eq $True){
+					$strProgress = "  Verifying email '*" + $strOrigName + "*' is NOT in use.`r`n";
+					if (([String]::IsNullOrWhiteSpace($txbResults))){
+						$strWorkLog = $strWorkLog + "`r`n" + $strProgress;
+					}
+					else{
+						UpdateResults $strProgress $False;
+					}
 					if ((!(Get-Command "Get-Recipient" -ErrorAction SilentlyContinue)) -and (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue))){
 						#$bolInUse = $null;
 						#foreach ($strDomain in $arrDomains){

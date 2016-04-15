@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	6 April 2016
+# Updated Date:	14 April 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -1049,7 +1049,17 @@
 
 		foreach ($strInclude in $RequiredFiles){
 			$Error.Clear();
-			if (Test-Path -Path ($RootDir + "\..\PS-CFW\" + $strInclude)){
+			if (Test-Path -Path ($RootDir + "\PS-CFW\" + $strInclude)){
+				#if (Test-Path -Path ($RootDir + "\PS-CFW\" + $strInclude)){
+					. ($RootDir + "\PS-CFW\" + $strInclude);
+					$strFile = ($RootDir + "\PS-CFW\" + $strInclude);
+				#}
+				#else{
+				#	. ($RootDir + "\" + $strInclude);
+				#	$strFile = ($RootDir + "\" + $strInclude);
+				#}
+			}
+			else{
 				if (($RootDir.EndsWith("\PS-CFW")) -and ((Test-Path -Path ($RootDir + "\" + $strInclude)))){
 					. ($RootDir + "\" + $strInclude);
 					$strFile = ($RootDir + "\" + $strInclude);
@@ -1057,16 +1067,6 @@
 				else{
 					. ($RootDir + "\..\PS-CFW\" + $strInclude);
 					$strFile = ($RootDir + "\..\PS-CFW\" + $strInclude);
-				}
-			}
-			else{
-				if (Test-Path -Path ($RootDir + "\PS-CFW\" + $strInclude)){
-					. ($RootDir + "\PS-CFW\" + $strInclude);
-					$strFile = ($RootDir + "\PS-CFW\" + $strInclude);
-				}
-				else{
-					. ($RootDir + "\" + $strInclude);
-					$strFile = ($RootDir + "\" + $strInclude);
 				}
 			}
 
