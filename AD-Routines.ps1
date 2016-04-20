@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	14 April 2016
+# Updated Date:	18 April 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -1277,7 +1277,7 @@
 						$FNcc = $FNcc.Trim();
 						$FNcc = $FNcc.SubString(0, 2);
 					}
-					$strDisplayName = $strDisplayName + "FORNATL-" + $FNcc + " ";
+					$strDisplayName = $strDisplayName + "FORNATL-" + $FNcc.ToLower() + " ";
 				}
 			}
 			#GALCmd / Department

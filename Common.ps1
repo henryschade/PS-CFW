@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	14 April 2016
+# Updated Date:	18 April 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -50,6 +50,7 @@
 		#Copies/Backups Source Directory files to Destination Directory.
 			#The SrcFile.LastWriteTime MUST be greater than the DestFileLastWriteTime, or the file is NOT copied/backedup.
 			#(If a file starts with a 2 digit #, it is assumed to be a backup file, and is NOT copied/backedup.)
+		#Returns a string, if work was done in the format of:    "Copied # of # files."
 		#$strSourceDir = The Source Directory.
 		#$strDestDir = The Destination Directory.
 		#$bSubs = $True or $False.  Also backup subdirectories.
@@ -528,6 +529,97 @@
 						}
 					}
 				}
+			}
+		}
+	}
+
+	function CopyProjectLocal{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strProjName, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolInteractive = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogDir = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogFile = ""
+		)
+
+		$strMessage = "`r`n" + "Creating/updating local copy.";
+		Write-Host $strMessage;
+		if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+			WriteLogFile $strMessage $strLogDir $strLogFile;
+		}
+
+		$bolDoSubs = $True;
+		$bolPrompt = $False;
+		$bolSkipSpecial = $True;
+
+		$strSrc = (GetPathing "Root").Returns.Rows[0].Path + $strProjName + "\";
+		$strLocalDir = (GetPathing "Local").Returns.Rows[0].Path + $strProjName + "\";
+
+		#For the PS-CFW directory.
+		$strSrcCFW = (GetPathing "CFW").Returns.Rows[0].Path;
+		$strLocalDirCFW = (GetPathing "Local").Returns.Rows[0].Path + "PS-CFW\";
+		if (!(Test-Path -Path $strLocalDirCFW)){
+			$strResults = mkdir $strLocalDirCFW;
+
+			if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+				WriteLogFile "Created local directory for CFW." $strLogDir $strLogFile;
+			}
+		}
+		$strResults = BackUpDir $strSrcCFW $strLocalDirCFW $False $False;
+		#$objJobCode = [scriptblock]::create($function:BackUpDir);
+		##$objJob1 = CreateJob -JobName "Copy-CFW" -JobScript $objJobCode -ArgumentList @($strSrcCFW, $strLocalDirCFW, $bolDoSubs, $bolPrompt);
+		#$global:objJobs += CreateRunSpaceJob -RSPool $global:objGenPool -JobName "Copy-CFW" -JobScript $objJobCode -Arguments @($strSrcCFW, $strLocalDirCFW, $bolDoSubs, $bolPrompt);
+		if ($strResults -ne ""){
+			Write-Host "BackupDir:  $strResults"
+			#Should reload $arrIncludes.
+			#$bResults = (. LoadRequired $arrIncludes $strSrc $strLogDir $strLogFile);
+
+			if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+				WriteLogFile "Copied CFW files. $strResults" $strLogDir $strLogFile;
+			}
+		}
+
+		#Need to "install" a local copy.
+		if (!(Test-Path -Path $strLocalDir)){
+			#Need to create the directory
+			#PS mkdir, will create any parent folders needed.
+			$strResults = mkdir $strLocalDir;
+
+			if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+				WriteLogFile "Created local directory for Project." $strLogDir $strLogFile;
+			}
+		}
+		$strResults = BackUpDir $strSrc $strLocalDir $bolDoSubs $bolPrompt $bolSkipSpecial;
+		if ($strResults -ne ""){
+			Write-Host "BackupDir:  $strResults"
+
+			if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+				WriteLogFile "Copied Project files. $strResults" $strLogDir $strLogFile;
+			}
+		}
+
+		#$ScriptDir should be the running path
+		if ((($ScriptDir.StartsWith("\\")) -and ($strResults -ne "")) -and ($bolInteractive -eq $True)){
+			#Running from Network, so should restart.
+			$strMessage = "We just installed a local copy of " + $strProjName + ".`r`n`r`n" + "Want us to restart this PS Script for you, using the local copy?";
+			$strResponse = MsgBox $strMessage "Installed a local copy" 4;
+			if ($strResponse -eq "yes"){
+				$strCommand = $MyInvocation.MyCommand.Path;
+				$strCommand = "& '" + $strLocalDir + $strCommand.Split("\")[-1] + "'";
+
+				$strMessage = "Restarting " + $strProjName + ", as admin, from local copy.";
+				if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+					WriteLogFile $strMessage $strLogDir $strLogFile;
+				}
+
+				#method 1.  Uses Windows UAC to get creds.
+				#Start-Process $PSHOME\powershell.exe -verb runas -Wait -ArgumentList "-Command $strCommand";				#When I use " -Wait" kicks "Access Denied" error.
+				Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-ExecutionPolicy ByPass -Command $strCommand";
+				#Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
+				exit;
+
+				#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
+				$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
+				Stop-Process -Id $PID;
 			}
 		}
 	}
