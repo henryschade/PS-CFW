@@ -710,7 +710,7 @@
 		$objResponse = $null;
 		$Error.Clear();
 		$objResponse = Invoke-WebRequest -Uri $strUrl;
-		if ((!($Error)) -and (!([String]::IsNullOrWhiteSpace($objResponse)))){
+		if ((!($Error)) -and (!([String]::IsNullOrEmpty($objResponse)))){
 			$strFilename = [System.IO.Path]::GetFileName($objResponse.BaseResponse.ResponseUri.OriginalString);
 			$strFilename = $strFilename.Replace("%20", " ");
 			$objFilepath = [System.IO.Path]::Combine($strDestFolder, $strFilename);

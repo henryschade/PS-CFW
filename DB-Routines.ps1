@@ -112,7 +112,7 @@
 		$strRawData = "";
 		if (!(Get-Command "GetPathing" -ErrorAction SilentlyContinue)){
 			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-			if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+			if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
 				$ScriptDir = (Get-Location).ToString();
 			}
 			if ((Test-Path ($ScriptDir + "\Common.ps1"))){
@@ -121,7 +121,7 @@
 		}
 
 		$strConfigFile = ((GetPathing "SupportFiles").Returns.Rows[0].Path);
-		if ([String]::IsNullOrWhiteSpace($strConfigFile)){
+		if ([String]::IsNullOrEmpty($strConfigFile)){
 			$strConfigFile = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\SupportFiles\MiscSettings.txt";
 		}
 		else{
@@ -274,20 +274,20 @@
 		if (($strAction -eq "") -or ($strAction -eq $null)){
 			$strAction = "SRM Work";
 		}
-		if ([String]::IsNullOrWhiteSpace($strCOI)){
+		if ([String]::IsNullOrEmpty($strCOI)){
 			$strCOI = $env:UserDomain;
 			$strCOI = "USN";
 		}
-		if ([String]::IsNullOrWhiteSpace($strTicketNum)){
+		if ([String]::IsNullOrEmpty($strTicketNum)){
 			$strTicketNum = "No-Num";
 		}
-		if ([String]::IsNullOrWhiteSpace($strBONum)){
+		if ([String]::IsNullOrEmpty($strBONum)){
 			$strBONum = "No-Num";
 		}
-		if ([String]::IsNullOrWhiteSpace($strQuoteNum)){
+		if ([String]::IsNullOrEmpty($strQuoteNum)){
 			$strQuoteNum = "No-Num";
 		}
-		if ([String]::IsNullOrWhiteSpace($strSummary)){
+		if ([String]::IsNullOrEmpty($strSummary)){
 			$strSummary = "No Title/Summary Provided";
 		}
 

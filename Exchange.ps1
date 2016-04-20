@@ -1224,7 +1224,7 @@
 			}
 		}
 		$strFileFile = (GetPathing "CFW").Returns.Rows[0]['Path'];
-		if ([String]::IsNullOrWhiteSpace($strFileFile)){
+		if ([String]::IsNullOrEmpty($strFileFile)){
 			$strFileFile = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\EWS-Files.txt";
 		}
 		else{

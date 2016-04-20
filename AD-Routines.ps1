@@ -20,7 +20,7 @@
 		##if (!(Get-Command "Get-Recipient" -ErrorAction SilentlyContinue)){
 		#if ((!(Get-Command "Get-Recipient" -ErrorAction SilentlyContinue)) -or (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue))){
 		#	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-		#	if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+		#	if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
 		#		$ScriptDir = (Get-Location).ToString();
 		#	}
 		#	if (Test-Path ($ScriptDir + "\Exchange.ps1")){
@@ -157,7 +157,7 @@
 			#Need to get Domains.  GetDomains() requires "AD-Routines.ps1".
 			if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
 				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-				if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+				if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
 					$ScriptDir = (Get-Location).ToString();
 				}
 				if ((Test-Path ($ScriptDir + "\AD-Routines.ps1"))){
@@ -203,7 +203,7 @@
 				}else{
 					if (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue)){
 						$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-						if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+						if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
 							$ScriptDir = (Get-Location).ToString();
 						}
 						if ((Test-Path ($ScriptDir + "\Exchange.ps1"))){
@@ -297,7 +297,7 @@
 			#Need to get Domains.  GetDomains() requires "AD-Routines.ps1".
 			if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
 				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-				if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+				if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
 					$ScriptDir = (Get-Location).ToString();
 				}
 				if ((Test-Path ($ScriptDir + "\AD-Routines.ps1"))){
@@ -414,7 +414,7 @@
 					if (($Session -eq "") -or ($Session -eq $null) -or ($Session.State -ne "Opened")){
 						if (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue)){
 							$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-							if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+							if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
 								$ScriptDir = (Get-Location).ToString();
 							}
 							if ((Test-Path ($ScriptDir + "\Exchange.ps1"))){
@@ -1263,7 +1263,7 @@
 				$strDisplayName = $strDisplayName + $Rank + " ";
 			}
 			if ($bNNPI -eq $True){
-				if ([String]::IsNullOrWhiteSpace($Dep)){
+				if ([String]::IsNullOrEmpty($Dep)){
 					$strDisplayName = $strDisplayName + "NNPI";
 				}
 				else{
@@ -1281,7 +1281,7 @@
 				}
 			}
 			#GALCmd / Department
-			if (!([String]::IsNullOrWhiteSpace($Dep))){
+			if (!([String]::IsNullOrEmpty($Dep))){
 				$strDisplayName = $strDisplayName + $Dep;
 			}
 			#GALOffice / Office
@@ -1290,7 +1290,7 @@
 			}
 		}
 
-		if (($Error) -or ([String]::IsNullOrWhiteSpace($strDisplayName))){
+		if (($Error) -or ([String]::IsNullOrEmpty($strDisplayName))){
 			$objReturn.Results = $False;
 			if ($Error){
 				$objReturn.Message = "Error: `r`n" + $Error;
@@ -1381,7 +1381,7 @@
 		#Make sure isNumeric() is available.
 		if (!(Get-Command "isNumeric" -ErrorAction SilentlyContinue)){
 			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-			if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+			if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
 				$ScriptDir = (Get-Location).ToString();
 			}
 			if (Test-Path ($ScriptDir + "\Common.ps1")){
@@ -1433,8 +1433,8 @@
 			$LastName = $LastName.SubString(($LastName.IndexOf(".") + 1));
 		}
 		#Compare MiddleNames
-		if ([String]::IsNullOrWhiteSpace($strMI)){
-			if ([String]::IsNullOrWhiteSpace($MidName)){
+		if ([String]::IsNullOrEmpty($strMI)){
+			if ([String]::IsNullOrEmpty($MidName)){
 				$strMI = "";
 				$MidName = "";
 			}
@@ -1444,7 +1444,7 @@
 		}
 		else{
 			$strMI = $strMI.Trim();
-			if ([String]::IsNullOrWhiteSpace($MidName)){
+			if ([String]::IsNullOrEmpty($MidName)){
 				#Use the $strMI provided, make sure only 1 char long.
 				if ($strMI.Length -gt 1){
 					$strMI = $strMI.SubString(0, 1);
@@ -1467,9 +1467,9 @@
 		#$strMI
 
 		#Check EDIPI.  If the EDIPI is in use, the name does not matter.
-		if (!([String]::IsNullOrWhiteSpace($strEDIPI))){
+		if (!([String]::IsNullOrEmpty($strEDIPI))){
 			$strProgress = "  Verifying EDIPI '*" + $strEDIPI + "*' is NOT in use.`r`n";
-			if (([String]::IsNullOrWhiteSpace($txbResults))){
+			if (([String]::IsNullOrEmpty($txbResults))){
 				$strWorkLog = $strWorkLog + "`r`n" + $strProgress;
 			}
 			else{
@@ -1482,7 +1482,7 @@
 				if ($objResults.Results -gt 0){
 					#Found EDIPI in use
 					#$strMessage = "EDIPI in use: " + ([String]($objResults.Returns)[0].samAccountName).Trim() + " (UPN: " + ([String]($objResults.Returns)[0].UserPrincipalName).Trim() + ") is using EDIPI ";
-					#if ([String]::IsNullOrWhiteSpace(([String]($objResults.Returns)[0].EDIPI).Trim())){
+					#if ([String]::IsNullOrEmpty(([String]($objResults.Returns)[0].EDIPI).Trim())){
 					#	$strMessage = $strMessage + "'" + $strEDIPI + "'.";
 					#}else{
 					#	$strMessage = $strMessage + "'" + ([String]($objResults.Returns)[0].EDIPI).Trim() + "'.";
@@ -1507,12 +1507,12 @@
 		else{
 			$UserADInfo = FindUser $strOrigName;
 
-			if ([String]::IsNullOrWhiteSpace($UserADInfo)){
+			if ([String]::IsNullOrEmpty($UserADInfo)){
 				#$strOrigName not found.
 				#Check for email in use
 				if ($bCheckEmail -eq $True){
 					$strProgress = "  Verifying email '*" + $strOrigName + "*' is NOT in use.`r`n";
-					if (([String]::IsNullOrWhiteSpace($txbResults))){
+					if (([String]::IsNullOrEmpty($txbResults))){
 						$strWorkLog = $strWorkLog + "`r`n" + $strProgress;
 					}
 					else{
@@ -1549,7 +1549,7 @@
 			}
 		}
 
-		if ([String]::IsNullOrWhiteSpace($UserADInfo)){
+		if ([String]::IsNullOrEmpty($UserADInfo)){
 			#$strOrigName not found.
 			$strNewName = $strOrigName;
 			$bolNameOK = $True;
@@ -1561,7 +1561,7 @@
 				#Make sure MsgBox() is available.
 				if (!(Get-Command "MsgBox" -ErrorAction SilentlyContinue)){
 					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-					if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+					if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
 						$ScriptDir = (Get-Location).ToString();
 					}
 					if ((Test-Path ($ScriptDir + "\Forms.ps1"))){
@@ -1577,7 +1577,7 @@
 
 			do{
 				#if ($strNewName -eq ""){
-				if ([String]::IsNullOrWhiteSpace($strNewName)){
+				if ([String]::IsNullOrEmpty($strNewName)){
 					$strMessage = "Found an existing AD account with a SamAccountName of '" + $strOrigName + "'.`r`n";
 				}else{
 					$strMessage = "Found an existing AD account with a SamAccountName of '" + $strNewName + "'.`r`n";
@@ -1586,7 +1586,7 @@
 
 				#Piece together a new account name suggestion.
 				$bolNameOK = $True;
-				if ([String]::IsNullOrWhiteSpace($strMI)){
+				if ([String]::IsNullOrEmpty($strMI)){
 					$strNewName = ($FirstName + "." + $LastName).ToLower();
 					$bHadMI = $True;
 				}else{
@@ -1602,7 +1602,7 @@
 				}
 
 				#Add the "custom" ending.  $strCustEnd
-				if (!([String]::IsNullOrWhiteSpace($strCustEnd))){
+				if (!([String]::IsNullOrEmpty($strCustEnd))){
 					#$strNewName = CheckNameEnding $strNewName $strCustEnd;
 					$strNewName = $strNewName + $strCustEnd;
 				}
@@ -1628,7 +1628,7 @@
 					$strWorkLog = $strWorkLog + "Assumed the proposed name '$strNewName' is good.";
 				}
 
-				if (([String]::IsNullOrWhiteSpace($strNewName)) -or ($strNewName -eq "exit")){
+				if (([String]::IsNullOrEmpty($strNewName)) -or ($strNewName -eq "exit")){
 					$bolNameOK = $False;
 				}
 
@@ -1713,7 +1713,7 @@
 
 				#If we did not have a MI, we have now used it now (if available).
 				$bHadMI = $True;
-			} while (($bolNameOK -eq $False) -or ([String]::IsNullOrWhiteSpace($strNewName)))
+			} while (($bolNameOK -eq $False) -or ([String]::IsNullOrEmpty($strNewName)))
 			$strNewName = $strNewName.ToLower().Trim();
 		}
 
@@ -1930,7 +1930,7 @@
 		}
 
 		#MUST have the following fields, no matter what, to create a User Object.
-		if (([String]::IsNullOrWhiteSpace($oADInfo.CN)) -or ([String]::IsNullOrWhiteSpace($oADInfo.givenName)) -or ([String]::IsNullOrWhiteSpace($oADInfo.sAMAccountName)) -or ([String]::IsNullOrWhiteSpace($oADInfo.SN)) -or ([String]::IsNullOrWhiteSpace($oADInfo.userPrincipalName))){
+		if (([String]::IsNullOrEmpty($oADInfo.CN)) -or ([String]::IsNullOrEmpty($oADInfo.givenName)) -or ([String]::IsNullOrEmpty($oADInfo.sAMAccountName)) -or ([String]::IsNullOrEmpty($oADInfo.SN)) -or ([String]::IsNullOrEmpty($oADInfo.userPrincipalName))){
 			#CN, sAMAccountName, userPrincipalName, givenName (First), SN (Last)
 			$strMessage = "Required AD fields are missing.`r`n(CN, sAMAccountName, userPrincipalName, givenName, SN)";
 
@@ -1953,14 +1953,14 @@
 			}
 
 			#$objOU = [ADSI]"LDAP://DomainController/OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil"
-			#if ([String]::IsNullOrWhiteSpace($strDC)){
+			#if ([String]::IsNullOrEmpty($strDC)){
 			#	#$objOU = [ADSI]"LDAP://OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil";
 			#}else{
 			#	#$objOU = [ADSI]"LDAP://$strDC/OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil";
 			#}
 
 			$objOU = [ADSI]"LDAP://";
-			if (!([String]::IsNullOrWhiteSpace($strDC))){
+			if (!([String]::IsNullOrEmpty($strDC))){
 				$objOU = $objOU + $strDC + "/";
 			}
 			$objOU = $objOU + $strOU;
@@ -1978,14 +1978,14 @@
 					#$oProp.Name + " = " + $oProp.Value;
 					$objUser.Put($oProp.Name, $oProp.Value);
 					if ($Error){
-						if ([String]::IsNullOrWhiteSpace($strMessage)){
+						if ([String]::IsNullOrEmpty($strMessage)){
 							$strMessage = "Error populating the following AD fields: `r`n";
 						}
 						$strMessage = $strMessage + $oProp.Name + " with '" + $oProp.Value + "'" + "`r`n";
 					}
 				}
 			}
-			if (!([String]::IsNullOrWhiteSpace($strMessage))){
+			if (!([String]::IsNullOrEmpty($strMessage))){
 				$strMessage = $strMessage + "`r`n";
 			}
 			#$objUser.Put("sAMAccountName", $sAMAccountName);
@@ -2001,7 +2001,7 @@
 			}
 			else{
 				$strMessage = "Created the following account: `r`n";
-				if (!([String]::IsNullOrWhiteSpace($strDC))){
+				if (!([String]::IsNullOrEmpty($strDC))){
 					$strMessage = $strMessage + $strDC + "   ";
 				}
 				$strMessage = $strMessage + "CN=" + $objUser.CN + "`r`n";
@@ -2012,8 +2012,8 @@
 			$strMessage = "";
 
 			$Error.Clear();
-			if (!([String]::IsNullOrWhiteSpace($strSID))){
-				if (([String]::IsNullOrWhiteSpace($oADInfo.password))){
+			if (!([String]::IsNullOrEmpty($strSID))){
+				if (([String]::IsNullOrEmpty($oADInfo.password))){
 					#$objUser.SetPassword('S0me.P@$$w0rd4Y0u');
 
 					#Set a random password on the account.
@@ -2031,7 +2031,7 @@
 					$strSomePass = $oADInfo.password;
 				}
 				$Error.Clear();
-				if (([String]::IsNullOrWhiteSpace($strDC))){
+				if (([String]::IsNullOrEmpty($strDC))){
 					$strResult = Set-ADAccountPassword -Identity $strSID -Reset -NewPassword (ConvertTo-SecureString -AsPlainText $strSomePass -Force);
 				}
 				else{
@@ -2049,7 +2049,7 @@
 
 				$Error.Clear();
 				#$objUser.psbase.InvokeSet("AccountDisabled", $False);
-				if (([String]::IsNullOrWhiteSpace($strDC))){
+				if (([String]::IsNullOrEmpty($strDC))){
 					$strResult = Enable-ADAccount -Identity $strSID;
 				}
 				else{
@@ -2080,7 +2080,7 @@
 				$strRunningWorkLog = $strRunningWorkLog + $strMessage;
 				#UpdateResults $strMessage $False;
 				$Error.Clear();
-				if (([String]::IsNullOrWhiteSpace($strDC))){
+				if (([String]::IsNullOrEmpty($strDC))){
 					$strResult = Set-ADUser -Identity $strSID -ChangePasswordAtLogon $bolMustChange;
 				}
 				else{
@@ -2858,7 +2858,7 @@
 				#Include following Script/File.
 				if ((!(Get-Command "GetPathing" -ErrorAction SilentlyContinue))){
 					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-					if (([String]::IsNullOrWhiteSpace($ScriptDir)) -or ($Error)){
+					if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
 						$ScriptDir = (Get-Location).ToString();
 					}
 					$arrIncludes = @("Common.ps1");
@@ -2874,7 +2874,7 @@
 				}
 				#$strConfigFile = "\\...\ITSS-Tools\SupportFiles\MiscSettings.txt";
 				$strConfigFile = (GetPathing "SupportFiles").Returns.Rows[0]['Path'];
-				if ([String]::IsNullOrWhiteSpace($strConfigFile)){
+				if ([String]::IsNullOrEmpty($strConfigFile)){
 					$strConfigFile = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\SupportFiles\MiscSettings.txt";
 				}
 				else{

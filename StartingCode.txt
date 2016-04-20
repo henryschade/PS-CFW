@@ -18,7 +18,7 @@
 	$strLogDirL = "C:\Users\ITSS-Tools\Logs\" + $strProjName + "\";
 	$strLogDir = "";
 	$Error.Clear();
-	if ([String]::IsNullOrWhiteSpace($MyInvocation.MyCommand.Path)){
+	if ([String]::IsNullOrEmpty($MyInvocation.MyCommand.Path)){
 		$ScriptDir = (Get-Location).ToString();
 	}else{
 		$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
