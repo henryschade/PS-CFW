@@ -92,11 +92,7 @@
 		}
 
 		#Setup $strBackUpDir.
-<<<<<<< HEAD
-		if ((!([String]::IsNullOrWhiteSpace($strBackUpDir))) -and ($strBackUpDir -eq "..\BackUps\")){
-=======
 		if ([String]::IsNullOrEmpty($strBackUpDir)){
->>>>>>> 27c852b10356d3b068782d8051b9ff1e5a8a0fc1
 			#$strBackUpDir = (GetPathing "BackUps").Returns.Rows[0]['Path'];
 			$strBackUpDir = $strDestDir + "..\";
 			$objDir = Get-Item $strBackUpDir -Force;
