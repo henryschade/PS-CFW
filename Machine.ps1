@@ -125,7 +125,6 @@
 		#>
 	}
 
-<<<<<<< HEAD
 	function DoShutDown{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strComp, 
@@ -136,11 +135,7 @@
 		#$bReboot = Should we Reboot instead of shutdown?
 		#$bAskCreds = Prompt for credentials?
 
-		if ([String]::IsNullOrWhiteSpace($strComp)){
-=======
-	function DoShutDown($strComp){
 		if ([String]::IsNullOrEmpty($strComp)){
->>>>>>> 27c852b10356d3b068782d8051b9ff1e5a8a0fc1
 			#$strComp = "ALSDCP002656";		#Henry Laptop;
 			$strComp = Read-Host 'What computer? (i.e. ALSDCP002656)';
 		}
@@ -365,7 +360,7 @@
 		#check if a user is logged in
 		$Error.Clear();
 		$ErrorActionPreference = 'SilentlyContinue';
-		$strLoggedIn = Get-WmiObject -Class win32_computerSystem -Computer:$strComp | Select-Object username;
+		$strLoggedIn = Get-WmiObject -class win32_computerSystem -computer:$strComp | Select-Object username;
 		$ErrorActionPreference = 'Continue';
 		if ($strLoggedIn.username.Length -gt 0){
 			$strRet = $strLoggedIn.username + " is currently logged in to " + $strComp + ".";
