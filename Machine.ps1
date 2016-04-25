@@ -340,7 +340,12 @@
 		if ($strLoggedIn.username.Length -gt 0){
 			$strRet = $strLoggedIn.username + " is currently logged in to " + $strComp + ".";
 		}else{
-			$strRet = "No user is logged in locally to " + $strComp + ".";
+			if ($Error){
+				$strRet = "Error: " + [String]$Error + ". Trying to check " + $strComp + " for logged in users.";
+			}
+			else{
+				$strRet = "No user is logged in locally to " + $strComp + ".";
+			}
 		}
 
 		#Write-Host $strRet;
