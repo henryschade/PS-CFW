@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	18 April 2016
+# Updated Date:	21 April 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -45,7 +45,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bSubs = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bPrompts = $True, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bSkip = $True, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strBackUpDir = ""
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strBackUpDir = "..\BackUps\"
 		)
 		#Copies/Backups Source Directory files to Destination Directory.
 			#The SrcFile.LastWriteTime MUST be greater than the DestFileLastWriteTime, or the file is NOT copied/backedup.
@@ -92,7 +92,7 @@
 		}
 
 		#Setup $strBackUpDir.
-		if ([String]::IsNullOrWhiteSpace($strBackUpDir)){
+		if ((!([String]::IsNullOrWhiteSpace($strBackUpDir))) -and ($strBackUpDir -eq "..\BackUps\")){
 			#$strBackUpDir = (GetPathing "BackUps").Returns.Rows[0]['Path'];
 			$strBackUpDir = $strDestDir + "..\";
 			$objDir = Get-Item $strBackUpDir -Force;
@@ -128,32 +128,38 @@
 					#A File
 					$intFileCount ++;
 					$bolSkipFile = $False;
-					foreach ($strCheckSkip in $arrSkipEndings){
-						if ($bolSkipFile){
-							break;
+					if ($bSkip){
+						foreach ($strCheckSkip in $arrSkipEndings){
+							if ($bolSkipFile){
+								break;
+							}
+							if ($objSrcItem.Name.EndsWith($strCheckSkip)){
+								$bolSkipFile = $True;
+							}
 						}
-						if ($objSrcItem.Name.EndsWith($strCheckSkip)){
-							$bolSkipFile = $True;
+						foreach ($strCheckSkip in $arrSkipStarts){
+							if ($bolSkipFile){
+								break;
+							}
+							if ($objSrcItem.Name.StartsWith($strCheckSkip)){
+								$bolSkipFile = $True;
+							}
 						}
-					}
-					foreach ($strCheckSkip in $arrSkipStarts){
-						if ($bolSkipFile){
-							break;
+						foreach ($strCheckSkip in $arrSkipContains){
+							if ($bolSkipFile){
+								break;
+							}
+							if ($objSrcItem.Name.Contains($strCheckSkip)){
+								$bolSkipFile = $True;
+							}
 						}
-						if ($objSrcItem.Name.StartsWith($strCheckSkip)){
-							$bolSkipFile = $True;
-						}
-					}
-					foreach ($strCheckSkip in $arrSkipContains){
-						if ($bolSkipFile){
-							break;
-						}
-						if ($objSrcItem.Name.Contains($strCheckSkip)){
+						if ((isNumeric $objSrcItem.Name.SubString(0, 2)) -eq $True){
 							$bolSkipFile = $True;
 						}
 					}
 
-					if (($bolSkipFile -eq $False) -and ((isNumeric $objSrcItem.Name.SubString(0, 2)) -eq $False)){
+					#if (($bolSkipFile -eq $False) -and ((isNumeric $objSrcItem.Name.SubString(0, 2)) -eq $False)){
+					if ($bolSkipFile -eq $False){
 						<#
 							#Write-Host $objSrcItem;			#Same as .Name
 							#Write-Host $objSrcItem.Name;

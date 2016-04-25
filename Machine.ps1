@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	19 April 2016
+# Updated Date:	25 April 2016
 # Purpose:		Routines that require a Computer, or that interact w/ a Computer.
 # Requirements: None
 ##########################################
@@ -125,17 +125,42 @@
 		#>
 	}
 
-	function DoShutDown($strComp){
+	function DoShutDown{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strComp, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][bool]$bReboot = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][bool]$bAskCreds = $False
+		)
+		#$strComp = The computer to shutdown.
+		#$bReboot = Should we Reboot instead of shutdown?
+		#$bAskCreds = Prompt for credentials?
+
 		if ([String]::IsNullOrWhiteSpace($strComp)){
 			#$strComp = "ALSDCP002656";		#Henry Laptop;
 			$strComp = Read-Host 'What computer? (i.e. ALSDCP002656)';
 		}
 
-		#$strRet = Stop-Computer -comp $strComp -force;
-		#$strRet = Stop-Computer -comp $strComp -force -Credential $objCreds;
-		$objCreds = GetCredentials;
-		$strRet = Stop-Computer -comp $strComp -force -Credential $objCreds;
+		if ($bAskCreds -eq $True){
+			$objCreds = GetCredentials;
+		}
 
+		if ($bReboot -eq $True){
+			if ($bAskCreds -eq $True){
+				$strRet = Restart-Computer -comp $strComp -Force -Credential $objCreds;
+			}
+			else{
+				$strRet = Restart-Computer -comp $strComp -Force;
+			}
+		}
+		else{
+			if ($bAskCreds -eq $True){
+				$strRet = Stop-Computer -comp $strComp -Force -Credential $objCreds;
+			}
+			else{
+				$strRet = Stop-Computer -comp $strComp -Force;
+			}
+		}
+		
 		return $strRet;
 	}
 
@@ -334,11 +359,18 @@
 
 		#check if a user is logged in
 		$Error.Clear();
-		$strLoggedIn = Get-WmiObject -class win32_computerSystem -computer:$strComp | Select-Object username;
+		$ErrorActionPreference = 'SilentlyContinue';
+		$strLoggedIn = Get-WmiObject -Class win32_computerSystem -Computer:$strComp | Select-Object username;
+		$ErrorActionPreference = 'Continue';
 		if ($strLoggedIn.username.Length -gt 0){
 			$strRet = $strLoggedIn.username + " is currently logged in to " + $strComp + ".";
 		}else{
-			$strRet = "No user is logged in locally to " + $strComp + ".";
+			if ($Error){
+				$strRet = "Error: " + [String]$Error + ". Trying to check " + $strComp + " for logged in users.";
+			}
+			else{
+				$strRet = "No user is logged in locally to " + $strComp + ".";
+			}
 		}
 
 		#Write-Host $strRet;
