@@ -11,7 +11,7 @@
 		)
 		#$strComp = The computer to check.  ($Env:ComputerName)
 
-		#if ([String]::IsNullOrWhiteSpace($strComp)){
+		#if ([String]::IsNullOrEmpty($strComp)){
 		#	#$strComp = "ALSDCP002656";		#Henry Laptop;
 		#	#$strComp = "ALSDNI390014";		#Andrew Laptop;
 		#	$strComp = Read-Host 'What computer? (i.e. ALSDCP002656)';
@@ -22,7 +22,7 @@
 		$ErrorActionPreference = 'Continue';
 		#Write-Host $strIP;
 
-		if ([String]::IsNullOrWhiteSpace($strIP)){
+		if ([String]::IsNullOrEmpty($strIP)){
 			$strRet = "Host ($strComp) cannot be resolved, by DNS.";
 		}else{
 			#host is valid; now check if it is online by pinging it
@@ -125,6 +125,7 @@
 		#>
 	}
 
+<<<<<<< HEAD
 	function DoShutDown{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strComp, 
@@ -136,6 +137,10 @@
 		#$bAskCreds = Prompt for credentials?
 
 		if ([String]::IsNullOrWhiteSpace($strComp)){
+=======
+	function DoShutDown($strComp){
+		if ([String]::IsNullOrEmpty($strComp)){
+>>>>>>> 27c852b10356d3b068782d8051b9ff1e5a8a0fc1
 			#$strComp = "ALSDCP002656";		#Henry Laptop;
 			$strComp = Read-Host 'What computer? (i.e. ALSDCP002656)';
 		}
@@ -245,7 +250,7 @@
 	}
 
 	function GetCredentials($strComp){
-		if([String]::IsNullOrWhiteSpace($strComp)){
+		if([String]::IsNullOrEmpty($strComp)){
 			$strComp = $Env:ComputerName;
 		}
 
@@ -259,7 +264,7 @@
 		##Write-Host $user " -- " $password
 
 		<#
-		if([String]::IsNullOrWhiteSpace($objCreds)){
+		if([String]::IsNullOrEmpty($objCreds)){
 			#$comp = Get-WmiObject Win32_ComputerSystem -ComputerName $strComp -Authentication PacketPrivacy;
 			#$comp = Get-WmiObject Win32_ComputerSystem -ComputerName $strComp -Authentication 6;
 			#$comp = Get-WmiObject Win32_ComputerSystem -ComputerName $strComp -Authentication PacketPrivacy -Impersonation Delegate;
@@ -302,7 +307,7 @@
 		#$strProp = "DevicePath";
 
 		if (Test-Path $strRegPath){
-			if ([String]::IsNullOrWhiteSpace($strProp)){
+			if ([String]::IsNullOrEmpty($strProp)){
 				if ($strRegPath.EndsWith("\")){
 					$strRegPath = $strRegPath.SubString(0, $strRegPath.Length - 1);
 				}
@@ -352,7 +357,7 @@
 		)
 		#$strComp = The computer to check.  ($Env:ComputerName)
 
-		#if([String]::IsNullOrWhiteSpace($strComp)){
+		#if([String]::IsNullOrEmpty($strComp)){
 		#	#$strComp = "ALSDCP002656";		#Henry Laptop;
 		#	$strComp = Read-Host 'What computer? (i.e. ALSDCP002656)';
 		#}
@@ -413,7 +418,7 @@
 			$objResults = $null;
 			#$strResults = New-Item -Path $strRegPath -Force | Out-Null;
 			$objResults = New-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue;
-			if (($Error) -or ([String]::IsNullOrWhiteSpace($objResults))){
+			if (($Error) -or ([String]::IsNullOrEmpty($objResults))){
 				$arrRet = @("Error creating the path '$strRegPath'.", $Error);
 			}
 			else{
@@ -421,7 +426,7 @@
 			}
 		}
 
-		if ((!([String]::IsNullOrWhiteSpace($strProp))) -and (!($Error))){
+		if ((!([String]::IsNullOrEmpty($strProp))) -and (!($Error))){
 			#Now we can create/update the Key.
 			$objResults = $null;
 			$arrInfo = GetRegistry $strRegPath $strProp;
@@ -429,7 +434,7 @@
 			if ($arrInfo[0].Contains("does NOT exist")){
 				#$objResults = New-ItemProperty -Path $strRegPath -Name $strProp -Value $strValue -PropertyType $strType -Force | Out-Null;
 				$objResults = New-ItemProperty -Path $strRegPath -Name $strProp -Value $strValue -PropertyType $strType -Force -ErrorAction SilentlyContinue;
-				if (($Error) -or ([String]::IsNullOrWhiteSpace($objResults))){
+				if (($Error) -or ([String]::IsNullOrEmpty($objResults))){
 					$arrRet = @("Error creating Property '$strProp', under Key '$strRegPath'.", $Error);
 				}
 				else{
@@ -441,7 +446,7 @@
 					}
 					$strMessage = $strMessage + " (of type '" + $arrInfo[1] + "').";
 
-					if ([String]::IsNullOrWhiteSpace($arrRet)){
+					if ([String]::IsNullOrEmpty($arrRet)){
 						#$arrRet = @("Created Property '$strProp', under Key '$strRegPath', with a Value of '$strValue' (of type '$strType').", $objResults);
 						$arrRet = @($strMessage, $objResults);
 					}
@@ -454,7 +459,7 @@
 			}
 			else{
 				$objResults = Set-ItemProperty -Path $strRegPath -Name $strProp -Value $strValue -Type $strType -ErrorAction SilentlyContinue;
-				if (($Error) -or (!([String]::IsNullOrWhiteSpace($objResults)))){
+				if (($Error) -or (!([String]::IsNullOrEmpty($objResults)))){
 					$arrRet = @("Error updating Property '$strProp', under Key '$strRegPath'.", $Error);
 				}
 				else{

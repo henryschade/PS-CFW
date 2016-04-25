@@ -64,26 +64,26 @@
 		$bDoAll = $False;
 
 		if ($bPrompts -eq $True){
-			if ([String]::IsNullOrWhiteSpace($strSourceDir.Trim())){
+			if ([String]::IsNullOrEmpty($strSourceDir.Trim())){
 				$strTempPath = "";
 				$strTempPath = (GetPathing "Dev").Returns.Rows[0]['Path'];
 				$strTempPath = $strTempPath + "PS-Scripts\";
 				$strSourceDir = Read-Host "What is the Source Directory? `r`n  (defaults to: $strTempPath) `r`n";
-				if ([String]::IsNullOrWhiteSpace($strSourceDir.Trim())){
+				if ([String]::IsNullOrEmpty($strSourceDir.Trim())){
 					$strSourceDir = $strTempPath + "PS-Scripts\";
 				}
 			}
-			if ([String]::IsNullOrWhiteSpace($strDestDir.Trim())){
+			if ([String]::IsNullOrEmpty($strDestDir.Trim())){
 				$strTempPath = "";
 				$strTempPath = (GetPathing "Scripts").Returns.Rows[0]['Path'];
 				$strTempPath = Read-Host "What is the Destination Directory? `r`n  (defaults to: $strDestDir) `r`n";
-				if ([String]::IsNullOrWhiteSpace($strDestDir.Trim())){
+				if ([String]::IsNullOrEmpty($strDestDir.Trim())){
 					$strDestDir = strTempPath;
 				}
 			}
 		}
 		else{
-			if (([String]::IsNullOrWhiteSpace($strSourceDir)) -or ([String]::IsNullOrWhiteSpace($strDestDir))){
+			if (([String]::IsNullOrEmpty($strSourceDir)) -or ([String]::IsNullOrEmpty($strDestDir))){
 				return $False;
 			}
 
@@ -92,7 +92,11 @@
 		}
 
 		#Setup $strBackUpDir.
+<<<<<<< HEAD
 		if ((!([String]::IsNullOrWhiteSpace($strBackUpDir))) -and ($strBackUpDir -eq "..\BackUps\")){
+=======
+		if ([String]::IsNullOrEmpty($strBackUpDir)){
+>>>>>>> 27c852b10356d3b068782d8051b9ff1e5a8a0fc1
 			#$strBackUpDir = (GetPathing "BackUps").Returns.Rows[0]['Path'];
 			$strBackUpDir = $strDestDir + "..\";
 			$objDir = Get-Item $strBackUpDir -Force;
@@ -123,7 +127,7 @@
 		$intFileCount = 0;
 		$intCount = 0;
 		foreach ($objSrcItem in $objSrcSubItems){
-			if (!([String]::IsNullOrWhiteSpace($objSrcItem))){
+			if (!([String]::IsNullOrEmpty($objSrcItem))){
 				if ($objSrcItem.PSIsContainer -eq $False){
 					#A File
 					$intFileCount ++;
@@ -188,7 +192,7 @@
 									Write-Host "`r`n" $objSrcItem.Name "(" $objSrcItem.LastWriteTime ") is newer than" $objDestItem.Name "(" $objDestItem.LastWriteTime ")";
 
 									#Check if have a backup file, for today.
-									if (!([String]::IsNullOrWhiteSpace($strBackUpDir))){
+									if (!([String]::IsNullOrEmpty($strBackUpDir))){
 										$strDateCode = (Get-Date).ToString("yyyyMMdd");
 										if (($strDestDir.Contains("\beta")) -or ($strDestDir.Contains("\Beta")) -or ($strDestDir.Contains("\BETA")) -or ($strDestDir -Match "\beta") -or ($strDestDir -Match "\Beta") -or ($strDestDir -Match "\BETA")){
 											$strDateCode = $strDateCode + "b";
@@ -327,7 +331,7 @@
 		else{
 			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
 			if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
-				if ([String]::IsNullOrWhiteSpace($MyInvocation.MyCommand.Path)){
+				if ([String]::IsNullOrEmpty($MyInvocation.MyCommand.Path)){
 					$ScriptDir = (Get-Location).ToString();
 				}else{
 					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
@@ -549,7 +553,7 @@
 
 		$strMessage = "`r`n" + "Creating/updating local copy.";
 		Write-Host $strMessage;
-		if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+		if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
 			WriteLogFile $strMessage $strLogDir $strLogFile;
 		}
 
@@ -566,7 +570,7 @@
 		if (!(Test-Path -Path $strLocalDirCFW)){
 			$strResults = mkdir $strLocalDirCFW;
 
-			if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+			if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
 				WriteLogFile "Created local directory for CFW." $strLogDir $strLogFile;
 			}
 		}
@@ -579,7 +583,7 @@
 			#Should reload $arrIncludes.
 			#$bResults = (. LoadRequired $arrIncludes $strSrc $strLogDir $strLogFile);
 
-			if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+			if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
 				WriteLogFile "Copied CFW files. $strResults" $strLogDir $strLogFile;
 			}
 		}
@@ -590,7 +594,7 @@
 			#PS mkdir, will create any parent folders needed.
 			$strResults = mkdir $strLocalDir;
 
-			if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+			if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
 				WriteLogFile "Created local directory for Project." $strLogDir $strLogFile;
 			}
 		}
@@ -598,7 +602,7 @@
 		if ($strResults -ne ""){
 			Write-Host "BackupDir:  $strResults"
 
-			if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+			if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
 				WriteLogFile "Copied Project files. $strResults" $strLogDir $strLogFile;
 			}
 		}
@@ -613,7 +617,7 @@
 				$strCommand = "& '" + $strLocalDir + $strCommand.Split("\")[-1] + "'";
 
 				$strMessage = "Restarting " + $strProjName + ", as admin, from local copy.";
-				if ((!([String]::IsNullOrWhiteSpace($strLogDir))) -and (!([String]::IsNullOrWhiteSpace($strLogFile)))){
+				if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
 					WriteLogFile $strMessage $strLogDir $strLogFile;
 				}
 
@@ -645,7 +649,7 @@
 		#$ZipFile = The zip file to create. (Full path) [i.e. "c:\path\file.zip"]
 		#$Files = An array of the files to add to the zip file. (Full paths) [i.e. @("c:\path\file.one", "c:\path\file.two")]
 
-		if ([String]::IsNullOrWhiteSpace($MyInvocation.MyCommand.Path)){
+		if ([String]::IsNullOrEmpty($MyInvocation.MyCommand.Path)){
 			$ScriptDir = (Get-Location).ToString();
 		}else{
 			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
@@ -692,15 +696,15 @@
 
 				if (($strResponse -eq "yes") -or ($strResponse -eq "y") -or ($strResponse -eq "Y") -or ($strResponse.Character -eq "yes") -or ($strResponse.Character -eq "y") -or ($strResponse.Character -eq "Y")){
 					$strCommand = $MyInvocation.MyCommand.Path;
-					if ([String]::IsNullOrWhiteSpace($strCommand)){
+					if ([String]::IsNullOrEmpty($strCommand)){
 					#if (($strCommand -eq "") -or ($strCommand -eq $Null)){
-						if (!([String]::IsNullOrWhiteSpace($strProjPath))){
+						if (!([String]::IsNullOrEmpty($strProjPath))){
 						#if (($strProjPath -ne "") -and ($strProjPath -ne $Null)){
 							$strCommand = $strProjPath;
 						}
 					}
 
-					if (!([String]::IsNullOrWhiteSpace($strCommand))){
+					if (!([String]::IsNullOrEmpty($strCommand))){
 					#if (($strCommand -ne "") -and ($strCommand -ne $Null)){
 						$strCommand = "& '" + $strCommand + "'";
 
@@ -886,7 +890,7 @@
 			#No config file, or no entry, so check DB.
 			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
 			if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
-				if ([String]::IsNullOrWhiteSpace($MyInvocation.MyCommand.Path)){
+				if ([String]::IsNullOrEmpty($MyInvocation.MyCommand.Path)){
 					$ScriptDir = (Get-Location).ToString();
 				}else{
 					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
