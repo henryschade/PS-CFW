@@ -334,7 +334,9 @@
 
 		#check if a user is logged in
 		$Error.Clear();
+		$ErrorActionPreference = 'SilentlyContinue';
 		$strLoggedIn = Get-WmiObject -class win32_computerSystem -computer:$strComp | Select-Object username;
+		$ErrorActionPreference = 'Continue';
 		if ($strLoggedIn.username.Length -gt 0){
 			$strRet = $strLoggedIn.username + " is currently logged in to " + $strComp + ".";
 		}else{
