@@ -1206,6 +1206,44 @@
 		return ((Get-Date $strTime).ToUniversalTime()).ToString();
 	}
 
+	function UpdateResults{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strText, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolClear = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$objControl, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$strLogDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$strLogFile
+		)
+		#$strText = The text to put in $objControl ($objControl ideally should to be a TextBox).  ($txbResults by default)
+		#$bolClear = True or False.  Clear the Control B4 entering $strText into it.
+		#$objControl = The control to put $strText into.
+		#$strLogDir = (Only needed if not a "global" variable.) The path to the directory where log files for the running project are stored.
+		#$strLogFile = (Only needed if not a "global" variable.) The name of the log file to write info to.
+
+		#Write to local log file
+		if ((!([String]::IsNullOrEmpty($strText.Trim()))) -and ($strText.Trim() -ne "`r`n")){
+			WriteLogFile (" " + $strText.Replace("`r`n", " ")) $strLogDir $strLogFile;
+		}
+
+		if ([String]::IsNullOrEmpty($objControl)){
+			if ([String]::IsNullOrEmpty($txbResults)){
+				return;
+			}
+			$objControl = $txbResults;
+		}
+
+		if ($bolClear -eq $True){
+			$objControl.Text = "";
+		}
+
+		#$objControl.Text = $objControl.Text + $strText;		#Does not show new messages that are appended.
+		$objControl.AppendText($strText);						#Scrolls to the bottom so the appended messages are visible.
+
+		#$frmAScIIGUI.Update();
+		#$frmAScIIGUI.Refresh();
+		[System.Windows.Forms.Application]::DoEvents();
+	}
+
 	function UTCToLocal{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "UTC / GMT time to convert to Local time.")][String]$strTime

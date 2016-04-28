@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	18 April 2016
+# Updated Date:	28 April 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -1198,7 +1198,7 @@
 		#$Rank = Rank.  NOT E/O Grade.
 		#$Dep = Department, or GalCMD.
 		#$Office = Office, or GalOff.
-		#$Company = The company (USN, USMC, etc).  Used to determine the exact format of things.
+		#$Company = The company (USN, PACOM, USMC, etc).  Used to determine the exact format of things.
 		#$KnownBy = KnownBy Name.  i.e. Tony for Anthony.
 		#$Gen = Generation.  i.e. Jr, Sr, etc.
 		#$FNcc = Foreign National Country Code.  i.e. FR, GE.
@@ -1237,8 +1237,8 @@
 		$Error.Clear();
 		$strDisplayName = "";
 		#Display Names done per NMCI Naming Standards (D400 11939.01 section 3.9.4.1)
-		if (($Company -eq "USN") -or ($Company -eq "usn")){
-			#USN Display Name
+		if (($Company -eq "USN") -or ($Company -eq "usn") -or ($Company -eq "PACOM") -or ($Company -eq "pacom")){
+			#USN/Pacom Display Name
 				#Last, First[or KnownBy] MI Gen FORNATL-cc Rank GalCMD [or Department], GalOff [or Office]
 			#Last, First[or KnownBy]
 			if (($KnownBy -ne "") -and ($KnownBy -ne $null)){
@@ -1314,7 +1314,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$intMaxLen = 20, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bCheckEmail = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strEDIPI = "", 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bForceInc = $False
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bForceInc = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strEmailEnding = "@navy.mil"
 		)
 		#CheckNameAvail() requires isNumeric() in Common.ps1.
 
@@ -1330,6 +1331,7 @@
 		#$bCheckEmail = $True or $False.  Use ADO Search to check ProxyAddresses too.  Can add up to about 2 minutes (per domain) to the search.
 		#$strEDIPI = The EDIPI to look for in AD.  If blank (default), the check is skipped.
 		#$bForceInc = $True or $False.  Force the name to be incremented before searching AD.  (Mainly for use when CDR has "reserved" the next available name).
+		#$strEmailEnding = The email ending to use with the $bCheckEmail option.
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -1511,18 +1513,18 @@
 				#$strOrigName not found.
 				#Check for email in use
 				if ($bCheckEmail -eq $True){
-					$strProgress = "  Verifying email '*" + $strOrigName + "*' is NOT in use.`r`n";
+					$strProgress = "  Verifying email '*" + $strOrigName + $strEmailEnding + "*' is NOT in use.`r`n";
 					if (([String]::IsNullOrEmpty($txbResults))){
 						$strWorkLog = $strWorkLog + "`r`n" + $strProgress;
 					}
 					else{
 						UpdateResults $strProgress $False;
 					}
-					if ((!(Get-Command "Get-Recipient" -ErrorAction SilentlyContinue)) -and (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue))){
+					#if ((!(Get-Command "Get-Recipient" -ErrorAction SilentlyContinue)) -and (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue))){
 						#$bolInUse = $null;
 						#foreach ($strDomain in $arrDomains){
 						#	SetupConn $strDomain "d";
-						#	if (Get-Recipient -Identity ($strOrigName + "@navy.mil") -ErrorAction SilentlyContinue){
+						#	if (Get-Recipient -Identity ($strOrigName + $strEmailEnding) -ErrorAction SilentlyContinue){
 						#		#in use.
 						#		$UserADInfo = "Email in use.";
 						#		$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address *" + $strOrigName + "*" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
@@ -1530,9 +1532,9 @@
 						#		break;
 						#	}
 						#}
-					}
-					else{
-						$strFilter = "(&(objectCategory=user)(proxyAddresses=*" + $strOrigName + "*))";
+					#}
+					#else{
+						$strFilter = "(&(objectCategory=user)(proxyAddresses=*" + $strOrigName + $strEmailEnding + "*))";
 						foreach ($strDomain in $arrDomains){
 							$objResults = $null;
 							$objResults = ADSearchADO $strOrigName $strDomain $strFilter $arrDesiredProps $True;
@@ -1544,7 +1546,7 @@
 								break;
 							}
 						}
-					}
+					#}
 				}
 			}
 		}

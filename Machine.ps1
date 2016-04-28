@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	25 April 2016
+# Updated Date:	27 April 2016
 # Purpose:		Routines that require a Computer, or that interact w/ a Computer.
 # Requirements: None
 ##########################################
@@ -344,6 +344,46 @@
 		}
 
 		return $arrRet;
+	}
+
+	function GetRunningApp{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strAppName
+		)
+		#Returns a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters passed in.
+			#$objReturn.Results		= # of instances of $strAppName found.
+			#$objReturn.Message		= "Success" or the error message.
+			#$objReturn.Returns		= A collection of $strAppName instances.
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = 0
+			Message = "Error"
+			Returns = "";
+		}
+
+		$objProcesses = (Get-Process $strAppName -errorAction SilentlyContinue);
+		if ([String]::IsNullOrEmpty($objProcesses)){
+			$objReturn.Message = "No instances of $strAppName found.";
+		}
+		else{
+			$objReturn.Message = "Success";
+			$objReturn.Results = @($objProcesses).Count;
+			$objReturn.Returns = $objProcesses;
+		}
+
+		return $objReturn;
 	}
 
 	function LoggedInUser{
