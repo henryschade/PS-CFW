@@ -279,7 +279,8 @@
 	function GetRegistry{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strRegPath, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strProp
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strProp, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strRemoteSys = ""
 		)
 		#Returns an array.
 			#A "list" of Properties & "Directories" (Keys) under the "Path" provided.
@@ -294,53 +295,78 @@
 		#https://4sysops.com/archives/interacting-with-the-registry-in-powershell/
 		#http://stackoverflow.com/questions/15511809/how-do-i-get-the-value-of-a-registry-key-and-only-the-value-using-powershell
 		#Remote Registry:
-		#http://blogs.microsoft.co.il/scriptfanatic/2010/01/10/remote-registry-powershell-module/
-		#https://psremoteregistry.codeplex.com/
+		#https://psremoteregistry.codeplex.com/		->	(http://blogs.microsoft.co.il/scriptfanatic/2010/01/10/remote-registry-powershell-module/)
+		#http://stackoverflow.com/questions/1133335/openremotebasekey-credentials
+		#https://social.technet.microsoft.com/Forums/windowsserver/en-US/14f33784-09a0-49be-8036-73921181fa3c/microsoftwin32registrykeyopenremotebasekey?forum=winserverpowershell
 
 
 		#$strRegPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion";
 		#$strProp = "DevicePath";
-
-		if (Test-Path $strRegPath){
-			if ([String]::IsNullOrEmpty($strProp)){
-				if ($strRegPath.EndsWith("\")){
-					$strRegPath = $strRegPath.SubString(0, $strRegPath.Length - 1);
-				}
-
-				$arrRet = (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).Property;
-				#$arrRet now has all the Keys/Properties under $strRegPath, BUT NOT any "child" Pathing.
-				#$arrRet is an array.
-
-				$objTemp = ((Get-ChildItem -Path $strRegPath -Force -ErrorAction SilentlyContinue) | SELECT Name);
-				for ($intX = 0; $intX -lt $objTemp.Count; $intX++){
-					$objTemp[$intX] = $objTemp[$intX].Name;
-					$objTemp[$intX] = $objTemp[$intX].Replace($strRegPath.Replace("HKLM:", "HKEY_LOCAL_MACHINE"), "");
-				}
-
-				$arrRet = $arrRet + $objTemp;
-			}
-			else{
-				$bolExist = $False;
-				$arrInfo = GetRegistry $strRegPath;
-				foreach ($strEntry in $arrInfo){
-					if ($strEntry -eq $strProp){
-						$bolExist = $True;
-						break;
-					}
-				}
-				if ($bolExist -eq $True){
-					$arrRet = @($strProp, (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).GetValueKind($strProp), (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).GetValue($strProp));
-					#$arrRet now has the Value and Type stored in/at $strProp.
-					#Although RegEdit shows "%SystemRoot%\inf", and the value returned is "C:\Windows\inf".
-					#$arrRet is an array of (Name, Type/Kind, Value).
+		if (!([String]::IsNullOrEmpty($strRemoteSys))){
+			Write-Verbose "Starting remote registry connection against: [$strRemoteSys].";
+			Write-Verbose "Registry Hive is: [$strRegPath].";
+			$Error.Clear();
+			$reg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey([Microsoft.Win32.RegistryHive]$strRegPath.SubString(0,$strRegPath.IndexOf(":")), $strRemoteSys);
+			if ($Error){
+				$Error.Clear();
+				if ($strRegPath.SubString(0,$strRegPath.IndexOf(":")) -eq "HKLM"){
+					$strType = [Microsoft.Win32.RegistryHive]::LocalMachine;
 				}
 				else{
-					$arrRet = @("The Property '$strProp' does NOT exist under Key '$strRegPath'.", "-1");
+					$strType = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
 				}
+				$strKey = $strRegPath.SubString($strRegPath.IndexOf(":") + 2);
+
+				$type = [Microsoft.Win32.RegistryHive]::LocalMachine;
+				$reg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($type,$strRemoteSys);
 			}
+			Write-Verbose "Open remote subkey: [$strProp].";
+			$subKey = $reg.OpenSubKey($strProp);
+			Write-Verbose "Closing remote registry connection on: [$strRemoteSys].";
+			$reg.close();
 		}
 		else{
-			$arrRet = @("The Key '$strRegPath' does NOT exist.", "-1");
+			if (Test-Path $strRegPath){
+				if ([String]::IsNullOrEmpty($strProp)){
+					if ($strRegPath.EndsWith("\")){
+						$strRegPath = $strRegPath.SubString(0, $strRegPath.Length - 1);
+					}
+
+					$arrRet = (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).Property;
+					#$arrRet now has all the Keys/Properties under $strRegPath, BUT NOT any "child" Pathing.
+					#$arrRet is an array.
+
+					$objTemp = ((Get-ChildItem -Path $strRegPath -Force -ErrorAction SilentlyContinue) | SELECT Name);
+					for ($intX = 0; $intX -lt $objTemp.Count; $intX++){
+						$objTemp[$intX] = $objTemp[$intX].Name;
+						$objTemp[$intX] = $objTemp[$intX].Replace($strRegPath.Replace("HKLM:", "HKEY_LOCAL_MACHINE"), "");
+					}
+
+					$arrRet = $arrRet + $objTemp;
+				}
+				else{
+					$bolExist = $False;
+					$arrInfo = GetRegistry $strRegPath;
+					foreach ($strEntry in $arrInfo){
+						if ($strEntry -eq $strProp){
+							$bolExist = $True;
+							break;
+						}
+					}
+					if ($bolExist -eq $True){
+						$arrRet = @($strProp, (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).GetValueKind($strProp), (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).GetValue($strProp));
+						#$arrRet now has the Value and Type stored in/at $strProp.
+						#Although RegEdit shows "%SystemRoot%\inf", and the value returned is "C:\Windows\inf".
+						#$arrRet is an array of (Name, Type/Kind, Value).
+					}
+					else{
+						$arrRet = @("The Property '$strProp' does NOT exist under Key '$strRegPath'.", "-1");
+					}
+				}
+			}
+			else{
+				$arrRet = @("The Key '$strRegPath' does NOT exist.", "-1");
+			}
 		}
 
 		return $arrRet;
