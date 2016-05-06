@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	25 March 2016
+# Updated Date:	2 May 2016
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
@@ -270,6 +270,7 @@
 			#Write-Host $strContent;
 			$strContent = [System.Text.Encoding]::ASCII.GetString($strContent);
 			Write-Host $strContent;
+			return $strContent;
 		}
 	}
 
@@ -299,6 +300,7 @@
 			$strBase64 | Out-File $strOutPut;
 		}else{
 			Write-Host $strBase64;
+			return $strBase64;
 		}
 	}
 

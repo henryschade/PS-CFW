@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	27 April 2016
+# Updated Date:	5 May 2016
 # Purpose:		Routines that require a Computer, or that interact w/ a Computer.
 # Requirements: None
 ##########################################
@@ -279,68 +279,114 @@
 	function GetRegistry{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strRegPath, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strProp
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strProp, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strRemoteSys = "."
 		)
 		#Returns an array.
 			#A "list" of Properties & "Directories" (Keys) under the "Path" provided.
 			#Data from the Property in the format of: (Name, Type/Kind, Value).
-		#$strRegPath = The Registry Path (Key) to get data from.  (i.e. "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion")
-		#$strProp = The Property, if any, to get the data out of.  If omitted returns a list of available Properties & Keys.  (i.e. "DevicePath")
+		#$strRegPath = The Registry Path (Key) to get data from.  (i.e. "HKEY_LOCAL_MACHINE:\SOFTWARE\NMCI\ITSS-Tools\ASCII")
+			#HKEY_CLASSES_ROOT
+			#HKEY_CURRENT_CONFIG
+			#HKEY_CURRENT_USER
+			#HKEY_DYN_DATA
+			#HKEY_LOCAL_MACHINE
+			#HKEY_PERFORMANCE_DATA
+			#HKEY_USERS
+		#$strProp = The Property, if any, to get the data out of.  If omitted returns a list of available Properties & Keys.  (i.e. "(Default)" or "Version")
+		#$strRemoteSys = A remote system to get the registry of.  "ALSDCP002656" ("." specifies local system, the default)
 
 		#registry key = The Reg Path.
 		#registry key property = The "attributes" / "fields" under the Key.
 
-		#http://powershell.com/cs/blogs/tips/archive/2015/04/15/getting-registry-values-and-value-types.aspx
-		#https://4sysops.com/archives/interacting-with-the-registry-in-powershell/
-		#http://stackoverflow.com/questions/15511809/how-do-i-get-the-value-of-a-registry-key-and-only-the-value-using-powershell
 		#Remote Registry:
-		#http://blogs.microsoft.co.il/scriptfanatic/2010/01/10/remote-registry-powershell-module/
-		#https://psremoteregistry.codeplex.com/
+		#https://psremoteregistry.codeplex.com/		->	(http://blogs.microsoft.co.il/scriptfanatic/2010/01/10/remote-registry-powershell-module/)
+		#http://stackoverflow.com/questions/1133335/openremotebasekey-credentials
+		#https://social.technet.microsoft.com/Forums/windowsserver/en-US/14f33784-09a0-49be-8036-73921181fa3c/microsoftwin32registrykeyopenremotebasekey?forum=winserverpowershell
 
-
-		#$strRegPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion";
-		#$strProp = "DevicePath";
-
-		if (Test-Path $strRegPath){
-			if ([String]::IsNullOrEmpty($strProp)){
-				if ($strRegPath.EndsWith("\")){
-					$strRegPath = $strRegPath.SubString(0, $strRegPath.Length - 1);
+		$arrRet = $null;
+		if (!([String]::IsNullOrEmpty($strRemoteSys))){
+			#Write-Host "    Starting remote registry connection against: '$strRemoteSys'.";
+			$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+			switch ($strRoot){
+				"HKEY_CLASSES_ROOT "{
+					$strRoot = [Microsoft.Win32.RegistryHive]::ClassesRoot;
 				}
-
-				$arrRet = (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).Property;
-				#$arrRet now has all the Keys/Properties under $strRegPath, BUT NOT any "child" Pathing.
-				#$arrRet is an array.
-
-				$objTemp = ((Get-ChildItem -Path $strRegPath -Force -ErrorAction SilentlyContinue) | SELECT Name);
-				for ($intX = 0; $intX -lt $objTemp.Count; $intX++){
-					$objTemp[$intX] = $objTemp[$intX].Name;
-					$objTemp[$intX] = $objTemp[$intX].Replace($strRegPath.Replace("HKLM:", "HKEY_LOCAL_MACHINE"), "");
+				"HKEY_CURRENT_CONFIG"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::CurrentConfig;
 				}
+				"HKEY_CURRENT_USER"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::CurrentUser;
+				}
+				"HKEY_DYN_DATA"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::DynData;
+				}
+				"HKEY_LOCAL_MACHINE"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::LocalMachine;
+				}
+				"HKEY_PERFORMANCE_DATA"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::PerformanceData;
+				}
+				"HKEY_USERS"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::Users;
+				}
+				default{
+					$arrRet = @("Error connecting to the (unknown) Registry root '$strRoot' of '$strRemoteSys'.", "-1");
+					return $arrRet;
+				}
+			}
+			#Write-Host "    Registry Hive is: [$strRoot]. `r`n";
+			$strKey = $strRegPath.SubString($strRegPath.IndexOf(":") + 2);
 
-				$arrRet = $arrRet + $objTemp;
+			$Error.Clear();
+			#Connect to "Root" of the Registry.
+			$objReg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($strRoot, $strRemoteSys);
+			if ($Error){
+				$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+				$arrRet = @("Error connecting to the Registry '$strRoot' of '$strRemoteSys'.", $Error);
 			}
 			else{
-				$bolExist = $False;
-				$arrInfo = GetRegistry $strRegPath;
-				foreach ($strEntry in $arrInfo){
-					if ($strEntry -eq $strProp){
-						$bolExist = $True;
-						break;
-					}
-				}
-				if ($bolExist -eq $True){
-					$arrRet = @($strProp, (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).GetValueKind($strProp), (Get-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue).GetValue($strProp));
-					#$arrRet now has the Value and Type stored in/at $strProp.
-					#Although RegEdit shows "%SystemRoot%\inf", and the value returned is "C:\Windows\inf".
-					#$arrRet is an array of (Name, Type/Kind, Value).
+				#Write-Host "    Open remote subkey: [$strKey].";
+				$Error.Clear();
+				$subKey = $objReg.OpenSubKey($strKey);
+				#$subKey | GM;
+				if (($Error) -or ([String]::IsNullOrEmpty($subKey))){
+					$arrRet = @("The Key '$strRegPath' does NOT exist.", $Error);
 				}
 				else{
-					$arrRet = @("The Property '$strProp' does NOT exist under Key '$strRegPath'.", "-1");
+					if ([String]::IsNullOrEmpty($strProp)){
+						[System.Collections.ArrayList]$arrRet = @();
+						foreach ($objVal in $subKey.GetValueNames()){
+							#Write-Host $objVal;
+							if ([String]::IsNullOrEmpty($objVal)){
+								$arrRet += "(Default)";
+							}
+							else{
+								$arrRet += $objVal;
+							}
+						}
+						foreach ($objKey in $subKey.GetSubKeyNames()){
+							#Write-Host $objKey;
+							$arrRet += "\" + $objKey;
+						}
+					}
+					else{
+						#Get prop info
+						if ($strProp -eq "(Default)"){
+							$strProp = "";
+						}
+						$Error.Clear();
+						$ErrorActionPreference = 'SilentlyContinue';
+						$arrRet = @($strProp, $subKey.GetValueKind($strProp), $subKey.GetValue($strProp));
+						$ErrorActionPreference = 'Continue';
+						if ($Error){
+							$arrRet = @("The Property '$strProp' does NOT exist under Key '$strRegPath'.", $Error);
+						}
+					}
 				}
 			}
-		}
-		else{
-			$arrRet = @("The Key '$strRegPath' does NOT exist.", "-1");
+			#Write-Host "    Closing remote registry connection on: '$strRemoteSys'.";
+			$objReg.close();
 		}
 
 		return $arrRet;
@@ -373,7 +419,7 @@
 			Returns = "";
 		}
 
-		$objProcesses = (Get-Process $strAppName -errorAction SilentlyContinue);
+		$objProcesses = (Get-Process $strAppName -ErrorAction SilentlyContinue);
 		if ([String]::IsNullOrEmpty($objProcesses)){
 			$objReturn.Message = "No instances of $strAppName found.";
 		}
@@ -422,94 +468,128 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strRegPath, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strProp, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strValue, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strType = "String"
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strType = "String", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strRemoteSys = "."
 		)
 		#Returns an array with results info.
-		#$strRegPath = The Registry Path (Key) to set data to, or to create.  (i.e. "HKLM:\SOFTWARE\ITSS-Tools\ASCII")
-		#$strProp = The Registry Key Property, if any, to update/create with $strValue. (i.e. "Version").
+		#$strRegPath = The Registry Path (Key) to set data to, or to create.  (i.e. "HKEY_LOCAL_MACHINE:\SOFTWARE\NMCI\ITSS-Tools\ASCII")
+			#HKEY_CLASSES_ROOT
+			#HKEY_CURRENT_CONFIG
+			#HKEY_CURRENT_USER
+			#HKEY_DYN_DATA
+			#HKEY_LOCAL_MACHINE
+			#HKEY_PERFORMANCE_DATA
+			#HKEY_USERS
+		#$strProp = The Registry Key Property, if any, to update/create with $strValue. (i.e. "(Default)" or "Version").
 		#$strValue = The Value to enter.  (i.e. "0.23")
-		#$strType = The Type/Kind that strValue is to be stored as.
+		#$strType = The Type/Kind that strValue is to be stored as.  [Microsoft.Win32.RegistryValueKind]
 			#DWord = Integer
 			#String = String
+		#$strRemoteSys = A remote system to set the registry of.  ("." specifies local system, the default)
 
 		#registry key = The Reg Path.
 		#registry key property = The "attributes" / "fields" under the Key.
 
 		#Remote Registry:
-		#http://blogs.microsoft.co.il/scriptfanatic/2010/01/10/remote-registry-powershell-module/
-
-		#$strRegPath = "HKLM:\SOFTWARE\ITSS-Tools\ASCII";
-		#$strProp = "Version";
-		#$strValue = "0.23";
+		#https://psremoteregistry.codeplex.com/		->	(http://blogs.microsoft.co.il/scriptfanatic/2010/01/10/remote-registry-powershell-module/)
+		#http://stackoverflow.com/questions/1133335/openremotebasekey-credentials
+		#https://social.technet.microsoft.com/Forums/windowsserver/en-US/14f33784-09a0-49be-8036-73921181fa3c/microsoftwin32registrykeyopenremotebasekey?forum=winserverpowershell
 
 		$arrRet = $null;
-
-		$Error.Clear();
-		if (Test-Path $strRegPath){
-			#Path exists, set/update Key.
-		}
-		else{
-			#Create/update a new Path.  Creates any neccessary parent pathing.
-			$objResults = $null;
-			#$strResults = New-Item -Path $strRegPath -Force | Out-Null;
-			$objResults = New-Item -Path $strRegPath -Force -ErrorAction SilentlyContinue;
-			if (($Error) -or ([String]::IsNullOrEmpty($objResults))){
-				$arrRet = @("Error creating the path '$strRegPath'.", $Error);
+		if (!([String]::IsNullOrEmpty($strRemoteSys))){
+			#Write-Host "    Starting remote registry connection against: '$strRemoteSys'.";
+			$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+			switch ($strRoot){
+				"HKEY_CLASSES_ROOT "{
+					$strRoot = [Microsoft.Win32.RegistryHive]::ClassesRoot;
+				}
+				"HKEY_CURRENT_CONFIG"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::CurrentConfig;
+				}
+				"HKEY_CURRENT_USER"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::CurrentUser;
+				}
+				"HKEY_DYN_DATA"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::DynData;
+				}
+				"HKEY_LOCAL_MACHINE"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::LocalMachine;
+				}
+				"HKEY_PERFORMANCE_DATA"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::PerformanceData;
+				}
+				"HKEY_USERS"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::Users;
+				}
+				default{
+					$arrRet = @("Error connecting to the (unknown) Registry root '$strRoot' of '$strRemoteSys'.", "-1");
+					return $arrRet;
+				}
 			}
-			else{
-				$arrRet = @("Created Key '$strRegPath'.", $objResults);
-			}
-		}
+			#Write-Host "    Registry Hive is: [$strRoot]. `r`n";
+			$strKey = $strRegPath.SubString($strRegPath.IndexOf(":") + 2);
 
-		if ((!([String]::IsNullOrEmpty($strProp))) -and (!($Error))){
-			#Now we can create/update the Key.
-			$objResults = $null;
-			$arrInfo = GetRegistry $strRegPath $strProp;
 			$Error.Clear();
-			if ($arrInfo[0].Contains("does NOT exist")){
-				#$objResults = New-ItemProperty -Path $strRegPath -Name $strProp -Value $strValue -PropertyType $strType -Force | Out-Null;
-				$objResults = New-ItemProperty -Path $strRegPath -Name $strProp -Value $strValue -PropertyType $strType -Force -ErrorAction SilentlyContinue;
-				if (($Error) -or ([String]::IsNullOrEmpty($objResults))){
-					$arrRet = @("Error creating Property '$strProp', under Key '$strRegPath'.", $Error);
-				}
-				else{
-					$arrInfo = GetRegistry $strRegPath $strProp;
-					#$strMessage = "Created Property '$arrInfo[0]', under Key '$strRegPath', with a Value of '$arrInfo[2]' (of type '$arrInfo[1]').";
-					$strMessage = "Created Property '" + $arrInfo[0] + "', under Key '$strRegPath', with a Value of '" + $arrInfo[2] + "'";
-					if ($strValue -ne $arrInfo[2]){
-						$strMessage = $strMessage + " (NOT the provided: '$strValue')";
-					}
-					$strMessage = $strMessage + " (of type '" + $arrInfo[1] + "').";
-
-					if ([String]::IsNullOrEmpty($arrRet)){
-						#$arrRet = @("Created Property '$strProp', under Key '$strRegPath', with a Value of '$strValue' (of type '$strType').", $objResults);
-						$arrRet = @($strMessage, $objResults);
-					}
-					else{
-						#$arrRet[0] = $arrRet[0] + "`r`n" + "Created Property '$strProp', under Key '$strRegPath', with a Value of '$strValue' (of type '$strType').";
-						$arrRet[0] = $arrRet[0] + "`r`n" + $strMessage;
-						$arrRet = $arrRet + @($objResults)
-					}
-				}
+			#Connect to "Root" of the Registry.
+			$objReg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($strRoot, $strRemoteSys);
+			if ($Error){
+				$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+				$arrRet = @("Error connecting to the Registry '$strRoot' of '$strRemoteSys'.", $Error);
 			}
 			else{
-				$objResults = Set-ItemProperty -Path $strRegPath -Name $strProp -Value $strValue -Type $strType -ErrorAction SilentlyContinue;
-				if (($Error) -or (!([String]::IsNullOrEmpty($objResults)))){
-					$arrRet = @("Error updating Property '$strProp', under Key '$strRegPath'.", $Error);
+				#Write-Host "    Open remote subkey: [$strKey].";
+				$Error.Clear();
+				$subKey = $objReg.OpenSubKey($strKey, $True);
+				#$subKey | GM;
+				if ($Error){
+					$arrRet = @("Error connecting to the Registry Key '$strKey' of '$strRemoteSys'.", $Error);
 				}
 				else{
-					$arrInfo = GetRegistry $strRegPath $strProp;
-					#$strMessage = "Created Property '$arrInfo[0]', under Key '$strRegPath', with a Value of '$arrInfo[2]' (of type '$arrInfo[1]').";
-					$strMessage = "Updated Property '" + $arrInfo[0] + "', under Key '$strRegPath', with a Value of '" + $arrInfo[2] + "'";
-					if ($strValue -ne $arrInfo[2]){
-						$strMessage = $strMessage + " (NOT the provided: '$strValue')";
+					if (([String]::IsNullOrEmpty($subKey))){
+						#Key does not exist.
+						$subKey = $null;
+						$Error.Clear();
+						$subKey = $objReg.CreateSubKey($strKey);
+						if (($Error) -or ([String]::IsNullOrEmpty($subKey))){
+							$arrRet = @("Error creating the path '$strRegPath'.", $Error);
+						}
+						else{
+							$arrRet = @("Created Key '$strRegPath' on '$strRemoteSys'.", $subKey);
+						}
 					}
-					$strMessage = $strMessage + " (of type '" + $arrInfo[1] + "').";
 
-					#$arrRet = @("Updated Property '$strProp', under Key '$strRegPath', with a Value of '$strValue' (of type '$strType').", $objResults);
-					$arrRet = @($strMessage , $arrInfo);
+					if (!($Error)){
+						if ([String]::IsNullOrEmpty($strProp)){
+							#Set/Update Key
+						}
+						else{
+							#Create/Update Property
+							$objResults = $null;
+							if ([String]::IsNullOrEmpty($subKey)){
+								$Error.Clear();
+								$subKey = $objReg.OpenSubKey($strKey, $True);
+								if ($Error){
+									$arrRet = @("Error re-connecting to the Registry Key '$strKey' of '$strRemoteSys'.", $Error);
+								}
+							}
+							if ($strProp -eq "(Default)"){
+								$strProp = "";
+							}
+							$Error.Clear();
+							#$objResults = $subKey.SetValue($strProp, $strValue, [Microsoft.Win32.RegistryValueKind]::$strType);
+							$objResults = $subKey.SetValue($strProp, $strValue, $strType);
+							if ($Error){
+								$arrRet = @("Error creating/updating the Property '$strProp' with '$strValue', of type '$strType', on '$strRemoteSys'.", $Error);
+							}
+							else{
+								$arrRet = @("Created Property '$strProp' with '$strValue', of type '$strType', on '$strRemoteSys'.", $strRegPath);
+							}
+						}
+					}
 				}
 			}
+			#Write-Host "    Closing remote registry connection on: '$strRemoteSys'.";
+			$objReg.Close();
 		}
 
 		return $arrRet;
