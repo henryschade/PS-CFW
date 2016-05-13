@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	5 May 2016
+# Updated Date:	13 May 2016
 # Purpose:		Routines that require a Computer, or that interact w/ a Computer.
 # Requirements: None
 ##########################################
@@ -125,6 +125,119 @@
 		#>
 	}
 
+	function DeleteRegistry{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strRegPath, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strProp, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strRemoteSys = "."
+		)
+		#Returns an array with results info.
+		#$strRegPath = The Registry Path (Key) to Delete.  (i.e. "HKEY_LOCAL_MACHINE:\SOFTWARE\NMCI\ITSS-Tools\ASCII" or "HKEY_LOCAL_MACHINE\SOFTWARE\NMCI\ITSS-Tools\ASCII")
+			#HKEY_CLASSES_ROOT
+			#HKEY_CURRENT_CONFIG
+			#HKEY_CURRENT_USER
+			#HKEY_DYN_DATA
+			#HKEY_LOCAL_MACHINE
+			#HKEY_PERFORMANCE_DATA
+			#HKEY_USERS
+		#$strProp = The Registry Key Property, if any, to Delete. (i.e. "Version").
+		#$strRemoteSys = A remote system to Delete the registry key of.  ("." specifies local system, the default)
+
+		#https://social.technet.microsoft.com/Forums/scriptcenter/en-US/daae2835-bd41-4c7d-81c9-7a48e43f0b44/deleting-registry-keys?forum=winserverpowershell
+		#registry key = The Reg Path.
+		#registry key property = The "attributes" / "fields" under the Key.
+
+		$arrRet = $null;
+		if (!([String]::IsNullOrEmpty($strRemoteSys))){
+			#Write-Host "    Starting remote registry connection against: '$strRemoteSys'.";
+			if ($strRegPath.IndexOf(":") -gt 0){
+				#Has a ":" seperator.
+				$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+			}
+			else{
+				$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf("\"));
+			}
+			switch ($strRoot){
+				"HKEY_CLASSES_ROOT"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::ClassesRoot;
+				}
+				"HKEY_CURRENT_CONFIG"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::CurrentConfig;
+				}
+				"HKEY_CURRENT_USER"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::CurrentUser;
+				}
+				"HKEY_DYN_DATA"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::DynData;
+				}
+				{($strRoot -eq "HKEY_LOCAL_MACHINE") -or ($strRoot -eq "HKLM")}{
+					$strRoot = [Microsoft.Win32.RegistryHive]::LocalMachine;
+				}
+				"HKEY_PERFORMANCE_DATA"{
+					$strRoot = [Microsoft.Win32.RegistryHive]::PerformanceData;
+				}
+				{($strRoot -eq "HKEY_USERS") -or ($strRoot -eq "HKU")}{
+					$strRoot = [Microsoft.Win32.RegistryHive]::Users;
+				}
+				default{
+					$arrRet = @("Error connecting to the (unknown) Registry root '$strRoot' of '$strRemoteSys'.", "-1");
+					return $arrRet;
+				}
+			}
+			#Write-Host "    Registry Hive is: [$strRoot]. `r`n";
+			if ($strRegPath.IndexOf(":") -gt 0){
+				#Has a ":" seperator.
+				$strKey = $strRegPath.SubString($strRegPath.IndexOf(":") + 2);
+			}
+			else{
+				$strKey = $strRegPath.SubString($strRegPath.IndexOf("\") + 1);
+			}
+
+			$Error.Clear();
+			#Connect to "Root" of the Registry.
+			$objReg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($strRoot, $strRemoteSys);
+			if ($Error){
+				if ($strRegPath.IndexOf(":") -gt 0){
+					#Has a ":" seperator.
+					$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+				}
+				else{
+					$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf("\"));
+				}
+				$arrRet = @("Error connecting to the Registry '$strRoot' of '$strRemoteSys'.", $Error);
+			}
+			else{
+				#Do remove here
+				if ([String]::IsNullOrEmpty($strProp)){
+					$Error.Clear();
+					$objKey = $objReg.DeleteSubKey($strKey);
+					if ($Error){
+						$arrRet = @("Error Deleting the Registry Key '$strRegPath' on '$strRemoteSys'.", $Error);
+					}
+					else{
+						$arrRet = @("Deleted Registry Key '$strRegPath' on '$strRemoteSys'.", $strRegPath);
+					}
+				}
+				else{
+					$subKey = $objReg.OpenSubKey($strKey, $True);
+					$Error.Clear();
+					$objResults = $subKey.DeleteValue($strProp)
+					if ($Error){
+						$arrRet = @("Error deleting the Property '$strProp', under Key 'strRegPath', on '$strRemoteSys'.", $Error);
+					}
+					else{
+						$arrRet = @("Deleted '$strProp', under Key '$strRegPath', on '$strRemoteSys'.", $strRegPath);
+					}
+				}
+			}
+
+			#Write-Host "    Closing remote registry connection on: '$strRemoteSys'.";
+			$objReg.Close();
+		}
+
+		return $arrRet;
+	}
+
 	function DoShutDown{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strComp, 
@@ -164,13 +277,40 @@
 		return $strRet;
 	}
 
-	function EnableRPC{
-		Param(
+	function EnableWinRM{
+		param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strComp
 		)
-		#$strComp = The computer to Enable RPC on.  ($Env:ComputerName)
+		#a modified copy of Chris's original code.
+		#$strComp = The computer to enable WinRM on.
 
-		#Chris has a way.
+		$ESDWorkingFolder = "\\$strComp\C$\Program Files\NMCI\ESD";
+		#$ESDTasksPath = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\ESDTasks.XML";
+
+		$strXML = "<?xml version=`"1.0`" encoding=`"utf-8`"?>`r`n";
+		$strXML = $strXML + "<Root xmlns:xsi=`"http://www.w3.org/2001/XMLSchema-instance`" xsi:noNamespaceSchemaLocation=`"\\10.70.13.17\Advanced Publisher\In Process\EMT-Tools\EMT Starter\Includes\EMTTasksSchema.xsd`">`r`n";
+		$strXML = $strXML + "  <Task xsi:type=`"RunCommandLineTaskType`" name=`"EnableWinRM`">`r`n";
+		$strXML = $strXML + "    <Applet>RunCommandLine</Applet>`r`n";
+		$strXML = $strXML + "    <LogName>[ESD]ESDTasks</LogName>`r`n";
+		$strXML = $strXML + "    <LogFolder>%IDMLOG%</LogFolder>`r`n";
+		$strXML = $strXML + "    <Parameters>`r`n";
+		$strXML = $strXML + "      <Enum index=`"2`">WINRM quickconfig -quiet</Enum>`r`n";
+		$strXML = $strXML + "    </Parameters>`r`n";
+		$strXML = $strXML + "  </Task>`r`n";
+		$strXML = $strXML + "</Root>`r`n";
+
+		$strResults = mkdir "C:\Users\Public\ITSS-Tools\" -ErrorAction SilentlyContinue;
+		#$strResults = cmd /c "mkdir `"C:\Users\Public\ITSS-Tools\`"" '2>&1';
+		$Error.Clear();
+		$strXML | Out-File ("C:\Users\Public\ITSS-Tools\ESDTasks.XML");
+		if ($Error){
+			$ESDTasksPath = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\ESDTasks.XML";
+		}
+		else{
+			$ESDTasksPath = "C:\Users\Public\ITSS-Tools\ESDTasks.XML";
+		}
+		Copy-Item -Path $ESDTasksPath -Destination $ESDWorkingFolder -Force;
+		$strResults = (Start-Process -FilePath 'C:\Progra~2\Hewlett-Packard\HPCA\Agent\radntfyc.exe' -ArgumentList $([String]::Format("{0} -p 1 EMT -File=`"C:\Program Files\NMCI\ESD\ESDTasks.xml`" EnableWinRM", $strComp)));
 	}
 
 	function GetCert{
@@ -285,7 +425,7 @@
 		#Returns an array.
 			#A "list" of Properties & "Directories" (Keys) under the "Path" provided.
 			#Data from the Property in the format of: (Name, Type/Kind, Value).
-		#$strRegPath = The Registry Path (Key) to get data from.  (i.e. "HKEY_LOCAL_MACHINE:\SOFTWARE\NMCI\ITSS-Tools\ASCII")
+		#$strRegPath = The Registry Path (Key) to get data from.  (i.e. "HKEY_LOCAL_MACHINE:\SOFTWARE\NMCI\ITSS-Tools\ASCII" or "HKEY_LOCAL_MACHINE\SOFTWARE\NMCI\ITSS-Tools\ASCII")
 			#HKEY_CLASSES_ROOT
 			#HKEY_CURRENT_CONFIG
 			#HKEY_CURRENT_USER
@@ -307,9 +447,15 @@
 		$arrRet = $null;
 		if (!([String]::IsNullOrEmpty($strRemoteSys))){
 			#Write-Host "    Starting remote registry connection against: '$strRemoteSys'.";
-			$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+			if ($strRegPath.IndexOf(":") -gt 0){
+				#Has a ":" seperator.
+				$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+			}
+			else{
+				$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf("\"));
+			}
 			switch ($strRoot){
-				"HKEY_CLASSES_ROOT "{
+				"HKEY_CLASSES_ROOT"{
 					$strRoot = [Microsoft.Win32.RegistryHive]::ClassesRoot;
 				}
 				"HKEY_CURRENT_CONFIG"{
@@ -321,13 +467,13 @@
 				"HKEY_DYN_DATA"{
 					$strRoot = [Microsoft.Win32.RegistryHive]::DynData;
 				}
-				"HKEY_LOCAL_MACHINE"{
+				{($strRoot -eq "HKEY_LOCAL_MACHINE") -or ($strRoot -eq "HKLM")}{
 					$strRoot = [Microsoft.Win32.RegistryHive]::LocalMachine;
 				}
 				"HKEY_PERFORMANCE_DATA"{
 					$strRoot = [Microsoft.Win32.RegistryHive]::PerformanceData;
 				}
-				"HKEY_USERS"{
+				{($strRoot -eq "HKEY_USERS") -or ($strRoot -eq "HKU")}{
 					$strRoot = [Microsoft.Win32.RegistryHive]::Users;
 				}
 				default{
@@ -336,13 +482,25 @@
 				}
 			}
 			#Write-Host "    Registry Hive is: [$strRoot]. `r`n";
-			$strKey = $strRegPath.SubString($strRegPath.IndexOf(":") + 2);
+			if ($strRegPath.IndexOf(":") -gt 0){
+				#Has a ":" seperator.
+				$strKey = $strRegPath.SubString($strRegPath.IndexOf(":") + 2);
+			}
+			else{
+				$strKey = $strRegPath.SubString($strRegPath.IndexOf("\") + 1);
+			}
 
 			$Error.Clear();
 			#Connect to "Root" of the Registry.
 			$objReg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($strRoot, $strRemoteSys);
 			if ($Error){
-				$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+				if ($strRegPath.IndexOf(":") -gt 0){
+					#Has a ":" seperator.
+					$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+				}
+				else{
+					$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf("\"));
+				}
 				$arrRet = @("Error connecting to the Registry '$strRoot' of '$strRemoteSys'.", $Error);
 			}
 			else{
@@ -472,7 +630,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strRemoteSys = "."
 		)
 		#Returns an array with results info.
-		#$strRegPath = The Registry Path (Key) to set data to, or to create.  (i.e. "HKEY_LOCAL_MACHINE:\SOFTWARE\NMCI\ITSS-Tools\ASCII")
+		#$strRegPath = The Registry Path (Key) to set data to, or to create.  (i.e. "HKEY_LOCAL_MACHINE:\SOFTWARE\NMCI\ITSS-Tools\ASCII" or "HKEY_LOCAL_MACHINE\SOFTWARE\NMCI\ITSS-Tools\ASCII")
 			#HKEY_CLASSES_ROOT
 			#HKEY_CURRENT_CONFIG
 			#HKEY_CURRENT_USER
@@ -498,27 +656,33 @@
 		$arrRet = $null;
 		if (!([String]::IsNullOrEmpty($strRemoteSys))){
 			#Write-Host "    Starting remote registry connection against: '$strRemoteSys'.";
-			$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+			if ($strRegPath.IndexOf(":") -gt 0){
+				#Has a ":" seperator.
+				$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+			}
+			else{
+				$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf("\"));
+			}
 			switch ($strRoot){
-				"HKEY_CLASSES_ROOT "{
+				{($strRoot -eq "HKEY_CLASSES_ROOT") -or ($strRoot -eq "HKCR")}{
 					$strRoot = [Microsoft.Win32.RegistryHive]::ClassesRoot;
 				}
 				"HKEY_CURRENT_CONFIG"{
 					$strRoot = [Microsoft.Win32.RegistryHive]::CurrentConfig;
 				}
-				"HKEY_CURRENT_USER"{
+				{($strRoot -eq "HKEY_CURRENT_USER") -or ($strRoot -eq "HKCU")}{
 					$strRoot = [Microsoft.Win32.RegistryHive]::CurrentUser;
 				}
 				"HKEY_DYN_DATA"{
 					$strRoot = [Microsoft.Win32.RegistryHive]::DynData;
 				}
-				"HKEY_LOCAL_MACHINE"{
+				{($strRoot -eq "HKEY_LOCAL_MACHINE") -or ($strRoot -eq "HKLM")}{
 					$strRoot = [Microsoft.Win32.RegistryHive]::LocalMachine;
 				}
 				"HKEY_PERFORMANCE_DATA"{
 					$strRoot = [Microsoft.Win32.RegistryHive]::PerformanceData;
 				}
-				"HKEY_USERS"{
+				{($strRoot -eq "HKEY_USERS") -or ($strRoot -eq "HKU")}{
 					$strRoot = [Microsoft.Win32.RegistryHive]::Users;
 				}
 				default{
@@ -527,13 +691,25 @@
 				}
 			}
 			#Write-Host "    Registry Hive is: [$strRoot]. `r`n";
-			$strKey = $strRegPath.SubString($strRegPath.IndexOf(":") + 2);
+			if ($strRegPath.IndexOf(":") -gt 0){
+				#Has a ":" seperator.
+				$strKey = $strRegPath.SubString($strRegPath.IndexOf(":") + 2);
+			}
+			else{
+				$strKey = $strRegPath.SubString($strRegPath.IndexOf("\") + 1);
+			}
 
 			$Error.Clear();
 			#Connect to "Root" of the Registry.
 			$objReg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($strRoot, $strRemoteSys);
 			if ($Error){
-				$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+				if ($strRegPath.IndexOf(":") -gt 0){
+					#Has a ":" seperator.
+					$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+				}
+				else{
+					$strRoot = $strRegPath.SubString(0,$strRegPath.IndexOf("\"));
+				}
 				$arrRet = @("Error connecting to the Registry '$strRoot' of '$strRemoteSys'.", $Error);
 			}
 			else{
@@ -561,6 +737,10 @@
 					if (!($Error)){
 						if ([String]::IsNullOrEmpty($strProp)){
 							#Set/Update Key
+							#$objResults = $subKey.SetValue($strKey, $strValue);
+							#if ($Error){
+							#	$arrRet = @("Error updating the Key '$strKey' to '$strValue' on '$strRemoteSys'.", $Error);
+							#}
 						}
 						else{
 							#Create/Update Property
