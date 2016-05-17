@@ -45,7 +45,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bSubs = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bPrompts = $True, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bSkip = $True, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strBackUpDir = "..\BackUps\"
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strBackUpDir
 		)
 		#Copies/Backups Source Directory files to Destination Directory.
 			#The SrcFile.LastWriteTime MUST be greater than the DestFileLastWriteTime, or the file is NOT copied/backedup.
@@ -116,6 +116,9 @@
 		if (!($strBackUpDir.EndsWith("\"))){
 			$strBackUpDir = $strBackUpDir + "\";
 		}
+		Write-Host "strSourceDir $strSourceDir";
+		Write-Host "strDestDir $strDestDir";
+		Write-Host "strBackUpDir $strBackUpDir";
 
 		$objSrcSubItems = Get-ChildItem $strSourceDir -Force;		#force is necessary to get hidden files/folders
 		$objDestSubItems = Get-ChildItem $strDestDir -Force;		#force is necessary to get hidden files/folders
