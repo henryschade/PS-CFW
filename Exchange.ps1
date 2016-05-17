@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	13 May 2016
+# Updated Date:	16 May 2016
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process. 
@@ -307,6 +307,30 @@
 
 	}
 
+
+	function AddPST{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFile
+		)
+		#$strFile = Full Path of the PST file to add. (i.e. "C:\Users\Public\Archive.pst")
+
+		#https://blogs.msdn.microsoft.com/arvindsh/2014/12/11/using-powershell-to-attach-pst-files-to-outlook/
+		#http://poshcode.org/5087
+
+		Add-Type -Assembly "Microsoft.Office.Interop.Outlook" | Out-Null;
+		$objOutlook = New-Object -ComObject Outlook.Application;
+		$objNameSpace = $objOutlook.GetNameSpace("MAPI");
+		#dir ($strPath "\*.pst") | % {
+		#	$objNameSpace.AddStore($_.FullName);
+		#}
+		$objNameSpace.AddStore($strFile);
+
+
+		#http://poshcode.org/5087
+		#[Reflection.Assembly]::LoadWithPartialname("Microsoft.Office.Interop.Outlook") | Out-Null;
+		#$objOutlook = New-Object -ComObject Outlook.Application;
+		#$objNameSpace.Session.AddStore($strFile)
+	}
 
 	function CleanUpConn{
 		#From PS-ExchConn.ps1.
@@ -1436,30 +1460,6 @@
 				Roles = $strRoles;
 			}
 		}
-	}
-
-	function ImportPST{
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFile
-		)
-		#$strFile = PST Full Path. (i.e. "C:\Users\Public\Archive.pst")
-
-		#https://blogs.msdn.microsoft.com/arvindsh/2014/12/11/using-powershell-to-attach-pst-files-to-outlook/
-		#http://poshcode.org/5087
-
-		Add-Type -Assembly "Microsoft.Office.Interop.Outlook" | Out-Null;
-		$objOutlook = New-Object -ComObject Outlook.Application;
-		$objNameSpace = $objOutlook.GetNameSpace("MAPI");
-		#dir ($strPath "\*.pst") | % {
-		#	$objNameSpace.AddStore($_.FullName);
-		#}
-		$objNameSpace.AddStore($strFile);
-
-
-		#http://poshcode.org/5087
-		#[Reflection.Assembly]::LoadWithPartialname("Microsoft.Office.Interop.Outlook") | Out-Null;
-		#$objOutlook = New-Object -ComObject Outlook.Application;
-		#$objNameSpace.Session.AddStore($strFile)
 	}
 
 	function MoveEmail{

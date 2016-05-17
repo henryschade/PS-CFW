@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	21 April 2016
+# Updated Date:	16 May 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -1345,6 +1345,7 @@
 					$Message | Out-File -filepath ($LogDir + $LogFile) -Encoding Default -Append;
 				}
 				catch{
+					Start-Sleep -Milliseconds 100; 
 				}
 			} while (($Error) -and ($intTries -lt $intRetry))
 		}
