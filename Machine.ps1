@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	13 May 2016
+# Updated Date:	18 May 2016
 # Purpose:		Routines that require a Computer, or that interact w/ a Computer.
 # Requirements: None
 ##########################################
@@ -219,14 +219,20 @@
 					}
 				}
 				else{
-					$subKey = $objReg.OpenSubKey($strKey, $True);
 					$Error.Clear();
-					$objResults = $subKey.DeleteValue($strProp)
+					$subKey = $objReg.OpenSubKey($strKey, $True);
 					if ($Error){
-						$arrRet = @("Error deleting the Property '$strProp', under Key 'strRegPath', on '$strRemoteSys'.", $Error);
+						$arrRet = @("Error opening the Key '$strRegPath', on '$strRemoteSys'.", $Error);
 					}
 					else{
-						$arrRet = @("Deleted '$strProp', under Key '$strRegPath', on '$strRemoteSys'.", $strRegPath);
+						$Error.Clear();
+						$objResults = $subKey.DeleteValue($strProp)
+						if ($Error){
+							$arrRet = @("Error deleting the Property '$strProp', under Key '$strRegPath', on '$strRemoteSys'.", $Error);
+						}
+						else{
+							$arrRet = @("Deleted '$strProp', under Key '$strRegPath', on '$strRemoteSys'.", $strRegPath);
+						}
 					}
 				}
 			}

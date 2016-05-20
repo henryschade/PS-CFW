@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	28 April 2016
+# Updated Date:	19 May 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -2411,60 +2411,71 @@
 	function FindUser{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Username, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDC
 		)
 		#Checks All domains (gotten from the Network) for $Username, or just the ones provided.
+		#$Username = The user, samaccountname, to look for.
+		#$strDomain = The domain to look for $Username in.
+		#$strDC = The DC to use to do the search, over rides $strDomain.  (Short or FQDN.)
 
 		$InitializeDefaultDrives=$False;
 		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
 
-		if ((($strDomain -ne "") -and ($strDomain -ne $null)) -or ($Username.Contains("\"))){
-			$arrDomains = @($strDomain);
+		if ([String]::IsNullOrWhiteSpace($strDC)){
+			if (!([String]::IsNullOrWhiteSpace($strDomain))){
+				$arrDomains = @($strDomain);
+			}
+			else{
+				#Get a list of available Domains, from the network.
+				$arrDomains = GetDomains $False $False;
+			}
+
 			if ($Username.Contains("\")){
-				$arrDomains += $Username.Split("\")[0];
-				#$arrDomains = @($Username.Split("\")[0]);
+				#$arrDomains += $Username.Split("\")[0];
+				$arrDomains = @($Username.Split("\")[0]) + $arrDomains;
 				$Username = $Username.Split("\")[-1];
 			}
-		}else{
-			##Need to get Domains.  GetDomains() is in "AD-Routines.ps1".
-			#if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
-			#	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-			#	if ((Test-Path ($ScriptDir + "\AD-Routines.ps1"))){
-			#		. ($ScriptDir + "\AD-Routines.ps1")
-			#	}
-			#}
-			$arrDomains = GetDomains $False $False;
-		}
 
-		$strDomain = "";
-		foreach ($strDomain in $arrDomains){
-			if (($strDomain -eq $null) -or ($strDomain -eq "")){
-				#break;
-			}else{
-				if ($strDomain -ne "nads"){
-					$strProgress = "  Looking in " + $strDomain + " domain for " + $Username + ".`r`n";
+			$strDomain = "";
+			foreach ($strDomain in $arrDomains){
+				if (!([String]::IsNullOrWhiteSpace($strDomain))){
+					if ($strDomain -ne "nads"){
+						$strProgress = "  Looking in " + $strDomain + " domain for " + $Username + ".`r`n";
 
-					if (($txbResults -ne "") -and ($txbResults -ne $null)){
-						UpdateResults $strProgress $False;
+						if (!([String]::IsNullOrWhiteSpace($txbResults))){
+							UpdateResults $strProgress $False;
+						}
 
-						$strRIDMaster = GetOpsMaster2WorkOn $strDomain;
-					}else{
-						#$strProgress;		#Outputs info for when running as background job.
+						if (Get-Command "GetOpsMaster2WorkOn" -ErrorAction SilentlyContinue){
+							$strRIDMaster = GetOpsMaster2WorkOn $strDomain;
+						}
+						else{
+							#$strRIDMaster = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
+							$ErrorActionPreference = 'SilentlyContinue';
+							$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
+							$ErrorActionPreference = 'Continue';
+						}
 
-						#$strRIDMaster = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
-						$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
-					}
-					if (($strRIDMaster -eq "") -or ($strRIDMaster -eq $null)){
-						$strRIDMaster = $strDomain;
-					}
+						if ([String]::IsNullOrWhiteSpace($strRIDMaster)){
+							$strRIDMaster = $strDomain;
+						}
 
-					$objUser = $(Try {Get-ADUser -Identity $UserName -Server $strRIDMaster -Properties *} Catch {$null});
-					if (($objUser.DistinguishedName -ne "") -and ($objUser.DistinguishedName -ne $null)){
-						#$strSrcDomain = $strDomain;
-						break;
+						$objUser = $(Try {Get-ADUser -Identity $UserName -Server $strRIDMaster -Properties *} Catch {$null});
+						if (($objUser.DistinguishedName -ne "") -and ($objUser.DistinguishedName -ne $null)){
+							#$strSrcDomain = $strDomain;
+							break;
+						}
 					}
 				}
 			}
+		}
+		else{
+			if ($Username.Contains("\")){
+				#$arrDomains = @($Username.Split("\")[0]);
+				$Username = $Username.Split("\")[-1];
+			}
+			$objUser = $(Try {Get-ADUser -Identity $UserName -Server $strDC -Properties *} Catch {$null});
 		}
 
 		return $objUser;

@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	2 May 2016
+# Updated Date:	19 May 2016
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
@@ -228,7 +228,6 @@
 
 	}
 
-
 	function SampleEncodeDecode{
 		#From a PowerShell window run one of the following commands:
 		. "C:\Projects\PS-CFW\Documents.ps1"
@@ -256,8 +255,8 @@
 
 	function DeCode{
 		Param(
-			[Parameter(Mandatory=$True)][String]$strBase64String, 
-			[Parameter(Mandatory=$False)][String]$strOutPut
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strBase64String, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strOutPut
 		);
 
 		#$Content = [System.Convert]::FromBase64String($Base64)
@@ -277,8 +276,8 @@
 	function DeCodeFile{
 		#A place holder.  Should be using DeCode() instead of this one.
 		Param(
-			[Parameter(Mandatory=$True)][String]$strBase64String, 
-			[Parameter(Mandatory=$False)][String]$strOutPut
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strBase64String, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strOutPut
 		);
 
 		DeCode $strBase64String $strOutPut;
@@ -286,8 +285,8 @@
 
 	function Encode{
 		Param(
-			[Parameter(Mandatory=$True)][String]$strFile, 
-			[Parameter(Mandatory=$False)][String]$strOutPut
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFile, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strOutPut
 		);
 
 		#$Content = Get-Content -Path C:\AM\AM.dll -Encoding Byte
@@ -307,147 +306,12 @@
 	function EncodeFile{
 		#A place holder.  Should be using Encode() instead of this one.
 		Param(
-			[Parameter(Mandatory=$True)][String]$strFile, 
-			[Parameter(Mandatory=$False)][String]$strOutPut
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFile, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strOutPut
 		);
 
 		Encode $strFile $strOutPut;
 	}
-
-
-	function ExcelXML{
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$DocPath,
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Query,
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$WorksheetName,
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$ListValues
-		)
-
-		$strAction = "";
-		#Make sure we have defaults, and know what action is being done.
-		if ((($WorksheetName -eq "") -or ($WorksheetName -eq $null)) -and (($Query -eq "") -or ($Query -eq $null)) -and (($ListValues -eq "") -or ($ListValues -eq $null))){
-			#Only $DocPath provided, so GetSheet()
-			#No need to set defaults.
-			$strAction = "GetSheets";
-		}
-		else{
-			if (($ListValues -eq "") -or ($ListValues -eq $null)){
-				#No $ListValues provided, so GetData().
-				$strAction = "Query";
-				if (($WorksheetName -eq "") -or ($WorksheetName -eq $null)){
-					#Query.  $Query was provided, so $WorksheetName NOT be needed.
-					#$WorksheetName = "Sheet1";
-					#Lets make sure $Query is populated too.
-					if (($Query -eq "") -or ($Query -eq $null)){
-						$Query = 'SELECT * FROM [Sheet1$]';
-					}
-				}
-				else{
-					#Query.  $WorksheetName was provided, but $Query may not have been.
-					#$WorksheetName was provided, lets make sure $Query is populated too.
-					if (($Query -eq "") -or ($Query -eq $null) -or ((!($Query -Match $WorksheetName)) -and ($Query.ToUpper().StartsWith("SELECT")))){
-						#Both of the following do the same thing.
-						#$Query = 'SELECT * FROM [{0}$]' -f $WorksheetName;
-						$Query = "SELECT * FROM [" + $WorksheetName + '$]';
-					}
-				}
-
-				# Make sure the query is in the correct syntax (e.g. 'SELECT * FROM [SheetName$]')
-				$Pattern = '.*from\b\s*(?<Table>\w+).*'
-				if($Query -match $Pattern) {
-					$Query = $Query -replace $Matches.Table, ('[{0}$]' -f $Matches.Table)
-				}
-			}
-			else{
-				#Must be Create()
-				$strAction = "Create";
-				#$WorksheetName has no default value, but probably should.
-				if (($WorksheetName -eq "") -or ($WorksheetName -eq $null)){
-					$WorksheetName = "Sheet1";
-				}
-			}
-		}
-
-		#Check what Providers are available.
-		#http://stackoverflow.com/questions/6649363/microsoft-ace-oledb-12-0-provider-is-not-registered-on-the-local-machine
-		$objOLEProviders = (New-Object system.data.oledb.oledbenumerator).GetElements() | select SOURCES_NAME, SOURCES_DESCRIPTION;
-		$objOLEProviders = ($objOLEProviders | Where-Object { $_.SOURCES_NAME -like "Microsoft.*" } | Sort-Object SOURCES_NAME);
-		#$Provider = ((New-Object System.Data.OleDb.OleDbEnumerator).GetElements() | Where-Object { $_.SOURCES_NAME -like "Microsoft.ACE.OLEDB*" } | Sort-Object SOURCES_NAME -Descending | Select-Object -First 1 SOURCES_NAME).SOURCES_NAME;
-		#$Provider = ($objOLEProviders | Where-Object { $_.SOURCES_NAME -like "Microsoft.ACE.OLEDB*" } | Sort-Object SOURCES_NAME -Descending | Select-Object -First 1 SOURCES_NAME).SOURCES_NAME;
-			#Should be able to use "Invoke-Command" to run a ScriptBlock using the "Microsoft.PowerShell32" Configuration.
-				#But does not work.
-			#http://www.ravichaganti.com/blog/powershell-2-0-remoting-guide-part-9-%E2%80%93-session-configurations-and-creating-custom-configurations/
-			#Get-PSSessionConfiguration
-			#Register-PSSessionConfiguration Microsoft.PowerShell32 -processorarchitecture x86 -force
-			#[ScriptBlock]$ScriptBlock = {((New-Object System.Data.OleDb.OleDbEnumerator).GetElements() | Where-Object { $_.SOURCES_NAME -like "Microsoft.ACE.OLEDB*" } | Sort-Object SOURCES_NAME -Descending | Select-Object -First 1 SOURCES_NAME).SOURCES_NAME;};
-			#Invoke-Command -ScriptBlock $ScriptBlock -ConfigurationName Microsoft.PowerShell32;
-
-		#Following errors (in 64 bit PS).
-		#[Reflection.Assembly]::LoadFrom("C:\Program Files (x86)\Common Files\Microsoft Shared\OFFICE14\ACEOLEDB.DLL")
-		#http://stackoverflow.com/questions/31545746/unable-to-load-net-assembly-in-powershell
-			#... You can't load a 32 bit dll in a 64 bit process or vice versa unless the dll was compiled for Any Cpu....
-			#... bad image format exceptions usually happen when you try to load a non-.net assembly, or if you try to load a differing .net assembly....
-
-		#Check if the file is XLS or XLSX
-		#http://danielcai.blogspot.com/2011/02/solution-run-jet-database-engine-on-64.html
-		#if ((Get-Item -Path $DocPath).Extension -eq '.xls'){
-		if (($strDocPath.EndsWith(".xls")) -and ($env:Processor_Architecture -eq "x86")){
-			#32Bit only
-			$Provider = "Microsoft.Jet.OLEDB.4.0";
-			$ExtendedProperties = "Excel 8.0;HDR=YES;IMEX=1";
-		}
-		else{
-			#32Bit or 64bit, depending on version of office installed.
-			#http://blog.sqlauthority.com/2015/06/24/sql-server-fix-export-error-microsoft-ace-oledb-12-0-provider-is-not-registered-on-the-local-machine/
-				#32Bit office -> "C:\Program Files (x86)\Common Files\Microsoft Shared\OFFICE14\ACEOLEDB.DLL"
-				#64Bit office -> "C:\Program Files\Common Files\Microsoft Shared\OFFICE14\ACEOLEDB.DLL"
-			$Provider = "Microsoft.ACE.OLEDB.12.0";
-			$ExtendedProperties = "Excel 12.0;HDR=YES";
-		}
-
-		# Build the connection string and connection object
-		#$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $DocPath, $ExtendedProperties
-		$ConnectionString = "Provider=" + $Provider + ";Data Source=" + $DocPath + ";Extended Properties=" + $ExtendedProperties;
-		$Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
-
-		try{
-			# Open the connection to the file, and fill the datatable
-			$Connection.Open()
-
-			#Create
-			if ($strAction -eq "Create"){
-				$Command = $Connection.CreateCommand()
-				$Command.CommandText = "CREATE TABLE [$WorksheetName] ($ListValues)";
-				$Command.ExecuteNonQuery();
-			}
-
-			#GetData
-			if ($strAction -eq "Query"){
-				$Adapter = New-Object -TypeName System.Data.OleDb.OleDbDataAdapter $Query, $Connection
-				$DataTable = New-Object System.Data.DataTable
-				$Adapter.Fill($DataTable) | Out-Null
-			}
-
-			#GetSheets
-			if ($strAction -eq "GetSheets"){
-				$DataTable = $Connection.GetSchema("Tables")
-			}
-		}
-		catch{
-			# something went wrong :-(
-			Write-Error $_.Exception.Message
-		}
-		finally{
-			# Close the connection
-			if ($Connection.State -eq 'Open') {
-				$Connection.Close()
-			}
-		}
-
-		# Return the results NOT as an array
-		return ,$DataTable
-	}
-
 
 	function ExcelCreateOpenFile{
 		param(
@@ -702,6 +566,228 @@
 		#$application.Quit();
 	}
 
+	function ExcelXML{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$DocPath,
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Query,
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$WorksheetName,
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$ListValues
+		)
+
+		$strAction = "";
+		#Make sure we have defaults, and know what action is being done.
+		if ((($WorksheetName -eq "") -or ($WorksheetName -eq $null)) -and (($Query -eq "") -or ($Query -eq $null)) -and (($ListValues -eq "") -or ($ListValues -eq $null))){
+			#Only $DocPath provided, so GetSheet()
+			#No need to set defaults.
+			$strAction = "GetSheets";
+		}
+		else{
+			if (($ListValues -eq "") -or ($ListValues -eq $null)){
+				#No $ListValues provided, so GetData().
+				$strAction = "Query";
+				if (($WorksheetName -eq "") -or ($WorksheetName -eq $null)){
+					#Query.  $Query was provided, so $WorksheetName NOT be needed.
+					#$WorksheetName = "Sheet1";
+					#Lets make sure $Query is populated too.
+					if (($Query -eq "") -or ($Query -eq $null)){
+						$Query = 'SELECT * FROM [Sheet1$]';
+					}
+				}
+				else{
+					#Query.  $WorksheetName was provided, but $Query may not have been.
+					#$WorksheetName was provided, lets make sure $Query is populated too.
+					if (($Query -eq "") -or ($Query -eq $null) -or ((!($Query -Match $WorksheetName)) -and ($Query.ToUpper().StartsWith("SELECT")))){
+						#Both of the following do the same thing.
+						#$Query = 'SELECT * FROM [{0}$]' -f $WorksheetName;
+						$Query = "SELECT * FROM [" + $WorksheetName + '$]';
+					}
+				}
+
+				# Make sure the query is in the correct syntax (e.g. 'SELECT * FROM [SheetName$]')
+				$Pattern = '.*from\b\s*(?<Table>\w+).*'
+				if($Query -match $Pattern) {
+					$Query = $Query -replace $Matches.Table, ('[{0}$]' -f $Matches.Table)
+				}
+			}
+			else{
+				#Must be Create()
+				$strAction = "Create";
+				#$WorksheetName has no default value, but probably should.
+				if (($WorksheetName -eq "") -or ($WorksheetName -eq $null)){
+					$WorksheetName = "Sheet1";
+				}
+			}
+		}
+
+		#Check what Providers are available.
+		#http://stackoverflow.com/questions/6649363/microsoft-ace-oledb-12-0-provider-is-not-registered-on-the-local-machine
+		$objOLEProviders = (New-Object system.data.oledb.oledbenumerator).GetElements() | select SOURCES_NAME, SOURCES_DESCRIPTION;
+		$objOLEProviders = ($objOLEProviders | Where-Object { $_.SOURCES_NAME -like "Microsoft.*" } | Sort-Object SOURCES_NAME);
+		#$Provider = ((New-Object System.Data.OleDb.OleDbEnumerator).GetElements() | Where-Object { $_.SOURCES_NAME -like "Microsoft.ACE.OLEDB*" } | Sort-Object SOURCES_NAME -Descending | Select-Object -First 1 SOURCES_NAME).SOURCES_NAME;
+		#$Provider = ($objOLEProviders | Where-Object { $_.SOURCES_NAME -like "Microsoft.ACE.OLEDB*" } | Sort-Object SOURCES_NAME -Descending | Select-Object -First 1 SOURCES_NAME).SOURCES_NAME;
+			#Should be able to use "Invoke-Command" to run a ScriptBlock using the "Microsoft.PowerShell32" Configuration.
+				#But does not work.
+			#http://www.ravichaganti.com/blog/powershell-2-0-remoting-guide-part-9-%E2%80%93-session-configurations-and-creating-custom-configurations/
+			#Get-PSSessionConfiguration
+			#Register-PSSessionConfiguration Microsoft.PowerShell32 -processorarchitecture x86 -force
+			#[ScriptBlock]$ScriptBlock = {((New-Object System.Data.OleDb.OleDbEnumerator).GetElements() | Where-Object { $_.SOURCES_NAME -like "Microsoft.ACE.OLEDB*" } | Sort-Object SOURCES_NAME -Descending | Select-Object -First 1 SOURCES_NAME).SOURCES_NAME;};
+			#Invoke-Command -ScriptBlock $ScriptBlock -ConfigurationName Microsoft.PowerShell32;
+
+		#Following errors (in 64 bit PS).
+		#[Reflection.Assembly]::LoadFrom("C:\Program Files (x86)\Common Files\Microsoft Shared\OFFICE14\ACEOLEDB.DLL")
+		#http://stackoverflow.com/questions/31545746/unable-to-load-net-assembly-in-powershell
+			#... You can't load a 32 bit dll in a 64 bit process or vice versa unless the dll was compiled for Any Cpu....
+			#... bad image format exceptions usually happen when you try to load a non-.net assembly, or if you try to load a differing .net assembly....
+
+		#Check if the file is XLS or XLSX
+		#http://danielcai.blogspot.com/2011/02/solution-run-jet-database-engine-on-64.html
+		#if ((Get-Item -Path $DocPath).Extension -eq '.xls'){
+		if (($strDocPath.EndsWith(".xls")) -and ($env:Processor_Architecture -eq "x86")){
+			#32Bit only
+			$Provider = "Microsoft.Jet.OLEDB.4.0";
+			$ExtendedProperties = "Excel 8.0;HDR=YES;IMEX=1";
+		}
+		else{
+			#32Bit or 64bit, depending on version of office installed.
+			#http://blog.sqlauthority.com/2015/06/24/sql-server-fix-export-error-microsoft-ace-oledb-12-0-provider-is-not-registered-on-the-local-machine/
+				#32Bit office -> "C:\Program Files (x86)\Common Files\Microsoft Shared\OFFICE14\ACEOLEDB.DLL"
+				#64Bit office -> "C:\Program Files\Common Files\Microsoft Shared\OFFICE14\ACEOLEDB.DLL"
+			$Provider = "Microsoft.ACE.OLEDB.12.0";
+			$ExtendedProperties = "Excel 12.0;HDR=YES";
+		}
+
+		# Build the connection string and connection object
+		#$ConnectionString = 'Provider={0};Data Source={1};Extended Properties="{2}"' -f $Provider, $DocPath, $ExtendedProperties
+		$ConnectionString = "Provider=" + $Provider + ";Data Source=" + $DocPath + ";Extended Properties=" + $ExtendedProperties;
+		$Connection = New-Object System.Data.OleDb.OleDbConnection $ConnectionString
+
+		try{
+			# Open the connection to the file, and fill the datatable
+			$Connection.Open()
+
+			#Create
+			if ($strAction -eq "Create"){
+				$Command = $Connection.CreateCommand()
+				$Command.CommandText = "CREATE TABLE [$WorksheetName] ($ListValues)";
+				$Command.ExecuteNonQuery();
+			}
+
+			#GetData
+			if ($strAction -eq "Query"){
+				$Adapter = New-Object -TypeName System.Data.OleDb.OleDbDataAdapter $Query, $Connection
+				$DataTable = New-Object System.Data.DataTable
+				$Adapter.Fill($DataTable) | Out-Null
+			}
+
+			#GetSheets
+			if ($strAction -eq "GetSheets"){
+				$DataTable = $Connection.GetSchema("Tables")
+			}
+		}
+		catch{
+			# something went wrong :-(
+			Write-Error $_.Exception.Message
+		}
+		finally{
+			# Close the connection
+			if ($Connection.State -eq 'Open') {
+				$Connection.Close()
+			}
+		}
+
+		# Return the results NOT as an array
+		return ,$DataTable
+	}
+
+	function ParseLogFile{
+		param(
+			[ValidateNotNull()][parameter(Mandatory=$True, HelpMessage='Source File, with path')][String]$SourceFile,
+			[ValidateNotNull()][parameter(Mandatory=$True, HelpMessage='Search criteria')][String]$SearchString,
+			[ValidateNotNull()][parameter(Mandatory=$False, HelpMessage='Destination Path for Report')][String]$DestPath
+		)
+		#$SourceFile = The log file to search through.  (i.e. "\\Nawespscfs101v.nadsuswe.nads.navy.mil\isf-ios$\ITSS-Tools\Logs\AScII\20160425_BO-12864827_CreatedBy_AScII.log")
+		#$SearchString = The sring to look for in each line.  (i.e. " INTO Transactions " or "283821")
+		#$DestPath = The destination path to generate the "Filtered" log file to.
+			#ParseLogFile "\\Nawespscfs101v.nadsuswe.nads.navy.mil\isf-ios$\ITSS-Tools\Logs\AScII\20160426_AScII.log" "283821" "C:\Projects\PS-Scripts\Tests\";
+
+		Write-Host "`r`n";
+		Write-Host "Parsing log '$SourceFile'.";
+		$ElapsedTime = [System.Diagnostics.Stopwatch]::StartNew();
+
+		$intLineCount = 0;
+		$intLinesFound = 0;
+		if (Test-Path $SourceFile){
+			$objFile = Get-Item $SourceFile -Force;
+			if ($objFile.PSIsContainer -eq $False){
+				#File
+				if ($objFile.Length -gt 0){
+					if (([String]::IsNullOrEmpty($DestPath)) -or ((Test-Path $DestPath) -eq $False)){
+						if ([String]::IsNullOrEmpty($DestPath)){
+							Write-Host "Destination path was not provided, so using:";
+						}
+						else{
+							Write-Host "Destination path '$DestPath' does not exist, so using:";
+						}
+						$DestPath = $objFile.Directory.FullName;
+						Write-Host "  $DestPath";
+					}
+					if ($DestPath.EndsWith("\") -eq $False){
+						$DestPath = $DestPath + "\";
+					}
+					$ErrorActionPreference = 'SilentlyContinue';
+					$strOutFile = $DestPath + ($objFile.Name).SubString(0, ($objFile.Name.Length - $objFile.Extension.Length)) + "-Filtered-(" + $SearchString + ")" + $objFile.Extension;
+					$Error.Clear();
+					$objWriter = New-Object System.IO.StreamWriter($strOutFile);
+					if ($Error){
+						$Error.Clear();
+						$strOutFile = $DestPath + ($objFile.Name).SubString(0, ($objFile.Name.Length - $objFile.Extension.Length)) + "-Filtered" + $objFile.Extension;
+						$objWriter = New-Object System.IO.StreamWriter($strOutFile);
+					}
+					$ErrorActionPreference = 'Continue';
+					if ($Error){
+						Write-Host "Error tying to setup the output file.";
+					}
+					else{
+						$intTotalLines = ([IO.File]::ReadAllLines($SourceFile)).Count;
+						$intDivisor = [Int]("1" + ("0" * (([String]$intTotalLines).Length - 2)));
+
+						$objStream = $objFile.Open([System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite);
+						$objReader = New-Object System.IO.StreamReader($objStream);
+						while (!$objReader.EndOfStream){
+							$intLineCount++;
+							if (!(([String]($intLineCount / $intDivisor)).Contains("."))){
+								Write-Host "." -NoNewline;
+							}
+							$strLine = $objReader.ReadLine();
+							if ($strLine -match $SearchString){
+								$intLinesFound++;
+								$objWriter.Write($strLine.Trim() + "`r`n");
+							}
+						}
+						Write-Host "`r`n";
+						$objWriter.Close();
+					}
+				}
+				else{
+					Write-Host "The log file provided '$SourceFile', is empty (size 0).";
+				}
+			}
+			else{
+				#Directory
+				Write-Host "The log file provided '$SourceFile', is a directory.";
+			}
+		}
+		else{
+			#File not found
+			Write-Host "The log file provided '$SourceFile' could not be found.";
+		}
+
+		Write-Host "Took $($ElapsedTime.Elapsed.ToString()), to filter out $intLinesFound lines (from the $intLineCount total lines).";
+		Write-Host "Results have been written to: "
+		Write-Host $strOutFile;
+		Write-Host "`r`n"
+
+	}
 
 	function URLSaveToFile{
 		Param(
@@ -733,7 +819,6 @@
 			}
 		}
 	}
-
 
 	function ZipCreateFile{
 		Param(
