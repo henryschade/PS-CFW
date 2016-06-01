@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	16 May 2016
+# Updated Date:	27 May 2016
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process. 
@@ -312,24 +312,42 @@
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFile
 		)
-		#$strFile = Full Path of the PST file to add. (i.e. "C:\Users\Public\Archive.pst")
+		#Returns True or False.  Adds an Outlook PST.  Ideally Outlook should be open, but it is NOT required.
+		#$strFile = Full Path of the PST file to add, or a text file with a list of PST's to add. (i.e. "C:\Users\Public\Archive.pst" or "C:\Projects\RAP\PSTs.txt")
+		#Sample Usage:
+			#foreach ($strLine in (Get-Content $strPSTFile)){AddPST $strLine;}
+			#AddPST "C:\Projects\RAP\PSTs.txt";
 
+		$bolRet = $False;
 		#https://blogs.msdn.microsoft.com/arvindsh/2014/12/11/using-powershell-to-attach-pst-files-to-outlook/
-		#http://poshcode.org/5087
+		if ((!([String]::IsNullOrEmpty($strFile))) -and (Test-Path $strFile)){
+			if ($strFile.EndsWith(".pst")){
+				$Error.Clear();
+				Add-Type -Assembly "Microsoft.Office.Interop.Outlook" | Out-Null;
+				$objOutlook = New-Object -ComObject Outlook.Application;
+				$objNameSpace = $objOutlook.GetNameSpace("MAPI");
+				$objNameSpace.AddStore($strFile);
 
-		Add-Type -Assembly "Microsoft.Office.Interop.Outlook" | Out-Null;
-		$objOutlook = New-Object -ComObject Outlook.Application;
-		$objNameSpace = $objOutlook.GetNameSpace("MAPI");
-		#dir ($strPath "\*.pst") | % {
-		#	$objNameSpace.AddStore($_.FullName);
-		#}
-		$objNameSpace.AddStore($strFile);
+				if (!($Error)){
+					$bolRet = $True;
+				}
+			}
+			else{
+				if ($strFile.EndsWith(".txt")){
+					$bolRet = $True;
+					foreach ($strLine in (Get-Content $strFile)){
+						if (!([String]::IsNullOrEmpty($strLine))){
+							$bolReturn = AddPST $strLine;
+							if ($bolReturn -ne $True){
+								$bolRet = $False;
+							}
+						}
+					}
+				}
+			}
+		}
 
-
-		#http://poshcode.org/5087
-		#[Reflection.Assembly]::LoadWithPartialname("Microsoft.Office.Interop.Outlook") | Out-Null;
-		#$objOutlook = New-Object -ComObject Outlook.Application;
-		#$objNameSpace.Session.AddStore($strFile)
+		return $bolRet;
 	}
 
 	function CleanUpConn{
@@ -406,7 +424,11 @@
 		#	$objExchPool = $global:objExchPool;
 		#}
 
-		if ($strUserName.EndsWith(".dev")){
+		$InitializeDefaultDrives=$False;
+		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
+		$strLastName = ($(Try {Get-ADUser -Identity $strUserName -Server $strDC -Properties *} Catch {$null})).sn;
+
+		if (($strUserName.EndsWith(".dev")) -and ($strLastName -ne "Dev")){
 			$strMessage = "Skipping MailBox creation; Dev accounts don't get Exchange MailBoxes.`r`n";
 			$strRunningWorkLog = $strRunningWorkLog + $strMessage;
 			if ($bUpdateResults -eq $True){

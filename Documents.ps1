@@ -749,6 +749,7 @@
 					}
 					else{
 						$intTotalLines = ([IO.File]::ReadAllLines($SourceFile)).Count;
+						Write-Host "Processing $intTotalLines total lines.";
 						$intDivisor = [Int]("1" + ("0" * (([String]$intTotalLines).Length - 2)));
 
 						$objStream = $objFile.Open([System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite);
