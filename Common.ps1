@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	21 April 2016
+# Updated Date:	18 May 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -45,7 +45,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bSubs = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bPrompts = $True, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bSkip = $True, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strBackUpDir = "..\BackUps\"
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strBackUpDir
 		)
 		#Copies/Backups Source Directory files to Destination Directory.
 			#The SrcFile.LastWriteTime MUST be greater than the DestFileLastWriteTime, or the file is NOT copied/backedup.
@@ -116,6 +116,10 @@
 		if (!($strBackUpDir.EndsWith("\"))){
 			$strBackUpDir = $strBackUpDir + "\";
 		}
+		#Write-Host "strSourceDir $strSourceDir";
+		#Write-Host "strDestDir $strDestDir";
+		#Write-Host "strBackUpDir $strBackUpDir";
+		#Write-Host "";
 
 		$objSrcSubItems = Get-ChildItem $strSourceDir -Force;		#force is necessary to get hidden files/folders
 		$objDestSubItems = Get-ChildItem $strDestDir -Force;		#force is necessary to get hidden files/folders
@@ -1211,8 +1215,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strText, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolClear = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)]$objControl, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)]$strLogDir, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)]$strLogFile
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogFile
 		)
 		#$strText = The text to put in $objControl ($objControl ideally should to be a TextBox).  ($txbResults by default)
 		#$bolClear = True or False.  Clear the Control B4 entering $strText into it.
@@ -1221,8 +1225,10 @@
 		#$strLogFile = (Only needed if not a "global" variable.) The name of the log file to write info to.
 
 		#Write to local log file
-		if ((!([String]::IsNullOrEmpty($strText.Trim()))) -and ($strText.Trim() -ne "`r`n")){
-			WriteLogFile (" " + $strText.Replace("`r`n", " ")) $strLogDir $strLogFile;
+		if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
+			if ((!([String]::IsNullOrEmpty($strText.Trim()))) -and ($strText.Trim() -ne "`r`n")){
+				WriteLogFile (" " + $strText.Replace("`r`n", " ")) $strLogDir $strLogFile;
+			}
 		}
 
 		if ([String]::IsNullOrEmpty($objControl)){
@@ -1345,6 +1351,7 @@
 					$Message | Out-File -filepath ($LogDir + $LogFile) -Encoding Default -Append;
 				}
 				catch{
+					Start-Sleep -Milliseconds 100; 
 				}
 			} while (($Error) -and ($intTries -lt $intRetry))
 		}

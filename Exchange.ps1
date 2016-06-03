@@ -1,8 +1,8 @@
 ###########################################
-# Updated Date:	29 March 2016
+# Updated Date:	27 May 2016
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
-#				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process, 
+#				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process. 
 #					and the following need to be defined/setup: $global:objJobs, and $global:objExchPool.
 #				CreateMailBox() uses a routine UpdateResults() that is in the calling project (AScII and Exchange-GUI).
 ##########################################
@@ -308,6 +308,48 @@
 	}
 
 
+	function AddPST{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFile
+		)
+		#Returns True or False.  Adds an Outlook PST.  Ideally Outlook should be open, but it is NOT required.
+		#$strFile = Full Path of the PST file to add, or a text file with a list of PST's to add. (i.e. "C:\Users\Public\Archive.pst" or "C:\Projects\RAP\PSTs.txt")
+		#Sample Usage:
+			#foreach ($strLine in (Get-Content $strPSTFile)){AddPST $strLine;}
+			#AddPST "C:\Projects\RAP\PSTs.txt";
+
+		$bolRet = $False;
+		#https://blogs.msdn.microsoft.com/arvindsh/2014/12/11/using-powershell-to-attach-pst-files-to-outlook/
+		if ((!([String]::IsNullOrEmpty($strFile))) -and (Test-Path $strFile)){
+			if ($strFile.EndsWith(".pst")){
+				$Error.Clear();
+				Add-Type -Assembly "Microsoft.Office.Interop.Outlook" | Out-Null;
+				$objOutlook = New-Object -ComObject Outlook.Application;
+				$objNameSpace = $objOutlook.GetNameSpace("MAPI");
+				$objNameSpace.AddStore($strFile);
+
+				if (!($Error)){
+					$bolRet = $True;
+				}
+			}
+			else{
+				if ($strFile.EndsWith(".txt")){
+					$bolRet = $True;
+					foreach ($strLine in (Get-Content $strFile)){
+						if (!([String]::IsNullOrEmpty($strLine))){
+							$bolReturn = AddPST $strLine;
+							if ($bolReturn -ne $True){
+								$bolRet = $False;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return $bolRet;
+	}
+
 	function CleanUpConn{
 		#From PS-ExchConn.ps1.
 		$Session = Get-PSSession | Select Name;
@@ -334,7 +376,9 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strDC, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][Boolean]$bDoBackGround, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strExchStore = "", 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Boolean]$bUpdateResults = $True
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Boolean]$bUpdateResults = $True, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$objJobs = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)]$objExchPool = ""
 		)
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
@@ -351,6 +395,8 @@
 		#$strDC = The DomainController that was used to create the Account on, and that should be used to create the MailBox with.
 		#$bDoBackGround = $True or $False.  Do the work in a background process.
 		#$bUpdateResults = $True or $False.  Do the UpdateResults() routines.
+		#$objJobs = The collection (array) of jobs being run.	($global:objJobs by default)
+		#$objExchPool = The Exchange RunSpacePool to use.		($global:objExchPool by default)
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -371,8 +417,18 @@
 
 		$bDidMailBox = $False;
 		$strJobName = "";
+		#if ([String]::IsNullOrEmpty($objJobs)){
+		#	$objJobs = $global:objJobs;
+		#}
+		#if ([String]::IsNullOrEmpty($objExchPool)){
+		#	$objExchPool = $global:objExchPool;
+		#}
 
-		if ($strUserName.EndsWith(".dev")){
+		$InitializeDefaultDrives=$False;
+		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
+		$strLastName = ($(Try {Get-ADUser -Identity $strUserName -Server $strDC -Properties *} Catch {$null})).sn;
+
+		if (($strUserName.EndsWith(".dev")) -and ($strLastName -ne "Dev")){
 			$strMessage = "Skipping MailBox creation; Dev accounts don't get Exchange MailBoxes.`r`n";
 			$strRunningWorkLog = $strRunningWorkLog + $strMessage;
 			if ($bUpdateResults -eq $True){
@@ -545,7 +601,12 @@
 						$strEmail = $strAlias + "@navy.mil";
 					}
 					#Run the background job.
-					$global:objJobs += CreateRunSpaceJob -RSPool $global:objExchPool -JobName $strJobName -JobScript $objJobCode -Arguments @($strUserName, $strAlias, $strEmail, $strExchMBDB, $strDC);
+					if (([String]::IsNullOrEmpty($objJobs)) -or ([String]::IsNullOrEmpty($objExchPool))){
+						$global:objJobs += CreateRunSpaceJob -RSPool $global:objExchPool -JobName $strJobName -JobScript $objJobCode -Arguments @($strUserName, $strAlias, $strEmail, $strExchMBDB, $strDC);
+					}
+					else{
+						$objJobs += CreateRunSpaceJob -RSPool $objExchPool -JobName $strJobName -JobScript $objJobCode -Arguments @($strUserName, $strAlias, $strEmail, $strExchMBDB, $strDC);
+					}
 					if ($Error){
 						$strMessage = "Error creating background process to create the user Mailbox.";
 						#$strMessage = $strMessage + "   " + ([System.DateTime]::Now).ToString();
@@ -1749,8 +1810,8 @@
 			[Parameter(Mandatory=$False)][String]$strServer
 		);
 		#Returns a list of all the PowerShell commandlets imported.
-		#$WhatSide = $args[0];
-		#$strServer = "Default", "Random", "naeaNRFKxh01v"
+		#$WhatSide = What domain to connect to. nadsuswe or nadsusea or pacom or nmci-isf
+		#$strServer = What server to connect to.  "Default", "Random", "naeaNRFKxh01v"
 
 		$Session = "";
 		#Clear-Host;
@@ -1758,26 +1819,30 @@
 		CleanUpConn;
 
 		if (($WhatSide -eq $null) -or ($WhatSide -eq "")){
-			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom)';
+			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom or [N]mci-isf)';
 		}
 		if ($WhatSide.Length -gt 1){
-			if (($WhatSide -eq "nadsusea") -or ($WhatSide -eq "nadsuswe") -or ($WhatSide -eq "pads")){
+			#if (($WhatSide -eq "nadsusea") -or ($WhatSide -eq "nadsuswe") -or ($WhatSide -eq "pads") -or ($WhatSide -eq "nmci-isf")){
+			if (($WhatSide -eq "nadsusea") -or ($WhatSide -eq "nadsuswe")){
 				if ($WhatSide -eq "nadsusea"){
 					$WhatSide = "e";
 				}
 				if ($WhatSide -eq "nadsuswe"){
 					$WhatSide = "w";
 				}
-				if ($WhatSide -eq "pads"){
-					$WhatSide = "p";
-				}
+				#if ($WhatSide -eq "pads"){
+				#	$WhatSide = "p";
+				#}
+				#if ($WhatSide -eq "nmci-isf"){
+				#	$WhatSide = "n";
+				#}
 			}
 			else{
-				$WhatSide.substring(0, 1)
+				$WhatSide = $WhatSide.substring(0, 1);
 			}
 		}
-		if (($WhatSide -ne "e") -and ($WhatSide -ne "w") -and ($WhatSide -ne "p")){
-			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom)';
+		if (($WhatSide -ne "e") -and ($WhatSide -ne "w") -and ($WhatSide -ne "p") -and ($WhatSide -ne "n")){
+			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom or [N]mci-isf)';
 		}
 		if ($WhatSide.Length -gt 1){
 			$WhatSide.substring(0, 1)
@@ -1885,6 +1950,29 @@
 			}
 			$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
 		}
+		if ($WhatSide -eq "n"){
+			#Write-Host "nmci-isf it is";
+			$strDomain = "nmci-isf";
+			if (($strServer -eq "Default") -or ($strServer -eq "D")){
+				$strServer = "NMCINRFKXF01V.nmci-isf.com";
+			}
+			else{
+				if (($strServer -eq "Random") -or ($strServer -eq "R")){
+					#Get all the Exchange Servers in the Domain (filter the results).
+					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nmci") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+
+					#select a random server from the list
+					if($objExchServers.Count -gt 1) {
+						$intRandom = Get-Random -Minimum 0 -Maximum $objExchServers.Count;
+						$strServer = $objExchServers[$intRandom].FQDN;
+					}else{
+						$strServer = $objExchServers[0].FQDN;
+					}
+				}
+			}
+			$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
+		}
+
 		$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri "http://$strServer/PowerShell/" -Authentication Kerberos;
 
 		if (($Session -ne "") -and ($Session -ne $null)){

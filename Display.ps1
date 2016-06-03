@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	30 March 2016
+# Updated Date:	16 May 2016
 # Purpose:		Hide/Show PowerShell Console Window.
 # 				Display Orientation Methods.
 # Requirements: None
@@ -8,6 +8,18 @@
 	#http://www.aspnet-answers.com/microsoft/Powershell/30523953/invisible-windows.aspx
 
 	#http://blogs.msdn.com/b/frankfi/archive/2008/08/13/changing-the-display-resolution-in-a-multi-monitor-environment.aspx
+
+	#Foreground and background colors for the console:  ([system.consolecolor]::GetNames("consolecolor");)
+	#Black, White, 
+	#Gray, DarkGray, 
+	#Red, DarkRed, 
+	#Blue, DarkBlue, 
+	#Green, DarkGreen, 
+	#Yellow, DarkYellow, 
+	#Cyan, DarkCyan, 
+	#Magenta, DarkMagenta
+	#$Host.UI.RawUI.BackgroundColor = "DarkMagenta";
+
 
 	function DisplaySampleUsage{
 		[cDisplaySettings]::GetDispOrientation();
@@ -360,7 +372,6 @@ if ($True -eq $True){
 '@;		#This MUST end w/ no leading spaces.
 	}
 
-
 	#Load the DisplayCode
 	$Error.Clear();
 	if (-not ([System.Management.Automation.PSTypeName]'cDisplaySettings').Type){
@@ -407,7 +418,6 @@ if ($True -eq $True){
 			}
 		}
 	}
-
 
 	#Load the ConsoleCode
 	$Error.Clear();

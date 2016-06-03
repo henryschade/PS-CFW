@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	4 April 2016
+# Updated Date:	9 May 2016
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -326,31 +326,9 @@
 			$strSummary = $strSummary.SubString(0, 128)
 		}
 		$intTimeOffset = [Int][System.DateTime]::Now.Hour - [Int]([System.DateTime]::Now).ToUniversalTime().Hour;
-
-		[String]$strSQL = "INSERT INTO Transactions (login_name, date_time, UTC_date_time, UTC_Offset, Zone, site, coi, Source, Team, Assignment, ticket, QuoteNumber, BuildOutNum, Type, cas, CI, taskDesc, taskRef, title, res, QTY, credit_time, handle_time) VALUES ("
-		#[Environment]::UserDomainName
-		$strSQL = $strSQL + "'" + [Environment]::UserName + "', "   														#login_name
-		$strSQL = $strSQL + "'" + [System.DateTime]::Now + "', "      														#date_time
-		$strSQL = $strSQL + "'" + ([System.DateTime]::Now).ToUniversalTime().ToString() + "', "      						#UTC_date_time
-		$strSQL = $strSQL + "'" + $intTimeOffset + "', "      																#UTC_Offset
-		$strSQL = $strSQL + "'" + (-join ([System.TimeZoneInfo]::Local.Id.Split(" ") | Foreach-Object {$_[0]})) + "', "		#Zone
-		$strSQL = $strSQL + "'" + [Environment]::MachineName.SubString(2, 4) + "', "   										#site
-		$strSQL = $strSQL + "'" + $strCOI + "', " 																			#coi
-		$strSQL = $strSQL + "'" + $strSource + "', "																		#Source
-		$strSQL = $strSQL + "'" + $strTeam + "', "																			#Team
-		$strSQL = $strSQL + "'" + $strAssignment + "', "																	#Assignment
-		$strSQL = $strSQL + "'" + $strTicketNum + "', "																		#Ticket
-		$strSQL = $strSQL + "'" + $strQuoteNum + "', "																		#QuoteNumber
-		$strSQL = $strSQL + "'" + $strBONum + "', "																			#BuildOutNum
-		$strSQL = $strSQL + "'" + $strToolName + "', "																		#type
-		$strSQL = $strSQL + "'" + $strCTI + "', " 					   														#cas  (CTI or Category.Area.Sub-Area)
-		$strSQL = $strSQL + "'" + $strCI + "', " 					   														#CI
-		$strSQL = $strSQL + "'" + $strAction + "', "																		#taskDesc
-		$strSQL = $strSQL + "'" + "0" + "', "                 																#taskRef
-		$strSQL = $strSQL + "'" + $strSummary + "', "																		#title
-		$strSQL = $strSQL + "'" + "" + "', "                        														#res
-		$strSQL = $strSQL + "" + $intQuant + ", "              																#QTY
-		$strSQL = $strSQL + "" + "0" + ", "               																	#credit_time
+		if ([Int][System.DateTime]::Now.Day -lt [Int]([System.DateTime]::Now).ToUniversalTime().Day){
+			$intTimeOffset = $intTimeOffset - 24;
+		}
 		if (($dteStart -eq "") -or ($dteStart -eq $null) -or ($dteStart -eq 0)){
 			$intHandleTime = 0;
 			#$strSQL = $strSQL + "0"																							#handle_time (minutes)
@@ -359,8 +337,6 @@
 			$intHandleTime = [Math]::Round($intHandleTime, 2);
 			#$strSQL = $strSQL + "'" + $intHandleTime + "'"																		#handle_time (minutes)
 		}
-		$strSQL = $strSQL + "" + $intHandleTime + ""																		#handle_time (minutes)
-		$strSQL = $strSQL + ")"
 
 		#https://blogs.technet.microsoft.com/heyscriptingguy/2014/08/03/weekend-scripter-a-hidden-gem-in-the-powershell-ocean-get-pscallstack/
 		$objCallStack = Get-PSCallStack | Select-Object -Property *;
@@ -376,6 +352,34 @@
 		#The SP SQL statement:
 		if ($strLastCmd -eq "RecordTransaction"){
 			$strSQL = "GetSP_spSetTransaction '" + ([Environment]::MachineName.SubString(2, 4)) + "'," + $intTimeOffset + ",'" + $strCOI + "','" + $strSource + "','" + $strTeam + "','" + $strAssignment + "','" + $strToolName + "','" + $strCI + "','" + $strAction + "'," + $intQuant + "," + $intHandleTime + ",'','" + $strTicketNum + "','" + $strQuoteNum + "','" + $strBONum + "','" + $strSummary + "'";
+		}
+		else{
+			[String]$strSQL = "INSERT INTO Transactions (login_name, date_time, UTC_date_time, UTC_Offset, Zone, site, coi, Source, Team, Assignment, ticket, QuoteNumber, BuildOutNum, Type, cas, CI, taskDesc, taskRef, title, res, QTY, credit_time, handle_time) VALUES ("
+			#[Environment]::UserDomainName
+			$strSQL = $strSQL + "'" + [Environment]::UserName + "', "   														#login_name
+			$strSQL = $strSQL + "'" + [System.DateTime]::Now + "', "      														#date_time
+			$strSQL = $strSQL + "'" + (([System.DateTime]::Now).ToUniversalTime()).ToString() + "', "      						#UTC_date_time
+			$strSQL = $strSQL + "'" + $intTimeOffset + "', "      																#UTC_Offset
+			$strSQL = $strSQL + "'" + (-join ([System.TimeZoneInfo]::Local.Id.Split(" ") | Foreach-Object {$_[0]})) + "', "		#Zone
+			$strSQL = $strSQL + "'" + [Environment]::MachineName.SubString(2, 4) + "', "   										#site
+			$strSQL = $strSQL + "'" + $strCOI + "', " 																			#coi
+			$strSQL = $strSQL + "'" + $strSource + "', "																		#Source
+			$strSQL = $strSQL + "'" + $strTeam + "', "																			#Team
+			$strSQL = $strSQL + "'" + $strAssignment + "', "																	#Assignment
+			$strSQL = $strSQL + "'" + $strTicketNum + "', "																		#Ticket
+			$strSQL = $strSQL + "'" + $strQuoteNum + "', "																		#QuoteNumber
+			$strSQL = $strSQL + "'" + $strBONum + "', "																			#BuildOutNum
+			$strSQL = $strSQL + "'" + $strToolName + "', "																		#type
+			$strSQL = $strSQL + "'" + $strCTI + "', " 					   														#cas  (CTI or Category.Area.Sub-Area)
+			$strSQL = $strSQL + "'" + $strCI + "', " 					   														#CI
+			$strSQL = $strSQL + "'" + $strAction + "', "																		#taskDesc
+			$strSQL = $strSQL + "'" + "0" + "', "                 																#taskRef
+			$strSQL = $strSQL + "'" + $strSummary + "', "																		#title
+			$strSQL = $strSQL + "'" + "" + "', "                        														#res
+			$strSQL = $strSQL + "" + $intQuant + ", "              																#QTY
+			$strSQL = $strSQL + "" + "0" + ", "               																	#credit_time
+			$strSQL = $strSQL + "" + $intHandleTime + ""																		#handle_time (minutes)
+			$strSQL = $strSQL + ")"
 		}
 
 		return [String]$strSQL;
