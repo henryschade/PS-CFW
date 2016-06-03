@@ -302,11 +302,21 @@
 
 		#$strRegPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion";
 		#$strProp = "DevicePath";
+		#$strRemoteSys = "ALSDCP002656";		#Henry Laptop;
 		if (!([String]::IsNullOrEmpty($strRemoteSys))){
-			Write-Verbose "Starting remote registry connection against: [$strRemoteSys].";
-			Write-Verbose "Registry Hive is: [$strRegPath].";
+			Write-Host "Starting remote registry connection against: [$strRemoteSys].";
+			Write-Host "Registry Hive is: [$strRegPath].";
+				if ($strRegPath.SubString(0,$strRegPath.IndexOf(":")) -eq "HKLM"){
+					$strType = [Microsoft.Win32.RegistryHive]::LocalMachine;
+				}
+				else{
+					$strType = $strRegPath.SubString(0,$strRegPath.IndexOf(":"));
+				}
+				$strKey = $strRegPath.SubString($strRegPath.IndexOf(":") + 2);
+
 			$Error.Clear();
-			$reg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey([Microsoft.Win32.RegistryHive]$strRegPath.SubString(0,$strRegPath.IndexOf(":")), $strRemoteSys);
+			#$reg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey([Microsoft.Win32.RegistryHive]$strRegPath.SubString(0,$strRegPath.IndexOf(":")), $strRemoteSys);
+			$reg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($strType, $strRemoteSys);
 			if ($Error){
 				$Error.Clear();
 				if ($strRegPath.SubString(0,$strRegPath.IndexOf(":")) -eq "HKLM"){
@@ -320,9 +330,25 @@
 				$type = [Microsoft.Win32.RegistryHive]::LocalMachine;
 				$reg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($type,$strRemoteSys);
 			}
-			Write-Verbose "Open remote subkey: [$strProp].";
-			$subKey = $reg.OpenSubKey($strProp);
-			Write-Verbose "Closing remote registry connection on: [$strRemoteSys].";
+			else{
+				Write-Host "Open remote subkey: [$strKey].";
+				$subKey = $reg.OpenSubKey($strKey);
+			}
+			if (([String]::IsNullOrEmpty($strProp))){
+				[System.Collections.ArrayList]$arrRet = @();
+				#foreach ($objKey in $subKey.GetStringValue()){
+				#	#Write-Host $objKey;
+				#	$arrRet += $objKey;
+				#}
+				foreach ($objKey in $subKey.GetSubKeyNames()){
+					#Write-Host $objKey;
+					$arrRet += $objKey;
+				}
+			}
+			else{
+				#Get prop
+			}
+			Write-Host "Closing remote registry connection on: [$strRemoteSys].";
 			$reg.close();
 		}
 		else{
