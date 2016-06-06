@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	18 May 2016
+# Updated Date:	6 June 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -1208,6 +1208,85 @@
 		#Converts passed in time, local time, to UTC.
 
 		return ((Get-Date $strTime).ToUniversalTime()).ToString();
+	}
+
+	function SetLogPath{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strProjName, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogDirS = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogDirL = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strShareLoc = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLocalLoc = ""
+		)
+		#$strProjName = Project Name. The directory Logs should be put in.
+		#$strLogDirS = The Path to logs on the Share.
+		#$strLogDirL = The Path to logs Locally.
+		#$strShareLoc = The "Name" of the Share log entry in the DB/config file.
+		#$strLocalLoc = The "Name" of the Local log entry in the DB/config file.
+			#$strLogDir = SetLogPath $strProjName $strLogDirS $strLogDirL $strShareLoc $strLocalLoc
+
+		#Get pathing info.
+		#Share
+		if (([String]::IsNullOrEmpty($strLogDirS)) -and (!([String]::IsNullOrEmpty($strShareLoc)))){
+			$strPathing = GetPathing $strShareLoc;
+			if ($strPathing.Results -gt 0){
+				$strLogDirS = $strPathing.Returns.Rows[0].Path + $strProjName + "\";
+			}
+			else{
+				#Default
+				$strLogDirS = "\\Nawespscfs101v.nadsuswe.nads.navy.mil\isf-ios$\ITSS-Tools\Logs\" + $strProjName + "\";
+			}
+		}
+		#Local
+		if (([String]::IsNullOrEmpty($strLogDirL)) -and (!([String]::IsNullOrEmpty($strLocalLoc)))){
+			$strPathing = GetPathing $strLocalLoc;
+			if ($strPathing.Results -gt 0){
+				$strLogDirL = $strPathing.Returns.Rows[0].Path + "Logs\" + $strProjName + "\";
+			}
+			else{
+				$strLogDirL = "C:\Users\Public\ITSS-Tools\Logs\" + $strProjName + "\";
+			}
+		}
+
+		#Make sure the log directories exist.
+		#Local
+		if (!([String]::IsNullOrEmpty($strLogDirL))){
+			if (!(Test-Path -Path $strLogDirL)){
+				#Need to create the directory
+				#PS mkdir, will create any parent folders needed.
+				$strResults = mkdir $strLogDirL;
+			}
+		}
+		#Share
+		if (!([String]::IsNullOrEmpty($strLogDirS))){
+			if (!(Test-Path -Path $strLogDirS)){
+				#Need to create the directory, after make sure the root share exists.
+				if ((Test-Path -Path ("\\" + $strLogDirS.Split("\")[2] + "\" + $strLogDirS.Split("\")[3]))){
+					#PS mkdir, will create any parent folders needed.
+					$strResults = mkdir $strLogDirS;
+				}
+			}
+		}
+
+		#Set logging path
+		if ([String]::IsNullOrEmpty($strLogDirS)){
+			#if (Test-Path -Path $strLogDirS){
+				$strLogDir = $strLogDirL;
+			#}
+			#else{
+			#	$strLogDir = $strLogDirS;
+			#}
+		}
+		else{
+			if (Test-Path -Path $strLogDirS){
+				$strLogDir = $strLogDirS;
+			}
+			else{
+				$strLogDir = $strLogDirL;
+			}
+		}
+
+		return @($strLogDir, $strLogDirS, $strLogDirL);
 	}
 
 	function UpdateResults{
