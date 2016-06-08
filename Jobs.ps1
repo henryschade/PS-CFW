@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	4 April 2016
+# Updated Date:	2 June 2016
 # Purpose:		Background Job and RunSpace Functions.
 # Requirements: None
 #				All this code is based on info from the following URLs:
@@ -288,10 +288,12 @@
 				$objJobs[$intX].Results = $null;
 				$objJobs[$intX].Name = "";
 				#$objJobs[$intX] = $null;		#CAN NOT DO THIS!!!!
+				$objJobs[$intX] = "";
 			}
 		}
 
 		#$objJobs = $objJobs | ? {$_ -ne $null};
+		$objJobs = $objJobs | ? {$_};
 	}
 
 	function CreateRunSpace{
@@ -352,6 +354,7 @@
 		##http://thesurlyadmin.com/2013/02/11/multithreading-powershell-scripts/
 		##http://blogs.technet.com/b/heyscriptingguy/archive/2013/09/29/weekend-scripter-max-out-powershell-in-a-little-bit-of-time-part-2.aspx
 
+		#https://msdn.microsoft.com/en-us/library/system.management.automation.powershell(v=vs.85).aspx
 
 		#http://stackoverflow.com/questions/11000801/using-a-psdatacollection-with-begininvoke-in-powershell
 		#$pipeline = [powershell]::Create().AddScript($JobScript).AddParameter("pauseTime", 5)

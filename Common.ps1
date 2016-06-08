@@ -1118,6 +1118,104 @@
 		}
 	}
 
+	function LoadConfig{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strProject, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strWhatGet = "Personal"
+		)
+		#Load/get config/ini info/file.  Returns a HashArray.
+		#$strProject = The Project/file name.
+		#$strWhatGet = What settings/file info to get.  "Personal", "Global", "Both".
+			#Global settings file is in Project root dir.
+			#Personal settings file is in users "My Documents" dir.
+
+		$hashSettings = @{};
+
+		if (($strWhatGet -eq "Global") -or ($strWhatGet -eq "Both")){
+			#Get Global path
+			#https://blogs.technet.microsoft.com/heyscriptingguy/2014/08/03/weekend-scripter-a-hidden-gem-in-the-powershell-ocean-get-pscallstack/
+			$objCallStack = Get-PSCallStack | Select-Object -Property *;
+			#$strLastCmd = $objCallStack[0].Command;
+			#$strFirstCmd = $objCallStack[($objCallStack.Count - 1)].Command;
+			$strFirstCmd = $objCallStack[-1].Command;
+			if (($strFirstCmd -eq "prompt") -and ($objCallStack.Count -ge 2)){
+				$strPathG = Split-Path $objCallStack[-2].ScriptName;
+			}
+			else{
+				$strPathG = Split-Path $objCallStack[-1].ScriptName;
+			}
+			if (!($strPathG.EndsWith("\"))){
+				$strPathG = $strPathG + "\";
+			}
+			#Write-Host $strPathG;
+			#Verify $strPathG.
+			if (!([String]::IsNullOrEmpty($strPathG))){
+				if (Test-Path -Path $strPathG){
+					$strConfigFile = $strPathG + $strProject + ".ini";
+					if (Test-Path -Path $strConfigFile){
+						#Read file into Hash Array
+						foreach ($strLine in [System.IO.File]::ReadAllLines($strConfigFile)){
+							if ($strLine.Contains(" : ")){
+								$strKey = $strLine.SubString(0, $strLine.IndexOf(" : ") - 2).Trim();
+								$strVal = $strLine.SubString($strLine.IndexOf(" : ") + 2).Trim();
+								if ($hashSettings.ContainsKey($strKey)){
+									$hashSettings.$strKey = $strVal
+								}
+								else{
+									$hashSettings.Add($strKey, $strVal);
+								}
+							}
+						}
+					}
+					else{
+						#Write-Host "No config file at: $strConfigFile";
+					}
+				}
+				else{
+					#Write-Host "Invalid path: $strPathG";
+				}
+			}
+		}
+
+		if (($strWhatGet -eq "Personal") -or ($strWhatGet -eq "Both")){
+			#Get Personal path
+			$strPathP = [Environment]::GetFolderPath("MyDocuments");
+			if (!($strPathP.EndsWith("\"))){
+				$strPathP = $strPathP + "\";
+			}
+			#Write-Host $strPathP;
+			#Verify $strPathP.
+			if (!([String]::IsNullOrEmpty($strPathP))){
+				if (Test-Path -Path $strPathP){
+					$strConfigFile = $strPathP + $strProject + ".ini";
+					if (Test-Path -Path $strConfigFile){
+						#Read file into Hash Array
+						foreach ($strLine in [System.IO.File]::ReadAllLines($strConfigFile)){
+							if ($strLine.Contains(" : ")){
+								$strKey = $strLine.SubString(0, $strLine.IndexOf(" : ") - 2).Trim();
+								$strVal = $strLine.SubString($strLine.IndexOf(" : ") + 2).Trim();
+								if ($hashSettings.ContainsKey($strKey)){
+									$hashSettings.$strKey = $strVal
+								}
+								else{
+									$hashSettings.Add($strKey, $strVal);
+								}
+							}
+						}
+					}
+					else{
+						#Write-Host "No config file at: $strConfigFile";
+					}
+				}
+				else{
+					#Write-Host "Invalid path: $strPathP";
+				}
+			}
+		}
+
+		return $hashSettings;
+	}
+
 	function LoadRequired{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][Array]$RequiredFiles, 
@@ -1208,6 +1306,22 @@
 		#Converts passed in time, local time, to UTC.
 
 		return ((Get-Date $strTime).ToUniversalTime()).ToString();
+	}
+
+	function SaveConfig{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strProject, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][Hashtable]$hSettings, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strWhatSet = "Personal"
+		)
+		#Save config/ini info/file.
+		#$strProject = The Project/file name.
+		#$hSettings = A HashTable/Array of the settings to save.
+		#$strWhatSet = What settings/file info to set/save.  "Personal", "Global".
+			#Global settings file is in Project root dir.
+			#Personal settings file is in users "My Documents" dir.
+
+		
 	}
 
 	function SetLogPath{

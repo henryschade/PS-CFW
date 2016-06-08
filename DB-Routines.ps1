@@ -342,12 +342,12 @@
 		$objCallStack = Get-PSCallStack | Select-Object -Property *;
 		$strLastCmd = $objCallStack[1].Command;			#0 is this routine.
 		##To get the first command called do the following:
-		#if ($objCallStack.Count -eq 1){
-		#	$strFirstCmd = $objCallStack[0].Command;
-		#}
-		#else{
+		##if ($objCallStack.Count -eq 1){
+		#	$strLastCmd = $objCallStack[0].Command;
+		##}
+		##else{
 		#	$strFirstCmd = $objCallStack[($objCallStack.Count - 1)].Command;
-		#}
+		##}
 
 		#The SP SQL statement:
 		if ($strLastCmd -eq "RecordTransaction"){
