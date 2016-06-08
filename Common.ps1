@@ -221,7 +221,7 @@
 							#SrcFile was NOT found in Dest Dir.
 							if ($bDoAll -eq $False){
 								Write-Host "`r`n" $objSrcItem.Name "was not found in the destination directory.";
-								Write-Host " Do you want to copy this file? `r`n [Y]es or [N]o or [A]ll"
+								Write-Host " Do you want to copy this file? `r`n [Y]es or [N]o or [A]ll `r`n"
 								$objResponse = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown")
 								if (($objResponse.Character -eq "A") -or ($objResponse.Character -eq "a")){
 									$bDoAll = $True;
@@ -785,7 +785,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strProject, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strWhatGet = "Personal"
 		)
-		#Load/get config/ini info/file.  Returns a HashArray.
+		#Load/get config/ini info/file.
+			#Returns a HashArray.
 		#$strProject = The Project/file name.
 		#$strWhatGet = What settings/file info to get.  "Personal", "Global", "Both".
 			#Global settings file is in Project root dir.
@@ -1315,13 +1316,160 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strWhatSet = "Personal"
 		)
 		#Save config/ini info/file.
+			#Returns True or False.
 		#$strProject = The Project/file name.
 		#$hSettings = A HashTable/Array of the settings to save.  MUST provide at least one key/setting.  Providing 0 Keys triggers a config file reset.
 		#$strWhatSet = What settings/file info to set/save.  "Personal", "Global".
 			#Global settings file is in Project root dir.
 			#Personal settings file is in users "My Documents" dir.
 
-		
+		$bolComplete = $False;
+		$strConfigFile = $strProject + ".ini";
+
+		if ($strWhatSet -eq "Global"){
+			#Get Global path
+			#https://blogs.technet.microsoft.com/heyscriptingguy/2014/08/03/weekend-scripter-a-hidden-gem-in-the-powershell-ocean-get-pscallstack/
+			$objCallStack = Get-PSCallStack | Select-Object -Property *;
+			#$strLastCmd = $objCallStack[0].Command;
+			#$strFirstCmd = $objCallStack[($objCallStack.Count - 1)].Command;
+			$strFirstCmd = $objCallStack[-1].Command;
+			if (($strFirstCmd -eq "prompt") -and ($objCallStack.Count -ge 2)){
+				$strPathG = Split-Path $objCallStack[-2].ScriptName;
+			}
+			else{
+				$strPathG = Split-Path $objCallStack[-1].ScriptName;
+			}
+			if (!($strPathG.EndsWith("\"))){
+				$strPathG = $strPathG + "\";
+			}
+
+			#Verify $strPathG.
+			if (!([String]::IsNullOrEmpty($strPathG))){
+				if (Test-Path -Path $strPathG){
+					$strConfigFile = $strPathG + $strConfigFile;
+					#if (Test-Path -Path $strConfigFile){
+					#	#Read file into Hash Array
+					#	$arrFile = [System.IO.File]::ReadAllLines($strConfigFile);
+					#	for ($intX = 0; $intX -lt $arrFile.Count; $intX++){
+					#		$strKey = "";
+					#		$strVal = "";
+					#		if ($arrFile[$intX].Contains(" : ")){
+					#			$strKey = $arrFile[$intX].SubString(0, $arrFile[$intX].IndexOf(" : ")).Trim();
+					#			$strVal = $arrFile[$intX].SubString($arrFile[$intX].IndexOf(" : ") + 2).Trim();
+					#		}
+
+					#		if (!([String]::IsNullOrEmpty($strKey))){
+					#			foreach ($strEntry in $hSettings.Keys){
+					#				if ($hSettings.ContainsKey($strKey)){
+					#					$arrFile[$intX] = $strKey + " : " + $hSettings.$strKey;
+					#					break;
+					#				}
+					#			}
+					#		}
+					#	}
+					#}
+				}
+			}
+		}
+
+		if ($strWhatSet -eq "Personal"){
+			#Get Personal path
+			$strPathP = [Environment]::GetFolderPath("MyDocuments");
+			if (!($strPathP.EndsWith("\"))){
+				$strPathP = $strPathP + "\";
+			}
+
+			#Verify $strPathP.
+			if (!([String]::IsNullOrEmpty($strPathP))){
+				if (Test-Path -Path $strPathP){
+					$strConfigFile = $strPathP + $strConfigFile;
+					#if (Test-Path -Path $strConfigFile){
+					#	#Read file into Hash Array
+					#	$arrFile = [System.IO.File]::ReadAllLines($strConfigFile);
+					#	for ($intX = 0; $intX -lt $arrFile.Count; $intX++){
+					#		$strKey = "";
+					#		$strVal = "";
+					#		if ($arrFile[$intX].Contains(" : ")){
+					#			$strKey = $arrFile[$intX].SubString(0, $arrFile[$intX].IndexOf(" : ")).Trim();
+					#			$strVal = $arrFile[$intX].SubString($arrFile[$intX].IndexOf(" : ") + 2).Trim();
+					#		}
+
+					#		if (!([String]::IsNullOrEmpty($strKey))){
+					#			foreach ($strEntry in $hSettings.Keys){
+					#				if ($hSettings.ContainsKey($strKey)){
+					#					$arrFile[$intX] = $strKey + " : " + $hSettings.$strKey;
+					#					break;
+					#				}
+					#			}
+					#		}
+					#	}
+					#}
+				}
+			}
+		}
+
+		if ($strConfigFile -ne ($strProject + ".ini")){
+			if (Test-Path -Path $strConfigFile){
+				if ($hSettings.Count -gt 0){
+					#Read file into Hash Array
+					$arrFile = [System.IO.File]::ReadAllLines($strConfigFile);
+					for ($intX = 0; $intX -lt $arrFile.Count; $intX++){
+						$strKey = "";
+						#$strVal = "";
+						if (!([String]::IsNullOrEmpty($arrFile[$intX]))){
+							if ($arrFile[$intX].Contains(" : ")){
+								$strKey = $arrFile[$intX].SubString(0, $arrFile[$intX].IndexOf(" : ")).Trim();
+								#$strVal = $arrFile[$intX].SubString($arrFile[$intX].IndexOf(" : ") + 2).Trim();
+							}
+
+							if (!([String]::IsNullOrEmpty($strKey))){
+								#foreach ($strEntry in $hSettings.Keys){
+									if ($hSettings.ContainsKey($strKey)){
+										$arrFile[$intX] = $strKey + " : " + $hSettings.$strKey;
+								#		break;
+									}
+								#}
+							}
+						}
+					}
+
+					$Error.Clear();
+					$arrFile | Out-File -filepath $strConfigFile -Encoding Default;
+					if (!($Error)){
+						$bolComplete = $True;
+					}
+				}
+				else{
+					#$hSettings.Count is 0, so delete the config file.
+					$intX = 0;
+					do {
+						$intX++;
+						$Error.Clear();
+						$strResults = Remove-Item $strConfigFile;
+					} while (($Error) -and ($intX -lt 10));
+					if (!($Error)){
+						$bolComplete = $True;
+					}
+				}
+			}
+			else{
+				#Currently no existing config file, so need to create one.
+				if ($hSettings.Count -gt 0){
+					$arrFile = @();
+					foreach ($strKey in $hSettings.Keys){
+						$arrFile += $strKey + " : " + $hSettings.$strKey;
+					}
+
+					$Error.Clear();
+					$arrFile | Out-File -filepath $strConfigFile -Encoding Default;
+					if (!($Error)){
+						$bolComplete = $True;
+					}
+				}
+			}
+		}
+
+		return $bolComplete;
 	}
 
 	function SetLogPath{
