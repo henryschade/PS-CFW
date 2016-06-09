@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	8 June 2016
+# Updated Date:	9 June 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -62,6 +62,7 @@
 		$arrSkipStarts = @(".git");
 		$arrSkipContains = @("Test");
 		$bDoAll = $False;
+		$strMessage = "";
 
 		if ($bPrompts -eq $True){
 			if ([String]::IsNullOrEmpty($strSourceDir.Trim())){
@@ -96,12 +97,27 @@
 			#$strBackUpDir = (GetPathing "BackUps").Returns.Rows[0]['Path'];
 			$strBackUpDir = $strDestDir + "..\";
 			$objDir = Get-Item $strBackUpDir -Force;
+			#This block is not right, but the idea is there.
+				#$strDestDirEnd = $strDestDir.Split("\");
+				#if ([String]::IsNullOrEmpty($strDestDirEnd[-1])){
+				#	$strDestDirEnd = $strDestDirEnd[-2];
+				#}
+				#else{
+				#	$strDestDirEnd = $strDestDirEnd[-1];
+				#}
+				#if (($objDir.Name -eq "Beta") -or ($objDir.Name -eq $strDestDirEnd)){
 			if ($objDir.Name -eq "Beta"){
 				$strBackUpDir = $strBackUpDir + "..\";
 			}
 			$strBackUpDir = $strBackUpDir + "BackUps\";
 			if (!(Test-Path -Path $strBackUpDir)){
-				Write-Host "Creating BackUp Directory: " $strBackUpDir;
+				$strUpdate = "Creating BackUp Directory: " + $strBackUpDir;
+				if ($bPrompts -eq $True){
+					Write-Host $strUpdate;
+				}
+				else{
+					$strMessage = $strMessage + $strUpdate + "`r`n";
+				}
 				mkdir $strBackUpDir | Out-Null;
 			}
 		}
@@ -189,7 +205,13 @@
 								$bolFoundFile = $True;
 								if (($objSrcItem.LastWriteTime -gt $objDestItem.LastWriteTime) -and ($objSrcItem.LastWriteTime -ne $objDestItem.LastWriteTime)){
 									#Source file is newer
-									Write-Host "`r`n" $objSrcItem.Name "(" $objSrcItem.LastWriteTime ") is newer than" $objDestItem.Name "(" $objDestItem.LastWriteTime ")";
+									$strUpdate = "`r`n" + $objSrcItem.Name + " (" + $objSrcItem.LastWriteTime + ") is newer than " + $objDestItem.Name + " (" + $objDestItem.LastWriteTime + ")";
+									if ($bPrompts -eq $True){
+										Write-Host $strUpdate;
+									}
+									else{
+										$strMessage = $strMessage + $strUpdate + "`r`n";
+									}
 
 									#Check if have a backup file, for today.
 									if (!([String]::IsNullOrEmpty($strBackUpDir))){
@@ -199,16 +221,34 @@
 										}
 
 										if (!(Test-Path -Path ($strBackUpDir + $strDateCode + "_" + $objSrcItem.Name))){
-											Write-Host "    Creating a backup copy of" $objDestItem.Name;
+											$strUpdate = "    Creating a backup copy of " + $objDestItem.Name;
+											if ($bPrompts -eq $True){
+												Write-Host $strUpdate;
+											}
+											else{
+												$strMessage = $strMessage + $strUpdate + "`r`n";
+											}
 											Copy-Item -Path $objDestItem.FullName -Destination ($strBackUpDir + $strDateCode + "_" + $objDestItem.Name);
 										}
 									}
-									Write-Host "    Copying" $objSrcItem.Name;
+									$strUpdate = "    Copying " + $objSrcItem.Name;
+									if ($bPrompts -eq $True){
+										Write-Host $strUpdate;
+									}
+									else{
+										$strMessage = $strMessage + $strUpdate + "`r`n";
+									}
 									Copy-Item -Path $objSrcItem.FullName -Destination $objDestItem.FullName;
 									$intCount ++;
 								}
 								else{
-									Write-Host "      File" $objDestItem.Name "is up to date.";
+									$strUpdate = "      File " + $objDestItem.Name + " is up to date.";
+									if ($bPrompts -eq $True){
+										Write-Host $strUpdate;
+									}
+									else{
+										$strMessage = $strMessage + $strUpdate + "`r`n";
+									}
 								}
 							}
 
@@ -228,7 +268,13 @@
 								}
 							}
 							if (($objResponse.Character -eq "Y") -or ($objResponse.Character -eq "y") -or ($bDoAll -eq $True)){
-								Write-Host "    Copying" $objSrcItem.Name;
+								$strUpdate = "    Copying " + $objSrcItem.Name;
+								if ($bPrompts -eq $True){
+									Write-Host $strUpdate;
+								}
+								else{
+									$strMessage = $strMessage + $strUpdate + "`r`n";
+								}
 								Copy-Item -Path $objSrcItem.FullName -Destination ($strDestDir + $objSrcItem.Name);
 								$intCount ++;
 							}
@@ -236,7 +282,13 @@
 					}
 					else{
 						#Files to skip, or that start with 2 digit #'s.
-						Write-Host "      Skipping" $objSrcItem.Name;
+						$strUpdate = "      Skipping " + $objSrcItem.Name;
+						if ($bPrompts -eq $True){
+							Write-Host $strUpdate;
+						}
+						else{
+							$strMessage = $strMessage + $strUpdate + "`r`n";
+						}
 					}
 				}
 				else{
@@ -246,20 +298,31 @@
 						$strNewDest = $strDestDir + $objSrcItem.Name;
 
 						if (!(Test-Path -Path $strNewDest)){
-							Write-Host "Creating Directory: " $strNewDest;
+							$strUpdate = "Creating Directory: " + $strNewDest;
+							if ($bPrompts -eq $True){
+								Write-Host $strUpdate;
+							}
+							else{
+								$strMessage = $strMessage + $strUpdate + "`r`n";
+							}
 							mkdir $strNewDest | Out-Null;
 						}
-						BackUpDir $strNewSrc $strNewDest $bSubs $bPrompts $bSkip $strBackUpDir;
+						$strMessage = $strMessage + (BackUpDir $strNewSrc $strNewDest $bSubs $bPrompts $bSkip $strBackUpDir);
 					}
 				}
 			}
 		}
 
 		if (($bolFoundFile -eq $True) -or ($intFileCount -gt 0)){
-			$strMessage = "Copied " + $intCount + " of " + $intFileCount + " files.`r`n";
-			Write-Host "`r`n" $strMessage;
-			if ($intCount -lt 1){
-				$strMessage = "";
+			$strUpdate = "Copied " + $intCount + " of " + $intFileCount + " files.`r`n";
+			#if ($intCount -lt 1){
+			#	$strUpdate = "";
+			#}
+			if ($bPrompts -eq $True){
+				Write-Host $strUpdate;
+			}
+			else{
+				$strMessage = $strMessage + $strUpdate + "`r`n";
 			}
 		}
 
