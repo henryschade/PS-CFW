@@ -308,13 +308,14 @@
 							mkdir $strNewDest | Out-Null;
 						}
 						$strMessage = $strMessage + (BackUpDir $strNewSrc $strNewDest $bSubs $bPrompts $bSkip $strBackUpDir);
+						$strMessage = $strMessage + "`r`n";
 					}
 				}
 			}
 		}
 
 		if (($bolFoundFile -eq $True) -or ($intFileCount -gt 0)){
-			$strUpdate = "Copied " + $intCount + " of " + $intFileCount + " files.`r`n";
+			$strUpdate = "Copied " + $intCount + " of " + $intFileCount + " files.";
 			#if ($intCount -lt 1){
 			#	$strUpdate = "";
 			#}
@@ -940,6 +941,55 @@
 		}
 
 		return $hashSettings;
+	}
+
+	function GetCurrentFiles{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strLocalDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strProjName, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolDoPrompts = $False
+		)
+		#Update Local files from Production.
+			#Returns a string.
+		#$strLocalDir = The Project/file directory.  Typically $ScriptDir.
+		#$strProjName = The Project/file name.
+
+		$strResults = "No files copied/updated.";
+		#Copy newer Production files.
+		$strDoUpdate = "Yes";
+		if ($strLocalDir.StartsWith("C:\Projects\")){
+			if ($bolDoPrompts -eq $True){
+				$strDoUpdate = Read-Host "Do you want to copy down any Production files that are newer? `r`n[Yes], [No], [Y]es, [N]o `r`n";
+				Write-Host "";
+			}
+			else{
+				$strDoUpdate = "No";
+			}
+		}
+		if (($strDoUpdate -eq "yes") -or ($strDoUpdate -eq "y")){
+			#Get pathing info.
+			$strProjRootDir = GetPathing "Root";
+			if ($strProjRootDir.Results -gt 0){
+				$strProjRootDir = $strProjRootDir.Returns.Rows[0].Path;
+			}
+			else{
+				#Default
+				$strProjRootDir = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\";
+			}
+
+			#Check that NOT running from Production.
+			if (!($strLocalDir.StartsWith($strProjRootDir))){
+				#Copy files
+				$strProjRootDir = $strProjRootDir + $strProjName + "\";
+				$strBackUpDir = $strLocalDir.SubString(0, $strLocalDir.IndexOf($strProjName)) + "Backups\";
+				$strResults = BackUpDir $strProjRootDir $strLocalDir $True $False $True $strBackUpDir;
+				#if ($bolDoPrompts -eq $True){
+				#	Write-Host $strResults;
+				#}
+			}
+		}
+
+		return $strResults;
 	}
 
 	function GetPathing{
