@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	2 June 2016
+# Updated Date:	13 June 2016
 # Purpose:		Background Job and RunSpace Functions.
 # Requirements: None
 #				All this code is based on info from the following URLs:
@@ -157,7 +157,7 @@
 					return "Complete";
 				}else{
 					#Job finished running, good or bad, and is not returning any results.
-					Remove-Job -Job $objJob;
+					$strResults = Remove-Job -Job $objJob;
 					return "Failed";
 				}
 			}else{
@@ -231,7 +231,7 @@
 			$strJobResults = Receive-Job -Job $objJobDetails -Keep;
 			if (($strJobResults -eq "") -or ($strJobResults -eq $null)){
 				#Delete the job.
-				Remove-Job -Job $objJobDetails;
+				$strResults = Remove-Job -Job $objJobDetails;
 			}
 		}
 
@@ -282,8 +282,9 @@
 
 		For ($intX = 0; $intX -lt $objJobs.Count; $intX++){
 			if ($objJobs[$intX].Name -eq $strJobName){
+				#$strInstanceID = $objJobs[$intX].PowerShell.InstanceId;
 				$strResults = $objJobs[$intX].PowerShell.EndInvoke($objJobs[$intX].Results);		#Makes sure the Async job is Complete. Which returns the Results of the job.
-				$objJobs[$intX].PowerShell.Dispose();
+				$strResults = $objJobs[$intX].PowerShell.Dispose();
 				$objJobs[$intX].PowerShell = $null;
 				$objJobs[$intX].Results = $null;
 				$objJobs[$intX].Name = "";
@@ -309,9 +310,9 @@
 		#$objInitSessState clone = sessionState.Clone();
 
 		$objInitSessState = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-		$objInitSessState.ImportPSModule("ActiveDirectory");
-		#$objInitSessState.ImportPSModule({"ServerManager"});
-		#$objInitSessState.ImportPSModule($Path + "\File.ps1")
+		$strResults = $objInitSessState.ImportPSModule("ActiveDirectory");
+		#$strResults = $objInitSessState.ImportPSModule({"ServerManager"});
+		#$strResults = $objInitSessState.ImportPSModule($Path + "\File.ps1")
 
 		$objPool = [RunSpaceFactory]::CreateRunspacePool($intMin, $intMax, $objInitSessState, $Host);		#$Host = local host.
 		#$objPool = [RunSpaceFactory]::CreateRunspacePool($intMin, $intMax);
@@ -320,7 +321,7 @@
 		#$objPool.ApartmentState, $objPool.ThreadOptions = “STA”, “ReuseThread”;
 		#$objPool.ApartmentState = "STA";
 		#$objPool.ThreadOptions = "ReuseThread";
-		$objPool.Open();
+		$strResults = $objPool.Open();
 
 		#Write-Host "Created a Pool of $($objPool.GetAvailableRunspaces()) Runspaces.";
 
@@ -361,22 +362,23 @@
 		$objPowershell = [powershell]::Create();											#Create a "powershell pipeline runner".
 		if (@($JobScript).Count -gt 1){
 			foreach ($strJob in $JobScript){
-				$objPowershell.AddScript($strJob);
+				$strResults = $objPowershell.AddScript($strJob);
 			}
 		}else{
-			$objPowershell.AddScript($JobScript);											#The PS command/script to run.
+			$strResults = $objPowershell.AddScript($JobScript);											#The PS command/script to run.
 		}
 		$objPowershell.RunspacePool = $RSPool;												#Assign to our pool of x runspaces to use.
 		if (($Arguments -ne "") -and ($Arguments -ne $null)){								#Add any Arguments.
 			if (($Arguments.GetType().FullName -eq "System.Object[]") -or ($Arguments.GetType().FullName -eq "System.Collections.ArrayList")){
 				foreach ($strArg in $Arguments){
-					$objPowershell.AddArgument($strArg);
+					$strResults = $objPowershell.AddArgument($strArg);
 				}
 			}else{
-				$objPowershell.AddArgument($Arguments);
+				$strResults = $objPowershell.AddArgument($Arguments);
 			}
 		}
 
+		$strResults = "";
 		$strResults = $objPowershell.BeginInvoke();											#Start the job.
 		#https://github.com/dfinke/powershell-for-developers/blob/master/chapter07/ShowUI/C%23/WPFJob.cs
 		#if (psCmd.InvocationStateInfo.Reason != null)
@@ -412,9 +414,10 @@
 		#	}
 		#}
 
-		[void]$objPool.Close();
-		[void]$objPool.Dispose();
-		[GC]::Collect();
+		$strResults = [void]$objPool.Close();
+		$strResults = [void]$objPool.Dispose();
+		#$objJobs = @();
+		$strResults = [GC]::Collect();
 	}
 
 	function WaitForRunSpaceJob{
@@ -449,7 +452,7 @@
 						$objControl.Text = $objControl.Text + $strJobResults + "`r`n";
 					}
 					#[System.Windows.Forms.Application]::DoEvents();
-					$objControl.Refresh;
+					$strResults = $objControl.Refresh;
 				}
 			}Until (($objJobs[$intX].Results.IsCompleted))
 
