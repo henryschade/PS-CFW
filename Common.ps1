@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	9 June 2016
+# Updated Date:	14 June 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -607,97 +607,6 @@
 		}
 	}
 
-	function CopyProjectLocal{
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strProjName, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolInteractive = $False, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogDir = "", 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogFile = ""
-		)
-
-		$strMessage = "`r`n" + "Creating/updating local copy.";
-		Write-Host $strMessage;
-		if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
-			WriteLogFile $strMessage $strLogDir $strLogFile;
-		}
-
-		$bolDoSubs = $True;
-		$bolPrompt = $False;
-		$bolSkipSpecial = $True;
-
-		$strSrc = (GetPathing "Root").Returns.Rows[0].Path + $strProjName + "\";
-		$strLocalDir = (GetPathing "Local").Returns.Rows[0].Path + $strProjName + "\";
-
-		#For the PS-CFW directory.
-		$strSrcCFW = (GetPathing "CFW").Returns.Rows[0].Path;
-		$strLocalDirCFW = (GetPathing "Local").Returns.Rows[0].Path + "PS-CFW\";
-		if (!(Test-Path -Path $strLocalDirCFW)){
-			$strResults = mkdir $strLocalDirCFW;
-
-			if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
-				WriteLogFile "Created local directory for CFW." $strLogDir $strLogFile;
-			}
-		}
-		$strResults = BackUpDir $strSrcCFW $strLocalDirCFW $False $False;
-		#$objJobCode = [scriptblock]::create($function:BackUpDir);
-		##$objJob1 = CreateJob -JobName "Copy-CFW" -JobScript $objJobCode -ArgumentList @($strSrcCFW, $strLocalDirCFW, $bolDoSubs, $bolPrompt);
-		#$global:objJobs += CreateRunSpaceJob -RSPool $global:objGenPool -JobName "Copy-CFW" -JobScript $objJobCode -Arguments @($strSrcCFW, $strLocalDirCFW, $bolDoSubs, $bolPrompt);
-		if ($strResults -ne ""){
-			Write-Host "BackupDir:  $strResults"
-			#Should reload $arrIncludes.
-			#$bResults = (. LoadRequired $arrIncludes $strSrc $strLogDir $strLogFile);
-
-			if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
-				WriteLogFile "Copied CFW files. $strResults" $strLogDir $strLogFile;
-			}
-		}
-
-		#Need to "install" a local copy.
-		if (!(Test-Path -Path $strLocalDir)){
-			#Need to create the directory
-			#PS mkdir, will create any parent folders needed.
-			$strResults = mkdir $strLocalDir;
-
-			if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
-				WriteLogFile "Created local directory for Project." $strLogDir $strLogFile;
-			}
-		}
-		$strResults = BackUpDir $strSrc $strLocalDir $bolDoSubs $bolPrompt $bolSkipSpecial;
-		if ($strResults -ne ""){
-			Write-Host "BackupDir:  $strResults"
-
-			if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
-				WriteLogFile "Copied Project files. $strResults" $strLogDir $strLogFile;
-			}
-		}
-
-		#$ScriptDir should be the running path
-		if ((($ScriptDir.StartsWith("\\")) -and ($strResults -ne "")) -and ($bolInteractive -eq $True)){
-			#Running from Network, so should restart.
-			$strMessage = "We just installed a local copy of " + $strProjName + ".`r`n`r`n" + "Want us to restart this PS Script for you, using the local copy?";
-			$strResponse = MsgBox $strMessage "Installed a local copy" 4;
-			if ($strResponse -eq "yes"){
-				$strCommand = $MyInvocation.MyCommand.Path;
-				$strCommand = "& '" + $strLocalDir + $strCommand.Split("\")[-1] + "'";
-
-				$strMessage = "Restarting " + $strProjName + ", as admin, from local copy.";
-				if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
-					WriteLogFile $strMessage $strLogDir $strLogFile;
-				}
-
-				#method 1.  Uses Windows UAC to get creds.
-				#Start-Process $PSHOME\powershell.exe -verb runas -Wait -ArgumentList "-Command $strCommand";				#When I use " -Wait" kicks "Access Denied" error.
-				Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-ExecutionPolicy ByPass -Command $strCommand";
-				#Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
-				exit;
-
-				#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
-				$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
-				Stop-Process -Id $PID;
-			}
-		}
-	}
-
 	function CreateZipFile{
 		#Should use ZipCreateFile() in Documents.ps1.
 		Param(
@@ -941,55 +850,6 @@
 		}
 
 		return $hashSettings;
-	}
-
-	function GetCurrentFiles{
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strLocalDir, 
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strProjName, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolDoPrompts = $False
-		)
-		#Update Local files from Production.
-			#Returns a string.
-		#$strLocalDir = The Project/file directory.  Typically $ScriptDir.
-		#$strProjName = The Project/file name.
-
-		$strResults = "No files copied/updated.";
-		#Copy newer Production files.
-		$strDoUpdate = "Yes";
-		if ($strLocalDir.StartsWith("C:\Projects\")){
-			if ($bolDoPrompts -eq $True){
-				$strDoUpdate = Read-Host "Do you want to copy down any Production files that are newer? `r`n[Yes], [No], [Y]es, [N]o `r`n";
-				Write-Host "";
-			}
-			else{
-				$strDoUpdate = "No";
-			}
-		}
-		if (($strDoUpdate -eq "yes") -or ($strDoUpdate -eq "y")){
-			#Get pathing info.
-			$strProjRootDir = GetPathing "Root";
-			if ($strProjRootDir.Results -gt 0){
-				$strProjRootDir = $strProjRootDir.Returns.Rows[0].Path;
-			}
-			else{
-				#Default
-				$strProjRootDir = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\";
-			}
-
-			#Check that NOT running from Production.
-			if (!($strLocalDir.StartsWith($strProjRootDir))){
-				#Copy files
-				$strProjRootDir = $strProjRootDir + $strProjName + "\";
-				$strBackUpDir = $strLocalDir.SubString(0, $strLocalDir.IndexOf($strProjName)) + "Backups\";
-				$strResults = BackUpDir $strProjRootDir $strLocalDir $True $False $True $strBackUpDir;
-				#if ($bolDoPrompts -eq $True){
-				#	Write-Host $strResults;
-				#}
-			}
-		}
-
-		return $strResults;
 	}
 
 	function GetPathing{
@@ -1339,11 +1199,11 @@
 		)
 		#Loads/includes ("dot" sources) all the files specified in $RequiredFiles.
 			#This routine checks to see if the file to include exists in "..\PS-CFW\", if not assumes the files are in $RootDir.
-		#Because this is a function the routines loaded are only available in this scope and NOT in the calling routines (the project).
-		#So based on the following URL can either read in the files, and update all functions to "Global:Function" or we can update ALL the scripts to have the "Global:" value.
-			#http://stackoverflow.com/questions/15187510/dot-sourcing-functions-from-file-to-global-scope-inside-of-function
-		#Above method would not work.  But found the following too, and it works.
-			#https://blairconrad.wordpress.com/2010/01/29/expand-your-scope-you-can-dot-source-more-than-just-files/
+			#Because this is a function the routines loaded are only available in this scope and NOT in the calling routines (the project).
+			#So based on the following URL can either read in the files, and update all functions to "Global:Function" or we can update ALL the scripts to have the "Global:" value.
+				#http://stackoverflow.com/questions/15187510/dot-sourcing-functions-from-file-to-global-scope-inside-of-function
+			#Above method would not work.  But found the following too, and it works.
+				#https://blairconrad.wordpress.com/2010/01/29/expand-your-scope-you-can-dot-source-more-than-just-files/
 		#Returns $True or $False.  $True if no errors, else $False.
 		#Updates $global:LoadedFiles.
 		#$RequiredFiles = An array of the files to "dot" source / include.
@@ -1662,6 +1522,147 @@
 		}
 
 		return @($strLogDir, $strLogDirS, $strLogDirL);
+	}
+
+	function UpdateLocalFiles{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strLocalDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strProjName, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolDoPrompts = $False, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogDir = "", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogFile = ""
+		)
+		#Update Local files from Production.   From:(\\Server\"ITSS-Root"\ + $strProjName)  To:("C:\Users\Public\ITSS-Tools\" + $strProjName)
+			#Returns a string.
+		#$strLocalDir = The Project/file directory.  Typically $ScriptDir.
+		#$strProjName = The Project/file name.
+		#$bolDoPrompts = True or False.  Should this routine be interactive.  If files were updated, prompt user to restart from local.
+		#$strLogDir = Directory path to put logs.
+		#$strLogFile = The file to put log entries in.
+
+		$strResults = "No files copied/updated.";
+
+		#Check if running from ...Projects dir.
+		$strDoUpdate = "Yes";
+		if ($strLocalDir.StartsWith("C:\Projects\")){
+			if ($bolDoPrompts -eq $True){
+				$strMessage = "Do you want to copy down any Production files that are newer? `r`n[Yes], [No], [Y]es, [N]o `r`n";
+				$strDoUpdate = Read-Host $strMessage;
+				Write-Host "";
+			}
+			else{
+				$strDoUpdate = "No";
+
+				if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
+					WriteLogFile "Running $strProjName from 'C:\Projects\', so NOT updating." $strLogDir $strLogFile;
+				}
+			}
+		}
+
+		if (($strDoUpdate -eq "yes") -or ($strDoUpdate -eq "y")){
+			#Get Share pathing info.
+			$strProjRootDir = GetPathing "Root";
+			if ($strProjRootDir.Results -gt 0){
+				$strProjRootDir = $strProjRootDir.Returns.Rows[0].Path;
+			}
+			else{
+				#Default
+				$strProjRootDir = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\";
+			}
+			$strSrcCFW = (GetPathing "CFW").Returns.Rows[0].Path;
+
+			#Check if $strLocalDir is a local path, or a network path (assume Production).
+			$strMessage = "updated";
+			if (($strLocalDir.StartsWith($strProjRootDir)) -or ($strLocalDir.StartsWith("\\"))){
+				#Running from network, lets "install" a local copy.
+				$strMessage = "installed";
+				$strLocalDir = (GetPathing "Local").Returns.Rows[0].Path;
+				$strLocalDirCFW = $strLocalDir + "PS-CFW\";
+				$strLocalDir = $strLocalDir + $strProjName + "\";
+
+				#Make sure have local dir.
+				if (!(Test-Path -Path $strLocalDir)){
+					#PS mkdir, will create any parent folders needed.
+					$strResults = mkdir $strLocalDir;
+
+					if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
+						WriteLogFile "Created local directory for $strProjName at: $strLocalDir." $strLogDir $strLogFile;
+					}
+				}
+			}
+			else{
+				#$strLocalDirCFW = $strLocalDir.Replace($strProjName, "PS-CFW");
+				$strLocalDirCFW = $strLocalDir.SubString(0, $strLocalDir.IndexOf($strProjName)) + "PS-CFW\";
+			}
+			$strProjRootDir = $strProjRootDir + $strProjName + "\";
+			$strBackUpDir = $strLocalDir.SubString(0, $strLocalDir.IndexOf($strProjName)) + "Backups\";
+
+			#Make sure have local CFW dir.
+			if (!(Test-Path -Path $strLocalDirCFW)){
+				#PS mkdir, will create any parent folders needed.
+				$strResults = mkdir $strLocalDirCFW;
+
+				if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
+					WriteLogFile "Created local directory for CFW at: $strLocalDirCFW." $strLogDir $strLogFile;
+				}
+			}
+
+			#Copy Project files
+			$strResults = "Copying Project files to $strLocalDir ... `r`n";
+			$strResults = $strResults + (BackUpDir $strProjRootDir $strLocalDir $True $False $True $strBackUpDir);
+
+			#Copy CFW files
+			$strResults = $strResults + "`r`n" + "Copying CFW files to $strLocalDirCFW ... `r`n";
+			$strResults = $strResults + (BackUpDir $strSrcCFW $strLocalDirCFW $True $False $True $strBackUpDir);
+			if ($bolDoPrompts -eq $True){
+				Write-Host $strResults;
+			}
+
+			<# ---=== Add the following code block after this routine call if you want to do reboots on update. ===---
+			#Check if should restart.
+			#$strMessage = "installed/updated";
+			$intCount = 0;
+			$arrCopied = $strResults.Split("`r`n");
+			#$arrCopied = $arrCopied | ? {$_};						#Removes blank entries.
+			$arrCopied = $arrCopied | ? {$_ -Match("Copied ")};		#Gets just the "Copied #...." entries.
+			$arrCopied = $arrCopied | ? {$_ -Match(" files.")};		#Gets just the "....# files." entries.
+			foreach ($strLine in $arrCopied){
+				if ($strLine.SubString(7, 2).Trim() -gt 0){
+					$intCount = $intCount + $strLine.SubString(7, 2).Trim();
+				}
+			}
+			$strMessage = "There have been " + $intCount + " files $strMessage." + "`r`n" + "Do you want to restart $strProjName?";
+			if ($intCount -gt 0){
+				if (Get-Command MsgBox -ErrorAction SilentlyContinue){
+					$strResponse = MsgBox $strMessage "Installed a local copy" 4;
+				}
+				else{
+					$strMessage = $strMessage + "`r`n" + "[Yes], [No], [Yes], [No] `r`n";
+					$strResponse = Read-Host $strMessage;
+				}
+
+				if (($strResponse -eq "yes") -or ($strResponse -eq "y")){
+					$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
+
+					$strMessage = "Restarting " + $strProjName + ", as admin, from local copy.";
+					if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
+						WriteLogFile $strMessage $strLogDir $strLogFile;
+					}
+
+					#method 1.  Uses Windows UAC to get creds.
+					#Start-Process $PSHOME\powershell.exe -verb runas -Wait -ArgumentList "-Command $strCommand";				#When I use " -Wait" kicks "Access Denied" error.
+					Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-ExecutionPolicy ByPass -Command $strCommand";
+					#Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
+					exit;
+					##http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
+					#$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
+					#Stop-Process -Id $PID;
+				}
+			}
+			#>
+		}
+
+		return $strResults;
 	}
 
 	function UpdateResults{
