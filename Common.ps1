@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	14 June 2016
+# Updated Date:	16 June 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -774,7 +774,7 @@
 			#$strLastCmd = $objCallStack[0].Command;
 			#$strFirstCmd = $objCallStack[($objCallStack.Count - 1)].Command;
 			$strFirstCmd = $objCallStack[-1].Command;
-			if (($strFirstCmd -eq "prompt") -and ($objCallStack.Count -ge 2)){
+			if ((($strFirstCmd -eq "prompt") -or ($strFirstCmd -eq "ScriptBlock")) -and ($objCallStack.Count -ge 2)){
 				$strPathG = Split-Path $objCallStack[-2].ScriptName;
 			}
 			else{
