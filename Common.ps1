@@ -759,7 +759,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strWhatGet = "Personal"
 		)
 		#Load/get config/ini info/file.
-			#Returns a HashArray.
+			#Returns a HashArray/Dictonary.
 		#$strProject = The Project/file name.
 		#$strWhatGet = What settings/file info to get.  "Personal", "Global", "Both".
 			#Global settings file is in Project root dir.
@@ -774,7 +774,7 @@
 			#$strLastCmd = $objCallStack[0].Command;
 			#$strFirstCmd = $objCallStack[($objCallStack.Count - 1)].Command;
 			$strFirstCmd = $objCallStack[-1].Command;
-			if ((($strFirstCmd -eq "prompt") -or ($strFirstCmd -eq "ScriptBlock")) -and ($objCallStack.Count -ge 2)){
+			if ((($strFirstCmd -eq "prompt") -or ($strFirstCmd -eq "ScriptBlock") -or ($strFirstCmd -eq "<ScriptBlock>")) -and ($objCallStack.Count -ge 2)){
 				$strPathG = Split-Path $objCallStack[-2].ScriptName;
 			}
 			else{
@@ -1306,7 +1306,7 @@
 			#$strLastCmd = $objCallStack[0].Command;
 			#$strFirstCmd = $objCallStack[($objCallStack.Count - 1)].Command;
 			$strFirstCmd = $objCallStack[-1].Command;
-			if (($strFirstCmd -eq "prompt") -and ($objCallStack.Count -ge 2)){
+			if ((($strFirstCmd -eq "prompt") -or ($strFirstCmd -eq "ScriptBlock") -or ($strFirstCmd -eq "<ScriptBlock>")) -and ($objCallStack.Count -ge 2)){
 				$strPathG = Split-Path $objCallStack[-2].ScriptName;
 			}
 			else{
