@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	24 June 2016
+# Updated Date:	19 May 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -126,7 +126,6 @@
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= 0 or 1.  0 = Error, 1 = Success
 			#$objReturn.Message		= A verbose message of the results (The error message).
-			#$objReturn.Return		= The AD Group object, if found.
 		#$GroupName = The Group Name (SamAccountName) to add the user/computer to.
 		#$UserName = The user/computer name to add (DistinguishedName / LDAP), or an AD Object.
 		#$DomainOrDC = The domain name or DC name to use to do the work on.
@@ -150,7 +149,6 @@
 			Name = $strTemp
 			Results = 0
 			Message = "Error"
-			Return = $null
 		}
 
 		#Check if the desired group(s) exists.
@@ -171,24 +169,16 @@
 			for ($intY = 0; $intY -lt $arrDomains.Count; $intY++){
 				#Get-ADGroup finds Exchange Groups too
 				$objGroup = $null;
-				$objGroup = $(Try {Get-ADGroup -Identity $GroupName -Server ($arrDomains[$intY].SubString($arrDomains[$intY].IndexOf("=") + 1).Trim()) -Properties *;} Catch {$null});
-				#$objGroup = $(Try {Get-ADGroup -Identity $GroupName -Server $strDomain;} Catch {$null});
+				$objGroup =  $(Try {Get-ADGroup -Identity $GroupName -Server ($arrDomains[$intY].SubString($arrDomains[$intY].IndexOf("=") + 1).Trim()) -Properties *;} Catch {$null});
+				#$objGroup =  $(Try {Get-ADGroup -Identity $GroupName -Server $strDomain;} Catch {$null});
 				if (($objGroup -ne "") -and ($objGroup -ne $null)){
 					$DomainOrDC = $arrDomains[$intY].SubString($arrDomains[$intY].IndexOf("=") + 1).Trim();
 					break;
 				}
 			}
+		}else{
+			$objGroup =  $(Try {Get-ADGroup -Identity $GroupName -Server $DomainOrDC -Properties *;} Catch {$null});
 		}
-		else{
-			$objGroup = $(Try {Get-ADGroup -Identity $GroupName -Server $DomainOrDC -Properties *;} Catch {$null});
-		}
-		##The next block would/should replace the block above.
-		#if (($DomainOrDC -eq "") -or ($DomainOrDC -eq $null)){
-		#	$objGroup = FindGroup $GroupName;
-		#}
-		#else{
-		#	$objGroup = FindGroup $GroupName $DomainOrDC;
-		#}
 
 		#Check if found a group
 		if (($objGroup -ne "") -and ($objGroup -ne $null)){
@@ -199,15 +189,12 @@
 				#SG-MailEnabled
 				#$GroupName = "NMCI IT Service Support Tools Engineering";
 				#$DomainOrDC = "nmci-isf";
-			$objReturn.Return = $objGroup;
-
 			#if (($objGroup.GroupCategory -eq "Security") -and (($objGroup.mail -eq "") -or ($objGroup.mail -eq $null))){
 			if ((($objGroup.mail -eq "") -or ($objGroup.mail -eq $null))){
 				$strGroupDN = [String]($objGroup).DistinguishedName;
 				$Error.Clear();
 				Add-ADGroupMember -Identity $strGroupDN -Member $UserName -Server $DomainOrDC;
-			}
-			else{
+			}else{
 				#DL
 				#Import exchange commands for the DL actions.
 				$Session = Get-PSSession | Select Name;
@@ -245,13 +232,13 @@
 				$objReturn.Results = 1;
 				$strMessage = "Success";
 			}
-		}
-		else{
+		}else{
 			$objReturn.Results = 0;
 			$strMessage = "Error, Could not find the Group '" + $GroupName + "'.`r`n"
 		}
 		$objReturn.Message = $strMessage;
 
+		#return $strMessage;
 		return ,$objReturn;
 	}
 
@@ -263,7 +250,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$DomainOrDC, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$ManagedBy, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Members, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$GroupType = "Security", 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$GroupType, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$GroupDisp, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$GroupAlias, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$GroupNotes = ""
@@ -272,15 +259,14 @@
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  $False = Error, $True = Success
 			#$objReturn.Message		= A verbose message of the results (The error message).
-			#$objReturn.Returns		= The newly created Group Object.
+			#$objReturn.Returns		= The SID of the newly created group.  But I am currently returning the Group Object.
 		#$GroupName = The desired Group Name (SamAccountName) to create.
 		#$Scope = "Universal", "Global", "DomainLocal".
 		#$OUPath = The full OU path (LDAP) of where to create the Group.
 		#$DomainOrDC = The Domain or DC to create the group on.
 		#$ManagedBy = The user who Manages the Group. (Distinguished Name or SID)
 		#$Members = The users to add to the Group while creating it.  Only works for Exchange Groups.
-		#$GroupType = What Type of Group to create.  ("", "Distribution", "Mail-Security", "Security")
-			#"Security" = Security Group (AD), "Mail-Security" = Mail Enabled Security Group, "Distribution" = Distribution List Group (Exchange 2010).
+		#$GroupType = What Type of Group to create. "", "Distribution", "Mail-Security", "Security".   "Security" = Security Group (AD), "Mail-Security" = Mail Enabled Security Group, "Distribution" = Distribution List Group (Exchange 2010).
 		#$GroupDisp = The Display Name to give the (DL) Group.
 		#$GroupAlias = Email alias to use.
 		#$GroupNotes = The notes to add to the Group.
@@ -330,20 +316,16 @@
 				}
 			}
 			#$objGroup;
-		}
-		else{
+		}else{
 			$objGroup =  $(Try {Get-ADGroup -Identity $GroupName -Server $DomainOrDC;} Catch {$null});
 		}
 
 		#Check if found an existing Group
 		if (($objGroup -ne "") -and ($objGroup -ne $null)){
 			#Found an existing Group
-			$strResults = "Error Found a Group named '" + $GroupName + "' that already exists.`r`n" + ($objGroup.DistinguishedName)
 			$objReturn.Results = $False;
-			$objReturn.Message = $strResults
-			$objReturn.Returns = $objGroup;
-		}
-		else{
+			$strResults = "Error Found a Group named '" + $GroupName + "' already exists.`r`n" + ($objGroup.DistinguishedName)
+		}else{
 			#Check that the OU exists ($OUPath), and if $DomainOrDC is not set, set it.
 			$objOUReturn = Check4OU $OUPath $DomainOrDC;
 			if (($objOUReturn.Results -gt 1) -and ((($DomainOrDC -ne "") -and ($DomainOrDC -ne $null)))){
@@ -443,8 +425,7 @@
 							#CleanUpConn;
 						}
 						SetupConn "w" "Random";
-					}
-					else{
+					}else{
 						#Write-Host "have at least one session";
 						#if ($Session -is [array]){
 						#	For ($i=0; $i -lt $Session.length; $i++){
@@ -476,7 +457,7 @@
 									$strResults = New-DistributionGroup -Name $GroupName -Type "Distribution" -DomainController $DomainOrDC -DisplayName $GroupDisp -SamAccountName $GroupName -OrganizationalUnit $OUPath -Alias $GroupAlias -Notes $GroupNotes -ManagedBy $ManagedBy -Members $Members;
 									#$objJobCode = [scriptblock]::create({param($strGroupName, $strOpsMaster, $strGroupDisplayName, $strPath, $strGroupAlias, $strGroupEmail, $strGroupNotes, $strManagedBy, $strGrpMembers); New-DistributionGroup -Name $strGroupName -Type "Distribution" -DomainController $strOpsMaster -DisplayName $strGroupDisplayName -SamAccountName $strGroupName -OrganizationalUnit $strPath -Alias $strGroupAlias -PrimarySmtpAddress $strGroupEmail -Notes $strGroupNotes -ManagedBy $strManagedBy -Members $strGrpMembers;});
 									#$arrArgs = @($GroupName, $strGroupDomain, $GroupDisp, $OUPath, $GroupAlias, ($GroupAlias + "@navy.mil"), $GroupNotes, $ManagedBy, $Members);
-							}else{
+							}ellse{
 								#Has Manager & NO Users
 									$strResults = New-DistributionGroup -Name $GroupName -Type "Distribution" -DomainController $DomainOrDC -DisplayName $GroupDisp -SamAccountName $GroupName -OrganizationalUnit $OUPath -Alias $GroupAlias -Notes $GroupNotes -ManagedBy $ManagedBy;
 									#$objJobCode = [scriptblock]::create({param($strGroupName, $strOpsMaster, $strGroupDisplayName, $strPath, $strGroupAlias, $strGroupEmail, $strGroupNotes, $strManagedBy); New-DistributionGroup -Name $strGroupName -Type "Distribution" -DomainController $strOpsMaster -DisplayName $strGroupDisplayName -SamAccountName $strGroupName -OrganizationalUnit $strPath -Alias $strGroupAlias -PrimarySmtpAddress $strGroupEmail -Notes $strGroupNotes -ManagedBy $strManagedBy;});
@@ -495,8 +476,7 @@
 									#$arrArgs = @($GroupName, $strGroupDomain, $GroupDisp, $OUPath, $GroupAlias, $strGroupFullEmail, $GroupNotes);
 							}
 						}
-					}
-					else{
+					}else{
 						#Create Exch Mail Enabled Security Group
 						$strMessage = " - Exch Mail Enabled Security Group";
 						$Error.Clear();
@@ -527,8 +507,7 @@
 							}
 						}
 					}
-				}
-				else{
+				}else{
 					#if (($GroupName.StartsWith("W")) -or ($GroupName.StartsWith("w"))){
 						#Create AD Security Group
 						$strMessage = " - AD Security Group";
@@ -2362,7 +2341,7 @@
 		$InitializeDefaultDrives=$False;
 		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
 
-		if ((!([String]::IsNullOrWhiteSpace($strDomain))) -or ($ComputerName.Contains("\"))){
+		if ((($strDomain -ne "") -and ($strDomain -ne $null)) -or ($ComputerName.Contains("\"))){
 			$arrDomains = @($strDomain);
 			if ($ComputerName.Contains("\")){
 				$arrDomains += $ComputerName.Split("\")[0];
@@ -2400,7 +2379,7 @@
 
 		$strDomain = "";
 		foreach ($strDomain in $arrDomains){
-			if ([String]::IsNullOrWhiteSpace($strDomain)){
+			if (($strDomain -eq $null) -or ($strDomain -eq "")){
 				#break;
 			}else{
 				if ($strDomain -ne "nads"){
@@ -2427,83 +2406,6 @@
 		}
 
 		return $objComp;
-	}
-
-	function FindGroup{
-		Param(
-			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$GrpName, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDC
-		)
-		#Checks All domains (gotten from the Network) for $GrpName, or just the ones provided.
-			#Returns the AD Group object.
-		#$GrpName = The group, samaccountname, to look for.
-		#$strDomain = The domain to look for $GrpName in.
-		#$strDC = The DC to use to do the search, over rides $strDomain.  (Short or FQDN.)
-
-		$InitializeDefaultDrives=$False;
-		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
-
-		if ([String]::IsNullOrWhiteSpace($strDC)){
-			if (!([String]::IsNullOrWhiteSpace($strDomain))){
-				$arrDomains = @($strDomain);
-			}
-			else{
-				#Get a list of available Domains, from the network.
-				$arrDomains = GetDomains $False $False;
-			}
-
-			if ($GrpName.Contains("\")){
-				#$arrDomains += $Username.Split("\")[0];
-				$arrDomains = @($GrpName.Split("\")[0]) + $arrDomains;
-				$GrpName = $GrpName.Split("\")[-1];
-			}
-
-			$strDomain = "";
-			foreach ($strDomain in $arrDomains){
-				if (!([String]::IsNullOrWhiteSpace($strDomain))){
-					if ($strDomain -ne "nads"){
-						$strProgress = "  Looking in " + $strDomain + " domain for " + $GrpName + ".`r`n";
-
-						if (!([String]::IsNullOrWhiteSpace($txbResults))){
-							UpdateResults $strProgress $False;
-						}
-
-						if (Get-Command "GetOpsMaster2WorkOn" -ErrorAction SilentlyContinue){
-							$strRIDMaster = GetOpsMaster2WorkOn $strDomain;
-						}
-						else{
-							#$strRIDMaster = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
-							$ErrorActionPreference = 'SilentlyContinue';
-							$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
-							$ErrorActionPreference = 'Continue';
-						}
-
-						if ([String]::IsNullOrWhiteSpace($strRIDMaster)){
-							$strRIDMaster = $strDomain;
-						}
-
-						#Get-ADGroup finds Exchange Groups too
-						$objGroup = $(Try {Get-ADGroup -Identity $GrpName -Server $strRIDMaster -Properties *} Catch {$null});
-						#if (($objGrp.DistinguishedName -ne "") -and ($objGrp.DistinguishedName -ne $null)){
-						if (!([String]::IsNullOrWhiteSpace($objGroup.DistinguishedName))){
-							#$strSrcDomain = $strDomain;
-							break;
-						}
-					}
-				}
-			}
-		}
-		else{
-			if ($GrpName.Contains("\")){
-				#$arrDomains = @($Username.Split("\")[0]);
-				$GrpName = $GrpName.Split("\")[-1];
-			}
-			#Get-ADGroup finds Exchange Groups too
-			$objGroup = $(Try {Get-ADGroup -Identity $GrpName -Server $strDC -Properties *} Catch {$null});
-		}
-
-		return $objGroup;
 	}
 
 	function FindUser{
@@ -2560,8 +2462,7 @@
 						}
 
 						$objUser = $(Try {Get-ADUser -Identity $UserName -Server $strRIDMaster -Properties *} Catch {$null});
-						#if (($objUser.DistinguishedName -ne "") -and ($objUser.DistinguishedName -ne $null)){
-						if (!([String]::IsNullOrWhiteSpace($objUser.DistinguishedName))){
+						if (($objUser.DistinguishedName -ne "") -and ($objUser.DistinguishedName -ne $null)){
 							#$strSrcDomain = $strDomain;
 							break;
 						}

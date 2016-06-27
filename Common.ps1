@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	16 June 2016
+# Updated Date:	14 June 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -759,7 +759,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strWhatGet = "Personal"
 		)
 		#Load/get config/ini info/file.
-			#Returns a HashArray/Dictonary.
+			#Returns a HashArray.
 		#$strProject = The Project/file name.
 		#$strWhatGet = What settings/file info to get.  "Personal", "Global", "Both".
 			#Global settings file is in Project root dir.
@@ -774,7 +774,7 @@
 			#$strLastCmd = $objCallStack[0].Command;
 			#$strFirstCmd = $objCallStack[($objCallStack.Count - 1)].Command;
 			$strFirstCmd = $objCallStack[-1].Command;
-			if ((($strFirstCmd -eq "prompt") -or ($strFirstCmd -eq "ScriptBlock") -or ($strFirstCmd -eq "<ScriptBlock>")) -and ($objCallStack.Count -ge 2)){
+			if (($strFirstCmd -eq "prompt") -and ($objCallStack.Count -ge 2)){
 				$strPathG = Split-Path $objCallStack[-2].ScriptName;
 			}
 			else{
@@ -1306,7 +1306,7 @@
 			#$strLastCmd = $objCallStack[0].Command;
 			#$strFirstCmd = $objCallStack[($objCallStack.Count - 1)].Command;
 			$strFirstCmd = $objCallStack[-1].Command;
-			if ((($strFirstCmd -eq "prompt") -or ($strFirstCmd -eq "ScriptBlock") -or ($strFirstCmd -eq "<ScriptBlock>")) -and ($objCallStack.Count -ge 2)){
+			if (($strFirstCmd -eq "prompt") -and ($objCallStack.Count -ge 2)){
 				$strPathG = Split-Path $objCallStack[-2].ScriptName;
 			}
 			else{
@@ -1572,10 +1572,8 @@
 			$strSrcCFW = (GetPathing "CFW").Returns.Rows[0].Path;
 
 			#Check if $strLocalDir is a local path, or a network path (assume Production).
-			$strMessage = "updated";
 			if (($strLocalDir.StartsWith($strProjRootDir)) -or ($strLocalDir.StartsWith("\\"))){
 				#Running from network, lets "install" a local copy.
-				$strMessage = "installed";
 				$strLocalDir = (GetPathing "Local").Returns.Rows[0].Path;
 				$strLocalDirCFW = $strLocalDir + "PS-CFW\";
 				$strLocalDir = $strLocalDir + $strProjName + "\";
@@ -1608,58 +1606,41 @@
 			}
 
 			#Copy Project files
-			$strResults = "Copying Project files to $strLocalDir ... `r`n";
+			$strResults = "Copy Project files... `r`n";
 			$strResults = $strResults + (BackUpDir $strProjRootDir $strLocalDir $True $False $True $strBackUpDir);
 
 			#Copy CFW files
-			$strResults = $strResults + "`r`n" + "Copying CFW files to $strLocalDirCFW ... `r`n";
+			$strResults = $strResults + "`r`n" + "Copy CFW files... `r`n";
 			$strResults = $strResults + (BackUpDir $strSrcCFW $strLocalDirCFW $True $False $True $strBackUpDir);
 			if ($bolDoPrompts -eq $True){
 				Write-Host $strResults;
 			}
 
-			<# ---=== Add the following code block after this routine call if you want to do reboots on update. ===---
 			#Check if should restart.
-			#$strMessage = "installed/updated";
-			$intCount = 0;
-			$arrCopied = $strResults.Split("`r`n");
-			#$arrCopied = $arrCopied | ? {$_};						#Removes blank entries.
-			$arrCopied = $arrCopied | ? {$_ -Match("Copied ")};		#Gets just the "Copied #...." entries.
-			$arrCopied = $arrCopied | ? {$_ -Match(" files.")};		#Gets just the "....# files." entries.
-			foreach ($strLine in $arrCopied){
-				if ($strLine.SubString(7, 2).Trim() -gt 0){
-					$intCount = $intCount + $strLine.SubString(7, 2).Trim();
-				}
-			}
-			$strMessage = "There have been " + $intCount + " files $strMessage." + "`r`n" + "Do you want to restart $strProjName?";
-			if ($intCount -gt 0){
-				if (Get-Command MsgBox -ErrorAction SilentlyContinue){
-					$strResponse = MsgBox $strMessage "Installed a local copy" 4;
-				}
-				else{
-					$strMessage = $strMessage + "`r`n" + "[Yes], [No], [Yes], [No] `r`n";
-					$strResponse = Read-Host $strMessage;
-				}
+			$arrCopied = $strResults -Match("Copied ");
+			#$strMessage = "";
+			#$strResponse = MsgBox $strMessage "Installed a local copy" 4;
+			#$strResponse = Read-Host $strMessage;
+			#if ($strResponse -eq "yes"){
+			#	#$strCommand = $MyInvocation.MyCommand.Path;
+			#	#$strCommand = "& '" + $strLocalDir + $strCommand.Split("\")[-1] + "'";
+			#	$strCommand = $strLocalDir;
 
-				if (($strResponse -eq "yes") -or ($strResponse -eq "y")){
-					$strCommand = "& '" + $MyInvocation.MyCommand.Path + "'";
+			#	$strMessage = "Restarting " + $strProjName + ", as admin, from local copy.";
+			#	if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
+			#		WriteLogFile $strMessage $strLogDir $strLogFile;
+			#	}
 
-					$strMessage = "Restarting " + $strProjName + ", as admin, from local copy.";
-					if ((!([String]::IsNullOrEmpty($strLogDir))) -and (!([String]::IsNullOrEmpty($strLogFile)))){
-						WriteLogFile $strMessage $strLogDir $strLogFile;
-					}
+			#	#method 1.  Uses Windows UAC to get creds.
+			#	#Start-Process $PSHOME\powershell.exe -verb runas -Wait -ArgumentList "-Command $strCommand";				#When I use " -Wait" kicks "Access Denied" error.
+			#	Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-ExecutionPolicy ByPass -Command $strCommand";
+			#	#Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
+			#	exit;
 
-					#method 1.  Uses Windows UAC to get creds.
-					#Start-Process $PSHOME\powershell.exe -verb runas -Wait -ArgumentList "-Command $strCommand";				#When I use " -Wait" kicks "Access Denied" error.
-					Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-ExecutionPolicy ByPass -Command $strCommand";
-					#Start-Process ($PSHOME + "\powershell.exe") -verb runas -ArgumentList "-STA -ExecutionPolicy ByPass -Command $strCommand";
-					exit;
-					##http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
-					#$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
-					#Stop-Process -Id $PID;
-				}
-			}
-			#>
+			#	#http://powershell.com/cs/blogs/tobias/archive/2012/05/09/managing-child-processes.aspx
+			#	$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
+			#	Stop-Process -Id $PID;
+			#}
 		}
 
 		return $strResults;
