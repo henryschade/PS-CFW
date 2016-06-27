@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	14 June 2016
+# Updated Date:	27 June 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -58,9 +58,9 @@
 		#$bSkip = $True or $False.  Skip "Special" files.  ("*.lnk", "*.db", "*.md", "*.sln", "*.pssproj", ".git*", "*Test*")
 		#$strBackUpDir = The Directory to create BackUp copies in. [Defaults to ($strDestDir + "..\BackUps\").]
 
-		$arrSkipEndings = @(".lnk", ".db", ".md", ".sln", ".pssproj");
-		$arrSkipStarts = @(".git");
-		$arrSkipContains = @("Test");
+		$arrSkipEndings = @(".lnk", ".db", ".md", ".sln", ".pssproj", ".suo", ".cs", ".resx", ".settings", ".csproj");
+		$arrSkipStarts = @(".", "bin", "obj", "Release", "obj");
+		$arrSkipContains = @("Test", "Debug");
 		$bDoAll = $False;
 		$strMessage = "";
 
@@ -144,39 +144,40 @@
 		$intCount = 0;
 		foreach ($objSrcItem in $objSrcSubItems){
 			if (!([String]::IsNullOrEmpty($objSrcItem))){
-				if ($objSrcItem.PSIsContainer -eq $False){
-					#A File
-					$intFileCount ++;
-					$bolSkipFile = $False;
-					if ($bSkip){
-						foreach ($strCheckSkip in $arrSkipEndings){
-							if ($bolSkipFile){
-								break;
-							}
-							if ($objSrcItem.Name.EndsWith($strCheckSkip)){
-								$bolSkipFile = $True;
-							}
+				$bolSkipFile = $False;
+				if ($bSkip){
+					foreach ($strCheckSkip in $arrSkipEndings){
+						if ($bolSkipFile){
+							break;
 						}
-						foreach ($strCheckSkip in $arrSkipStarts){
-							if ($bolSkipFile){
-								break;
-							}
-							if ($objSrcItem.Name.StartsWith($strCheckSkip)){
-								$bolSkipFile = $True;
-							}
-						}
-						foreach ($strCheckSkip in $arrSkipContains){
-							if ($bolSkipFile){
-								break;
-							}
-							if ($objSrcItem.Name.Contains($strCheckSkip)){
-								$bolSkipFile = $True;
-							}
-						}
-						if ((isNumeric $objSrcItem.Name.SubString(0, 2)) -eq $True){
+						if ($objSrcItem.Name.EndsWith($strCheckSkip)){
 							$bolSkipFile = $True;
 						}
 					}
+					foreach ($strCheckSkip in $arrSkipStarts){
+						if ($bolSkipFile){
+							break;
+						}
+						if ($objSrcItem.Name.StartsWith($strCheckSkip)){
+							$bolSkipFile = $True;
+						}
+					}
+					foreach ($strCheckSkip in $arrSkipContains){
+						if ($bolSkipFile){
+							break;
+						}
+						if ($objSrcItem.Name.Contains($strCheckSkip)){
+							$bolSkipFile = $True;
+						}
+					}
+					if ((isNumeric $objSrcItem.Name.SubString(0, 2)) -eq $True){
+						$bolSkipFile = $True;
+					}
+				}
+
+				if ($objSrcItem.PSIsContainer -eq $False){
+					#A File
+					$intFileCount ++;
 
 					#if (($bolSkipFile -eq $False) -and ((isNumeric $objSrcItem.Name.SubString(0, 2)) -eq $False)){
 					if ($bolSkipFile -eq $False){
@@ -282,7 +283,7 @@
 					}
 					else{
 						#Files to skip, or that start with 2 digit #'s.
-						$strUpdate = "      Skipping " + $objSrcItem.Name;
+						$strUpdate = "      Skipping (file) " + $objSrcItem.Name;
 						if ($bPrompts -eq $True){
 							Write-Host $strUpdate;
 						}
@@ -293,7 +294,7 @@
 				}
 				else{
 					#A Directory
-					if ($bSubs -eq $True){
+					if (($bSubs -eq $True) -and ($bolSkipFile -eq $False)){
 						$strNewSrc = $strSourceDir + $objSrcItem.Name;
 						$strNewDest = $strDestDir + $objSrcItem.Name;
 
@@ -309,6 +310,17 @@
 						}
 						$strMessage = $strMessage + (BackUpDir $strNewSrc $strNewDest $bSubs $bPrompts $bSkip $strBackUpDir);
 						$strMessage = $strMessage + "`r`n";
+					}
+					else{
+						if ($bSubs -eq $True){
+							$strUpdate = "      Skipping (dir) " + $objSrcItem.Name;
+							if ($bPrompts -eq $True){
+								Write-Host $strUpdate;
+							}
+							else{
+								$strMessage = $strMessage + $strUpdate + "`r`n";
+							}
+						}
 					}
 				}
 			}
