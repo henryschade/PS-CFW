@@ -1,6 +1,6 @@
 #Requires -Version 2.0
 ###########################################
-# Updated Date:	14 June 2016
+# Updated Date:	30 June 2016
 # Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
@@ -152,8 +152,6 @@
 			Write-Host $strMessage;
 			WriteLogFile $strMessage $strLogDir $strLogFile;
 
-			#Hide the PowerShell Console.
-			[ConsoleHelper]::HideConsole();
 			$objTimer = $null;
 
 			$objRet = GetXAMLGUI ($ScriptDir + "\" + $strGUIFile) ($ScriptDir + "\" + $strCodeFile);
@@ -168,8 +166,11 @@
 				$strMessage = "Loading XAML GUI.";
 				Write-Host $strMessage;
 				WriteLogFile $strMessage $strLogDir $strLogFile;
-
 				Write-Host $objRet.Message;
+
+				#Hide the PowerShell Console.
+				[ConsoleHelper]::HideConsole();
+
 				$strResult = $objRet.Returns.ShowDialog();
 			}
 			else{
