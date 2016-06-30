@@ -4,6 +4,12 @@
 # Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
+<# ---=== Change Log ===---
+	#Changes in ver 0.1:
+		#Added Change Log.
+
+#>
+
 
 	$strProjName = "Project";
 	$strVer = "0.1beta";
