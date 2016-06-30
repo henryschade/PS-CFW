@@ -15,7 +15,7 @@
 	$strGUIFile = $strProjName + "_GUI\MainWindow.xaml";
 	$strLogFile = $strProjName + ".log";
 	$strLogDirS = "";
-	$strLogDirL = "C:\Users\ITSS-Tools\Logs\" + $strProjName + "\";
+	$strLogDirL = "C:\Users\Public\ITSS-Tools\Logs\" + $strProjName + "\";
 	$strLogDir = "";
 	$Error.Clear();
 	if ([String]::IsNullOrEmpty($MyInvocation.MyCommand.Path)){
@@ -157,8 +157,6 @@
 			Write-Host $strMessage;
 			WriteLogFile $strMessage $strLogDir $strLogFile;
 
-			#Hide the PowerShell Console.
-			[ConsoleHelper]::HideConsole();
 			$objTimer = $null;
 
 			$objRet = GetXAMLGUI ($ScriptDir + "\" + $strGUIFile) ($ScriptDir + "\" + $strCodeFile);
@@ -173,8 +171,11 @@
 				$strMessage = "Loading XAML GUI.";
 				Write-Host $strMessage;
 				WriteLogFile $strMessage $strLogDir $strLogFile;
-
 				Write-Host $objRet.Message;
+
+				#Hide the PowerShell Console.
+				[ConsoleHelper]::HideConsole();
+
 				$strResult = $objRet.Returns.ShowDialog();
 			}
 			else{
