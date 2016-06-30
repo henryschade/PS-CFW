@@ -1,13 +1,13 @@
 #Requires -Version 2.0
 ###########################################
-# Updated Date:	6 April 2016
+# Updated Date:	14 June 2016
 # Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
 
 	$strProjName = "Project";
 	$strVer = "0.1beta";
-	$strLogLoc = "Logs_ITSS";
+	$strShareLoc = "Logs_ITSS";
 	$strLocalLoc = "Local";
 	$arrIncludes = @("AD-Routines.ps1", "Common.ps1", "DB-Routines.ps1", "Display.ps1", "Exchange.ps1", "FileOperations.ps1", "Forms.ps1", "Jobs.ps1");
 
@@ -15,7 +15,7 @@
 	$strGUIFile = $strProjName + "_GUI\MainWindow.xaml";
 	$strLogFile = $strProjName + ".log";
 	$strLogDirS = "";
-	$strLogDirL = "C:\Users\Public\ITSS-Tools\Logs\" + $strProjName + "\";
+	$strLogDirL = "";
 	$strLogDir = "";
 	$Error.Clear();
 	if ([String]::IsNullOrEmpty($MyInvocation.MyCommand.Path)){
@@ -27,25 +27,20 @@
 	$strMessage = "Starting " + $strProjName + ", ver " + $strVer + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
 	Write-Host $strMessage;
 
-	#GetPathing(), VerifyPathing(), WriteLogFile(), and LoadRequired() are functions in Common.ps1, that are all used before Loading the Required Modules/Scripts.
-	#It Must be defined before we can use it.
+	#SetLogPath(), WriteLogFile(), EnableDotNet4(), and LoadRequired() are functions in Common.ps1, that are all used before Loading the Required Modules/Scripts.
 	. ($ScriptDir + "\..\PS-CFW\" + "Common.ps1")
 
 	#Get pathing info.
-	$strPathing = GetPathing $strLogLoc;
-	if ($strPathing.Results -gt 0){
-		#Share Path
-		$strLogDirS = $strPathing.Returns.Rows[0].Path + $strProjName + "\";
-	}
-	$strPathing = GetPathing $strLocalLoc;
-	if ($strPathing.Results -gt 0){
-		#Local Path
-		$strLogDirL = $strPathing.Returns.Rows[0].Path + "Logs\" + $strProjName + "\";
-	}
-	#Make sure the log directories exist.
-	$strLogDir = VerifyPathing $strLogDirL $strLogDirS;
+	$arrLogDirs = SetLogPath $strProjName $strLogDirS $strLogDirL $strShareLoc $strLocalLoc;
+	$strLogDir = $arrLogDirs[0];
+	$strLogDirS = $arrLogDirs[1];
+	$strLogDirL = $arrLogDirs[2];
 
 	WriteLogFile $strMessage $strLogDir $strLogFile;
+
+	#Copy newer Production files.
+	$strResults = UpdateLocalFiles $ScriptDir $strProjName $False $strLogDir $strLogFile;
+	Write-Host $strResults;
 
 	#Ensure .NET 4.x support is "turned on".
 	if ($PSVersionTable.CLRVersion.Major -lt 4){
@@ -157,6 +152,8 @@
 			Write-Host $strMessage;
 			WriteLogFile $strMessage $strLogDir $strLogFile;
 
+			#Hide the PowerShell Console.
+			[ConsoleHelper]::HideConsole();
 			$objTimer = $null;
 
 			$objRet = GetXAMLGUI ($ScriptDir + "\" + $strGUIFile) ($ScriptDir + "\" + $strCodeFile);
@@ -171,11 +168,8 @@
 				$strMessage = "Loading XAML GUI.";
 				Write-Host $strMessage;
 				WriteLogFile $strMessage $strLogDir $strLogFile;
+
 				Write-Host $objRet.Message;
-
-				#Hide the PowerShell Console.
-				[ConsoleHelper]::HideConsole();
-
 				$strResult = $objRet.Returns.ShowDialog();
 			}
 			else{

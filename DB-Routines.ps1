@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	9 May 2016
+# Updated Date:	14 June 2016
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -111,12 +111,19 @@
 		#Set some defaults
 		$strRawData = "";
 		if (!(Get-Command "GetPathing" -ErrorAction SilentlyContinue)){
-			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
-			if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
+			#$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+			#if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
+			if ([String]::IsNullOrEmpty($MyInvocation.MyCommand.Path)){
 				$ScriptDir = (Get-Location).ToString();
+			}
+			else{
+				$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 			}
 			if ((Test-Path ($ScriptDir + "\Common.ps1"))){
 				. ($ScriptDir + "\Common.ps1")
+			}
+			else{
+				. "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\Common.ps1";
 			}
 		}
 
