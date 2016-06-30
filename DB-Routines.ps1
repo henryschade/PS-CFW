@@ -1,8 +1,16 @@
 ###########################################
-# Updated Date:	14 June 2016
+# Updated Date:	28 June 2016
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
+
+<# ---=== Change Log ===---
+	#Changes for 28 June 2016:
+		#Added Change Log.
+
+#>
+
+
 
 	function SampleUsage{
 		. C:\Projects\PS-CFW\DB-Routines.ps1

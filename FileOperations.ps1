@@ -1,7 +1,15 @@
 ﻿##########################################
-# Updated Date:	21 March 2016
+# Updated Date:	28 June 2016
 # Purpose:		Routines to set NTFS permissions, set owners on files/folders, create/delete shares, and set share permissions.
 ##########################################
+
+<# ---=== Change Log ===---
+	#Changes for 28 June 2016:
+		#Added Change Log.
+
+#>
+
+
 
 
 function WINSHARE_EXAMPLE_USAGE{

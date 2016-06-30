@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	13 June 2016
+# Updated Date:	28 June 2016
 # Purpose:		Background Job and RunSpace Functions.
 # Requirements: None
 #				All this code is based on info from the following URLs:
@@ -13,6 +13,13 @@
 #				#http://msdn.microsoft.com/en-us/library/system.management.automation.runspaces.runspacefactory.createrunspacepool(v=vs.85).aspx
 #				#http://thesurlyadmin.com/2013/02/11/multithreading-powershell-scripts/
 ##########################################
+
+<# ---=== Change Log ===---
+	#Changes for 28 June 2016:
+		#Added Change Log.
+
+#>
+
 
 	#Sample Job calls
 	function SampleJobCall1{

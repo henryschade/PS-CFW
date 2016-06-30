@@ -1,8 +1,16 @@
 ###########################################
-# Updated Date:	1 June 2016
+# Updated Date:	28 June 2016
 # Purpose:		Routines that require a Computer, or that interact w/ a Computer.
 # Requirements: None
 ##########################################
+
+<# ---=== Change Log ===---
+	#Changes for 28 June 2016:
+		#Added Change Log.
+
+#>
+
+
 
 	function CheckIfOnline{
 		Param(

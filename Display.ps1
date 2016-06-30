@@ -1,9 +1,17 @@
 ###########################################
-# Updated Date:	16 May 2016
+# Updated Date:	28 June 2016
 # Purpose:		Hide/Show PowerShell Console Window.
 # 				Display Orientation Methods.
 # Requirements: None
 ##########################################
+
+<# ---=== Change Log ===---
+	#Changes for 28 June 2016:
+		#Added Change Log.
+
+#>
+
+
 
 	#http://www.aspnet-answers.com/microsoft/Powershell/30523953/invisible-windows.aspx
 

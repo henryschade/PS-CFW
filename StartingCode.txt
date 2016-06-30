@@ -1,9 +1,17 @@
 #Requires -Version 2.0
 ###########################################
-# Updated Date:	14 June 2016
+# Updated Date:	28 June 2016
 # Purpose:		Provide a PowerShell GUI for _______ Process.
 # Requirements: PS-CFW
 ###########################################
+
+<# ---=== Change Log ===---
+	#Changes in ver 0.1:
+		#Added Change Log.
+
+#>
+
+
 
 	$strProjName = "Project";
 	$strVer = "0.1beta";
