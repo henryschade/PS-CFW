@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	28 June 2016
+# Updated Date:	20 July 2016
 # Purpose:		Routines that require a Computer, or that interact w/ a Computer.
 # Requirements: None
 ##########################################
@@ -652,6 +652,9 @@
 			#$objReturn.Results		= # of $strSoftware installations found.
 			#$objReturn.Message		= "Success" or the error message.
 			#$objReturn.Returns		= An array.  @($strSoftwareName, $strSoftwareLastUsed)
+		#$strComp = Computer to query.
+		#$strSoftware = Software to look for, partial names are OK too.
+		#$bWriteScreen = Output "Errors" to the screen.
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones

@@ -1148,7 +1148,7 @@
 
 		$arrFiltered = @();
 		for ($intX = $arrResults.Count; $intX -ge 0; $intX--){
-			if ($arrResults[$intX] -Match "RemoteServerAdministrationTools"){
+			if (($arrResults[$intX] -Match "RemoteServerAdministrationTools") -or ($arrResults[$intX] -Match "DirectoryServices") -or ($arrResults[$intX] -Match "ActiveDirectory")){
 				$strEntry = $arrResults[$intX].ToString();
 				$strEntry = ($strEntry.Replace("Feature Name :", "")).Trim();
 				$strEnabled = $arrResults[$intX+1].ToString();
@@ -1171,10 +1171,19 @@
 			}
 		}else{
 			#Installed
+			#Client Checks:
 			if ((($arrFiltered -Match "RemoteServerAdministrationTools-Roles-AD-Powershell -- Enabled").Count -eq 0) -or (($arrFiltered -Match "RemoteServerAdministrationTools-Roles-AD -- Enabled").Count -eq 0)){
-				#AD Checkboxes are NOT Checked.
-				$bInstalled = $False;
-			}else{
+				#Server Checks:
+				if ((($arrFiltered -Match "ActiveDirectory-PowerShell -- Enabled").Count -eq 0) -or (($arrFiltered -Match "DirectoryServices-ADAM -- Enabled").Count -eq 0)){
+					#AD Checkboxes are NOT Checked.
+					$bInstalled = $False;
+				}
+				else{
+					#AD Checkboxes are Checked.
+					$bInstalled = $True;
+				}
+			}
+			else{
 				#AD Checkboxes are Checked.
 				$bInstalled = $True;
 			}
