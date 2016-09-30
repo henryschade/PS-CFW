@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	28 June 2016
+# Updated Date:	29 September 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -8,6 +8,8 @@
 <# ---=== Change Log ===---
 	#Changes for 28 June 2016:
 		#Added Change Log.
+	#29 Sept 2016
+		#Added code to be able to read/check TSProfile properties. (line 4463)
 
 #>
 
@@ -4456,6 +4458,66 @@ if ($PSVersionTable.CLRVersion.Major -ge 4){
 				set
 				{
 					((DirectoryEntry)this.GetUnderlyingObject()).Properties["formData"].Value = (System.Text.Encoding.UTF8).GetBytes(value);
+				}
+			}
+			// Create the msTSProfilePath property.
+			[DirectoryProperty("msTSProfilePath")]
+			public string msTSProfilePath
+			{
+				get
+				{
+					if (ExtensionGet("msTSProfilePath").Length != 1)
+						return null;
+					return (string)ExtensionGet("msTSProfilePath")[0];
+				}
+				set 
+				{
+					ExtensionSet("msTSProfilePath", value);
+				}
+			}
+			// Create the msTSAllowLogon property.
+			[DirectoryProperty("msTSAllowLogon")]
+			public string msTSAllowLogon
+			{
+				get
+				{
+					if (ExtensionGet("msTSAllowLogon").Length != 1)
+						return null;
+					return (string)ExtensionGet("msTSAllowLogon")[0];
+				}
+				set 
+				{
+					ExtensionSet("msTSAllowLogon", value);
+				}
+			}
+			// Create the msTSHomeDirectory property.
+			[DirectoryProperty("msTSHomeDirectory")]
+			public string msTSHomeDirectory
+			{
+				get
+				{
+					if (ExtensionGet("msTSHomeDirectory").Length != 1)
+						return null;
+					return (string)ExtensionGet("msTSHomeDirectory")[0];
+				}
+				set 
+				{
+					ExtensionSet("msTSHomeDirectory", value);
+				}
+			}
+			// Create the msTSHomeDrive property.
+			[DirectoryProperty("msTSHomeDrive")]
+			public string msTSHomeDrive
+			{
+				get
+				{
+					if (ExtensionGet("msTSHomeDrive").Length != 1)
+						return null;
+					return (string)ExtensionGet("msTSHomeDrive")[0];
+				}
+				set 
+				{
+					ExtensionSet("msTSHomeDrive", value);
 				}
 			}
 
