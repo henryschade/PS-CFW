@@ -151,6 +151,28 @@
 			"CDR"{
 				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAyDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h";
 			}
+			"DevCDR"{
+				<#
+					$arrDBInfo[0] = "mssql";
+					$arrDBInfo[1] = "DAWESDNISQ06v\sq06vinst01";
+					$arrDBInfo[2] = "DbPhoenix551";
+					$arrDBInfo[3] = "isfuser";
+					$arrDBInfo[4] = "isfuser";
+					$arrDBInfo[5] = "U-W";
+					$arrDBInfo[6] = "P-W";
+				#>
+			}
+			"DevSiprCDR"{
+				<#
+					$arrDBInfo[0] = "mssql";
+					$arrDBInfo[1] = "DMCISDNISQ01v\sq01vinst01";
+					$arrDBInfo[2] = "DbPhoenix551";
+					$arrDBInfo[3] = "isfuser";
+					$arrDBInfo[4] = "isfuser";
+					$arrDBInfo[5] = "U-W";
+					$arrDBInfo[6] = "P-W";
+				#>
+			}
 			"ECMD"{
 				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTUzXFNRNTNJTlNUMDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==";
 			}
