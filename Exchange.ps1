@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	28 June 2016
+# Updated Date:	29 September 2016
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process. 
@@ -10,6 +10,8 @@
 <# ---=== Change Log ===---
 	#Changes for 28 June 2016:
 		#Added Change Log.
+	#29 Sept 2016
+		#Updated CreateMailBox() to check extensionAttribute8 for NNPI account names.
 
 #>
 
@@ -490,12 +492,18 @@
 				$objUser = FindUser $strUserName;
 				if ($objUser.DistinguishedName.Contains("OU=NNPI")){
 					#if NNPI need to run the following
-					if ($strUserName.EndsWith(".nnpi")){
-						#for the .nnpi account ($strUserName = "first.last.nnpi")
-						$strOtherName = $strUserName.SubString(0, ($strUserName.Length - 5))
-					}else{
-						#for the regular account ($strUserName = "first.last")
-						$strOtherName = ($strUserName + ".nnpi")
+					#check if extensionAttribute8 is populated.  It will have the other account name.
+					if (!([String]::IsNullOrEmpty($objUser.extensionAttribute8))){
+						$strOtherName = $objUser.extensionAttribute8;
+					}
+					else{
+						if ($strUserName.EndsWith(".nnpi")){
+							#for the .nnpi account ($strUserName = "first.last.nnpi")
+							$strOtherName = $strUserName.SubString(0, ($strUserName.Length - 5));
+						}else{
+							#for the regular account ($strUserName = "first.last")
+							$strOtherName = ($strUserName + ".nnpi");
+						}
 					}
 
 					$objUser = $null;
@@ -553,7 +561,8 @@
 						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias.ctr@navy.mil"}
 						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias.ctr@nmci-isf.com"}
 						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $True;
-					}else{
+					}
+					else{
 						$objResult = Enable-Mailbox $strUserName -Alias $strAlias -Database $strExchMBDB -DomainController $strDC;
 					}
 
@@ -562,7 +571,8 @@
 						#$strMessage = $strMessage + "   " + ([System.DateTime]::Now).ToString();
 						$strMessage = $strMessage + "`r`n" + $Error;
 						$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n";
-					}else{
+					}
+					else{
 						$bDidMailBox = $True;
 						if (($strOtherName -ne "") -and ($strOtherName -ne $null)){
 							#Remove-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess";
