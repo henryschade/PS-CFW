@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	28 June 2016
+# Updated Date:	4 October 2016
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -7,6 +7,10 @@
 <# ---=== Change Log ===---
 	#Changes for 28 June 2016:
 		#Added Change Log.
+	#Changes for 4 Oct 2016
+		#Add CDR SIPR info to GetDBInfo()
+		#Add ECMD SIPR info to GetDBInfo()
+		#Update MiscSettings.txt default path to be CFW instead of SupportFiles.
 
 #>
 
@@ -41,7 +45,12 @@
 
 
 		#Pull cert info for a machine
-		$arrDBInfo = GetDBInfo "ECMD";
+		if (($env:UserDomain.Contains("nmci-isf")) -or ($env:UserDomain.Contains("NMCI-ISF"))){
+			$arrDBInfo = GetDBInfo "ECMD";
+		}
+		else{
+			$arrDBInfo = GetDBInfo "ECMDSIPR";
+		}
 		$strSQL = "SELECT * FROM Certs_Collection WHERE (Subject like '%ADIDBO216191%')";
 		$Results = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $False $arrDBInfo[3] $arrDBInfo[4] 180 $True;
 		#$Results = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $False $arrDBInfo[5] $arrDBInfo[6] 180 $True;
@@ -135,9 +144,9 @@
 			}
 		}
 
-		$strConfigFile = ((GetPathing "SupportFiles").Returns.Rows[0].Path);
+		$strConfigFile = ((GetPathing "CFW").Returns.Rows[0].Path);
 		if ([String]::IsNullOrEmpty($strConfigFile)){
-			$strConfigFile = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\SupportFiles\MiscSettings.txt";
+			$strConfigFile = "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\MiscSettings.txt";
 		}
 		else{
 			$strConfigFile = $strConfigFile + "MiscSettings.txt";
@@ -151,8 +160,20 @@
 			"CDR"{
 				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAyDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h";
 			}
+			"CDRDev"{
+				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gREFXRVNETklTUTA2dlxzcTA2dmluc3QwMQ0Kc3RyREJOYW1lID0gZGJwaG9lbml4NTUxDQpzdHJEQkxvZ2luUiA9IGlzZnVzZXINCnN0ckRCUGFzc1IgPSBpc2Z1c2VyDQpzdHJEQkxvZ2luVyA9IGlzZnVzZXINCnN0ckRCUGFzc1cgPSBuL2E=";
+			}
+			"CDRDevSIPR"{
+				$strRawData = "";
+			}
+			"CDRSIPR"{
+				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAxDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h";
+			}
 			"ECMD"{
 				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTUzXFNRNTNJTlNUMDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==";
+			}
+			"ECMDSIPR"{
+				$strRawData = "xxx";
 			}
 			"Score"{
 				#Same as "AgentActivity".

@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	28 June 2016
+# Updated Date:	4 October 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -9,6 +9,10 @@
 	#Changes for 28 June 2016:
 		#Added Change Log.
 		#Fixed bug with UpdateLocalFiles(), make sure share path exists.
+	#Changes for 4 Oct 2016
+		#Add CDR SIPR info to GetPathing().
+		#Add ECMD SIPR info to GetPathing().
+		#Update MiscSettings.txt default path to be CFW instead of SupportFiles.
 
 #>
 
@@ -911,7 +915,11 @@
 		$arrDefaults.Add("AgentActivity", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBBZ2VudEFjdGl2aXR5DQpzdHJEQkxvZ2luUiA9IGFpb2RhdGFyZWFkZXINCnN0ckRCUGFzc1IgPSBDTVc2MTE2MWRhdGFyZWFkZXINCnN0ckRCTG9naW5XID0gYWlvZGF0YQ0Kc3RyREJQYXNzVyA9IENNVzYxMTYxZGF0YQ==");
 		$arrDefaults.Add("AssMan", "c3RyREJTZXJ2ZXIgPSBubWNpbnJma2FzMDEubmFkc3VzZWEubmFkcy5uYXZ5Lm1pbA0Kc3RyREJTZXJ2ZXIyID0gbm1jaXNkbmlhczAxLm5hZHN1c3dlLm5hZHMubmF2eS5taWwNCnN0clBvcnQgPSAxNTIxDQpzdHJEQlR5cGUgPSBPcmFjbGUNCnN0ckRCTmFtZSA9IEFDUFJPRA0Kc3RyREJMb2dpblIgPSBpYnVsaw0Kc3RyREJQYXNzUiA9IGdCMjAlNGt1bGEyMyFBQw0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==");
 		$arrDefaults.Add("CDR", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAyDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h");
+		$arrDefaults.Add("CDRDev", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gREFXRVNETklTUTA2dlxzcTA2dmluc3QwMQ0Kc3RyREJOYW1lID0gRGJQaG9lbml4NTUxDQpzdHJEQkxvZ2luUiA9IGlzZnVzZXINCnN0ckRCUGFzc1IgPSBwLXINCnN0ckRCTG9naW5XID0gaXNmdXNlcg0Kc3RyREJQYXNzVyA9IHAtdw==");
+		$arrDefaults.Add("CDRDevSIPR", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gRE1DSVNETklTUTAxdlxzcTAxdmluc3QwMQ0Kc3RyREJOYW1lID0gRGJQaG9lbml4NTUxDQpzdHJEQkxvZ2luUiA9IGlzZnVzZXINCnN0ckRCUGFzc1IgPSBwLXINCnN0ckRCTG9naW5XID0gaXNmdXNlcg0Kc3RyREJQYXNzVyA9IHAtdw==");
+		$arrDefaults.Add("CDRSIPR", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAxDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h");
 		$arrDefaults.Add("ECMD", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTUzXFNRNTNJTlNUMDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==");
+		$arrDefaults.Add("ECMDSIPR", "xxx");
 		$arrDefaults.Add("Score", $arrDefaults.AgentActivity);
 		$arrDefaults.Add("Sites", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTc1VkFcU1E3NVZBSU5TVDAxDQpzdHJEQk5hbWUgPSBTaXRlQ29kZXMNCnN0ckRCTG9naW5SID0gS0J1c2VyDQpzdHJEQlBhc3NSID0ga2M1JHNxMDI=");
 		$arrDefaults.Add("SRMDB", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBTUk1fQXBwc19Ub29scw0Kc3RyREJMb2dpblIgPSBTUk1fQXBwc19Ub29sc19XRk0NCnN0ckRCUGFzc1IgPSAhU1JNX0FwcHNfVG9vbHNfV0ZNNjkNCnN0ckRCTG9naW5XID0gU1JNX0FwcHNfVG9vbHMNCnN0ckRCUGFzc1cgPSAhU1JNX0FwcHNfVG9vbHM2OQ==");
@@ -929,7 +937,7 @@
 		$arrDefaults.Add("SupportFiles", "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\SupportFiles\");
 		$arrDefaults.Add("ITSS-Tools", $arrDefaults.Root);
 
-		$strConfigFile = $arrDefaults.SupportFiles + $strConfigFile;
+		$strConfigFile = $arrDefaults.CFW + $strConfigFile;
 
 		#Config file  (takes about 1 sec)
 		if (($objReturn.Results -eq $False) -or ($objReturn.Results -lt 1)){
