@@ -1,9 +1,17 @@
 ###########################################
-# Updated Date:	27 June 2016
+# Updated Date:	28 June 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
 ##########################################
+
+<# ---=== Change Log ===---
+	#Changes for 28 June 2016:
+		#Added Change Log.
+		#Fixed bug with UpdateLocalFiles(), make sure share path exists.
+
+#>
+
 
 	#For use with CheckVer() and LoadRequired().
 	if ($global:LoadedFiles -eq $null){
@@ -1140,7 +1148,7 @@
 
 		$arrFiltered = @();
 		for ($intX = $arrResults.Count; $intX -ge 0; $intX--){
-			if ($arrResults[$intX] -Match "RemoteServerAdministrationTools"){
+			if (($arrResults[$intX] -Match "RemoteServerAdministrationTools") -or ($arrResults[$intX] -Match "DirectoryServices") -or ($arrResults[$intX] -Match "ActiveDirectory")){
 				$strEntry = $arrResults[$intX].ToString();
 				$strEntry = ($strEntry.Replace("Feature Name :", "")).Trim();
 				$strEnabled = $arrResults[$intX+1].ToString();
@@ -1163,10 +1171,19 @@
 			}
 		}else{
 			#Installed
+			#Client Checks:
 			if ((($arrFiltered -Match "RemoteServerAdministrationTools-Roles-AD-Powershell -- Enabled").Count -eq 0) -or (($arrFiltered -Match "RemoteServerAdministrationTools-Roles-AD -- Enabled").Count -eq 0)){
-				#AD Checkboxes are NOT Checked.
-				$bInstalled = $False;
-			}else{
+				#Server Checks:
+				if ((($arrFiltered -Match "ActiveDirectory-PowerShell -- Enabled").Count -eq 0) -or (($arrFiltered -Match "DirectoryServices-ADAM -- Enabled").Count -eq 0)){
+					#AD Checkboxes are NOT Checked.
+					$bInstalled = $False;
+				}
+				else{
+					#AD Checkboxes are Checked.
+					$bInstalled = $True;
+				}
+			}
+			else{
 				#AD Checkboxes are Checked.
 				$bInstalled = $True;
 			}
@@ -1618,12 +1635,22 @@
 			}
 
 			#Copy Project files
-			$strResults = "Copy Project files... `r`n";
-			$strResults = $strResults + (BackUpDir $strProjRootDir $strLocalDir $True $False $True $strBackUpDir);
+			if ((Test-Path -Path $strProjRootDir)){
+				$strResults = "Copy Project files... `r`n";
+				$strResults = $strResults + (BackUpDir $strProjRootDir $strLocalDir $True $False $True $strBackUpDir);
+			}
+			else{
+				$strResults = "Did NOT copy Project files, share path was not found. `r`n" + "$strProjRootDir `r`n";
+			}
 
 			#Copy CFW files
-			$strResults = $strResults + "`r`n" + "Copy CFW files... `r`n";
-			$strResults = $strResults + (BackUpDir $strSrcCFW $strLocalDirCFW $True $False $True $strBackUpDir);
+			if ((Test-Path -Path $strSrcCFW)){
+				$strResults = $strResults + "`r`n" + "Copy CFW files... `r`n";
+				$strResults = $strResults + (BackUpDir $strSrcCFW $strLocalDirCFW $True $False $True $strBackUpDir);
+			}
+			else{
+				$strResults = $strResults + "`r`n" + "Did NOT copy CFW files, share path was not found. `r`n" + "$strSrcCFW `r`n";
+			}
 			if ($bolDoPrompts -eq $True){
 				Write-Host $strResults;
 			}

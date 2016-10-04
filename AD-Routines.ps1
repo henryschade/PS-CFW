@@ -1,9 +1,18 @@
 ###########################################
-# Updated Date:	19 May 2016
+# Updated Date:	29 September 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
 ##########################################
+
+<# ---=== Change Log ===---
+	#Changes for 28 June 2016:
+		#Added Change Log.
+	#29 Sept 2016
+		#Added code to be able to read/check TSProfile properties. (line 4463)
+
+#>
+
 
 
 	function TestRoutine{
@@ -2408,6 +2417,83 @@
 		return $objComp;
 	}
 
+	function FindGroup{
+ 		Param(
+ 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$GrpName, 
+ 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain, 
+ 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDC
+ 		)
+ 		#Checks All domains (gotten from the Network) for $GrpName, or just the ones provided.
+ 			#Returns the AD Group object.
+ 		#$GrpName = The group, samaccountname, to look for.
+ 		#$strDomain = The domain to look for $GrpName in.
+ 		#$strDC = The DC to use to do the search, over rides $strDomain.  (Short or FQDN.)
+ 
+ 		$InitializeDefaultDrives=$False;
+ 		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
+ 
+ 		if ([String]::IsNullOrEmpty($strDC)){
+ 			if (!([String]::IsNullOrEmpty($strDomain))){
+ 				$arrDomains = @($strDomain);
+ 			}
+ 			else{
+ 				#Get a list of available Domains, from the network.
+ 				$arrDomains = GetDomains $False $False;
+ 			}
+ 
+ 			if ($GrpName.Contains("\")){
+ 				#$arrDomains += $Username.Split("\")[0];
+ 				$arrDomains = @($GrpName.Split("\")[0]) + $arrDomains;
+ 				$GrpName = $GrpName.Split("\")[-1];
+ 			}
+ 
+ 			$strDomain = "";
+ 			foreach ($strDomain in $arrDomains){
+ 				if (!([String]::IsNullOrEmpty($strDomain))){
+ 					if ($strDomain -ne "nads"){
+ 						$strProgress = "  Looking in " + $strDomain + " domain for " + $GrpName + ".`r`n";
+ 
+ 						if (!([String]::IsNullOrEmpty($txbResults))){
+ 							UpdateResults $strProgress $False;
+ 						}
+ 
+ 						if (Get-Command "GetOpsMaster2WorkOn" -ErrorAction SilentlyContinue){
+ 							$strRIDMaster = GetOpsMaster2WorkOn $strDomain;
+ 						}
+ 						else{
+ 							#$strRIDMaster = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
+ 							$ErrorActionPreference = 'SilentlyContinue';
+ 							$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
+ 							$ErrorActionPreference = 'Continue';
+ 						}
+ 
+ 						if ([String]::IsNullOrEmpty($strRIDMaster)){
+ 							$strRIDMaster = $strDomain;
+ 						}
+ 
+ 						#Get-ADGroup finds Exchange Groups too
+ 						$objGroup = $(Try {Get-ADGroup -Identity $GrpName -Server $strRIDMaster -Properties *} Catch {$null});
+ 						#if (($objGrp.DistinguishedName -ne "") -and ($objGrp.DistinguishedName -ne $null)){
+ 						if (!([String]::IsNullOrEmpty($objGroup.DistinguishedName))){
+ 							#$strSrcDomain = $strDomain;
+ 							break;
+ 						}
+ 					}
+ 				}
+ 			}
+ 		}
+ 		else{
+ 			if ($GrpName.Contains("\")){
+ 				#$arrDomains = @($Username.Split("\")[0]);
+ 				$GrpName = $GrpName.Split("\")[-1];
+ 			}
+ 			#Get-ADGroup finds Exchange Groups too
+ 			$objGroup = $(Try {Get-ADGroup -Identity $GrpName -Server $strDC -Properties *} Catch {$null});
+ 		}
+ 
+ 		return $objGroup;
+ 	}
+ 
 	function FindUser{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Username, 
@@ -2422,8 +2508,8 @@
 		$InitializeDefaultDrives=$False;
 		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
 
-		if ([String]::IsNullOrWhiteSpace($strDC)){
-			if (!([String]::IsNullOrWhiteSpace($strDomain))){
+		if ([String]::IsNullOrEmpty($strDC)){
+			if (!([String]::IsNullOrEmpty($strDomain))){
 				$arrDomains = @($strDomain);
 			}
 			else{
@@ -2439,11 +2525,11 @@
 
 			$strDomain = "";
 			foreach ($strDomain in $arrDomains){
-				if (!([String]::IsNullOrWhiteSpace($strDomain))){
+				if (!([String]::IsNullOrEmpty($strDomain))){
 					if ($strDomain -ne "nads"){
 						$strProgress = "  Looking in " + $strDomain + " domain for " + $Username + ".`r`n";
 
-						if (!([String]::IsNullOrWhiteSpace($txbResults))){
+						if (!([String]::IsNullOrEmpty($txbResults))){
 							UpdateResults $strProgress $False;
 						}
 
@@ -2457,7 +2543,7 @@
 							$ErrorActionPreference = 'Continue';
 						}
 
-						if ([String]::IsNullOrWhiteSpace($strRIDMaster)){
+						if ([String]::IsNullOrEmpty($strRIDMaster)){
 							$strRIDMaster = $strDomain;
 						}
 
@@ -4372,6 +4458,66 @@ if ($PSVersionTable.CLRVersion.Major -ge 4){
 				set
 				{
 					((DirectoryEntry)this.GetUnderlyingObject()).Properties["formData"].Value = (System.Text.Encoding.UTF8).GetBytes(value);
+				}
+			}
+			// Create the msTSProfilePath property.
+			[DirectoryProperty("msTSProfilePath")]
+			public string msTSProfilePath
+			{
+				get
+				{
+					if (ExtensionGet("msTSProfilePath").Length != 1)
+						return null;
+					return (string)ExtensionGet("msTSProfilePath")[0];
+				}
+				set 
+				{
+					ExtensionSet("msTSProfilePath", value);
+				}
+			}
+			// Create the msTSAllowLogon property.
+			[DirectoryProperty("msTSAllowLogon")]
+			public string msTSAllowLogon
+			{
+				get
+				{
+					if (ExtensionGet("msTSAllowLogon").Length != 1)
+						return null;
+					return (string)ExtensionGet("msTSAllowLogon")[0];
+				}
+				set 
+				{
+					ExtensionSet("msTSAllowLogon", value);
+				}
+			}
+			// Create the msTSHomeDirectory property.
+			[DirectoryProperty("msTSHomeDirectory")]
+			public string msTSHomeDirectory
+			{
+				get
+				{
+					if (ExtensionGet("msTSHomeDirectory").Length != 1)
+						return null;
+					return (string)ExtensionGet("msTSHomeDirectory")[0];
+				}
+				set 
+				{
+					ExtensionSet("msTSHomeDirectory", value);
+				}
+			}
+			// Create the msTSHomeDrive property.
+			[DirectoryProperty("msTSHomeDrive")]
+			public string msTSHomeDrive
+			{
+				get
+				{
+					if (ExtensionGet("msTSHomeDrive").Length != 1)
+						return null;
+					return (string)ExtensionGet("msTSHomeDrive")[0];
+				}
+				set 
+				{
+					ExtensionSet("msTSHomeDrive", value);
 				}
 			}
 

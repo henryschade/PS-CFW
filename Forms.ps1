@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	4 January 2016
+# Updated Date:	28 June 2016
 # Purpose:		My functions to create PS Forms and Controls
 # Requirements: None
 # Web sites that helped me:
@@ -17,6 +17,14 @@
 #				Form Events: - http://msdn.microsoft.com/en-us/library/system.windows.forms.form_events(v=vs.110).aspx
 #					List an objects Properties/Events/Methods/etc:  -  http://stackoverflow.com/questions/7377959/how-to-find-properties-of-an-object
 ##########################################
+
+<# ---=== Change Log ===---
+	#Changes for 28 June 2016:
+		#Added Change Log.
+
+#>
+
+
 
 	#See PS-SourceCodeGUI.ps1 for a sample of how to use GetXAMLGUI().
 		#$strCodeFile1 = "C:\Projects\PS-Scripts\Testing\PS-SourceCodeGUI.ps1";

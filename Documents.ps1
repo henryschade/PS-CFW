@@ -1,8 +1,16 @@
 ###########################################
-# Updated Date:	19 May 2016
+# Updated Date:	28 June 2016
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
+
+<# ---=== Change Log ===---
+	#Changes for 28 June 2016:
+		#Added Change Log.
+
+#>
+
+
 
 	function ExcelSampleReadCOM{
 		#Option 3, is the desired option at this time.

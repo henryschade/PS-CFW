@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Root xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="\\10.70.13.17\Advanced Publisher\In Process\EMT-Tools\EMT Starter\Includes\EMTTasksSchema.xsd">
+
+  <Task xsi:type="RunCommandLineTaskType" name="EnableWinRM">
+    <Applet>RunCommandLine</Applet>
+    <LogName>[ESD]ESDTasks</LogName>
+    <LogFolder>%IDMLOG%</LogFolder>
+    <Parameters>
+       <Enum index="2">WINRM quickconfig -quiet</Enum>
+    </Parameters>
+  </Task>
+  
+</Root>
