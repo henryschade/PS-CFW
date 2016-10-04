@@ -1,0 +1,248 @@
+						#Check if $strUserName is in use already, if doing a create.
+						if (($strWhatToDo.StartsWith("Create")) -and ($bolDoWork -eq $True)){
+							if ($chkCheckNames.Checked -eq $True){
+								UpdateResults "  Checking if name is in use already...`r`n" $False;
+
+
+
+								#????? Does the AD Search, below, find Contacts ?????
+								$strNewName = "";
+								$strOrigName = $strUserName;
+								$strCustEnd = "";
+								$UserADInfo = $null;
+								$UserADInfo = FindUser $strOrigName;					#FindUser() searches all domains for the provided name.
+								UpdateResults "`r`n" $False;
+								if ((($UserADInfo -ne "") -and ($UserADInfo -ne $null))){
+									#Found an existing AD object.
+									# ---=== Start Increment Account Name ===---
+									#The following block should accomodate Fct Mailboxes too, as their Sam must be 20, but their CN can be what they requested.
+									#May need to add checking that if ends in ".dev", ".cel", ".nnpi", ".fct" we stip that, and preserve it, then check for #'s.
+									if ($strUserName.EndsWith(".nnpi")){
+										$strCustEnd = ".nnpi";
+									}
+									if ($strUserName.EndsWith(".dev")){
+										$strCustEnd = ".dev";
+									}
+									if ($strUserName.EndsWith(".cel")){
+										$strCustEnd = ".cel";
+									}
+									if ($strUserName.EndsWith(".fct")){
+										$strCustEnd = ".fct";
+									}
+									$strUserName = $strUserName.SubString(0, ($strUserName.Length - $strCustEnd.Length));
+
+									$intNameCount = 0;
+									#If the provided name ends in a # already, we need to keep/preserve that count.
+									for ($intY = 1; $intY -le $strUserName.Length; $intY++){
+										#Write-Host $strUserName.SubString(($strUserName.Length - $intY), $intY);
+										if (isNumeric ($strUserName.SubString(($strUserName.Length - $intY), $intY))){
+											#$intNameCount = $strUserName.SubString(($strUserName.Length - $intY), $intY);
+											$intNameCount = $strUserName.SubString(($strUserName.Length - $intY), $intY);
+										}
+									}
+									if ($intNameCount -ne 0){
+										$strUserName = $strUserName.SubString(0, ($strUserName.Length - $intNameCount.ToString().Length));
+									}
+									$FirstName = $strUserName.SubString(0, ($strUserName.IndexOf(".")));
+									$LastName = $strUserName.SubString(($strUserName.IndexOf(".") + 1));
+									if ($LastName.IndexOf(".") -gt 0){
+										$MidName = $LastName.SubString(0, ($LastName.IndexOf(".")));
+										$LastName = $strUserName.SubString(($strUserName.IndexOf(".") + 1));
+									}
+
+									Do {
+										if ($strNewName -eq ""){
+											$strMessage = "Found an existing AD account with a SamAccountName of '" + $strOrigName + "'.`r`n";
+										}else{
+											$strMessage = "Found an existing AD account with a SamAccountName of '" + $strNewName + "'.`r`n";
+										}
+										$bolNameOK = $True;
+										#Figure out what the new account name should be.
+										if ($MidName.Trim() -eq ""){
+											$strNewName = ($FirstName + "." + $LastName).ToLower();
+										}else{
+											$strNewName = ($FirstName + "." + $MidName + "." + $LastName).ToLower();
+										}
+										if ($intNameCount -gt 0){
+											$strNewName = $strNewName + [string]$intNameCount;
+										}
+
+										#Add the "custom" ending.  $strCustEnd
+										if ($strCustEnd -ne ""){
+											$strNewName = CheckNameEnding $strNewName $strCustEnd;
+										}
+										else{
+											#Developer accounts must end in ".dev".
+											if (($bolDev -eq $True) -and (!($strUserName.EndsWith(".dev"))) -and ($bolNameOK -eq $True)){
+												$strNewName = CheckNameEnding $strNewName ".dev";
+											}
+											#Check that Fct Org GAL accounts end in ".cel".
+											if (($strWhatToDo -eq "Create-Fct-Org") -and ($bolNameOK -eq $True)){
+												$strNewName = CheckNameEnding $strNewName ".cel";
+											}
+										}
+
+										UpdateResults "    $strMessage`r`n" $False;
+										#Remember to check $strNewName for length
+										$intNameCount++;
+
+										$strMessage = $strMessage + "Provide a new Login Name (SamAccountName) to use.`r`n`r`nType 'exit' to abort the whole process.";
+										$strNewName = MsgBox $strMessage "Name already in use." 6 $strNewName;
+										$strNewName = $strNewName.Trim();
+										if ($strNewName -eq "exit"){
+											$bolNameOK = $False;
+											$bolDoWork = $False;
+											UpdateResults "Exiting $strWhatToDo process.`r`n" $False;
+											EnableBtns $True;
+											return;
+											MsgBox "Should have exited function." "Not exiting error";
+											break;
+										}
+										if (($strNewName -eq "") -or ($strNewName -eq $null) -or ($strNewName -eq "exit")){
+											$bolNameOK = $False;
+										}
+
+										#Make sure NewName meets the length requirements.
+										if (($strNewName.Length -gt 20) -and ($bolNameOK -eq $True)){
+											#$strMessage = "The name provided was over 20 characters long, so it has been shortened for you.";
+											#MsgBox $strMessage "Login Names can only be 20 Characters";
+											#$strNewName = $strNewName.SubString(0, 20);
+											$strMessage = $strMessage + "`r`n" + "The name provided is over 20 characters long, please shorten it.";
+											$strTempName = $strNewName;
+											do{
+												$strNewName = MsgBox $strMessage "Login Names can only be 20 Characters" 6 $strTempName;
+											} while(($strNewName.Length -gt 20));
+											$strTempName = "";
+										}
+
+
+
+
+
+
+										#Check if CDR is OK with the new Name.
+										if (($rdoOCM.Checked -eq $True) -and ($bolNameOK -eq $True)){
+											$arrDBInfo = GetDBInfo "CDR";
+											$strSQL = "sp_ocm2014_get_account_by_sam '" + $strNewName + "'";
+											$strMessage = "  Checking the proposed name in CDR.`r`n";
+											UpdateResults $strMessage $False;
+											$objResults = $null;
+											$Error.Clear();
+											$objResults = QueryDB $arrDBInfo[1] $arrDBInfo[2] $strSQL $True "" "" 180 $True;
+											if (($objResults.Rows[0].Message -eq "Error") -or ($Error) -or ($objResults -eq $null) -or ($objResults.Rows.Count -eq 0)){
+												if ($Error){
+													$strMessage = "Error getting CDR info.`r`n" + $Error;
+													$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n`r`n";
+													$strMessage = $strMessage + $strSQL + "`r`n";
+													UpdateResults "  $strMessage`r`n" $False;
+												}
+												else{
+													if (($objResults -eq $null) -or ($objResults.Rows.Count -eq 0)){
+														#No results is probably a good thing when checking if a name is in use in CDR.
+														$strMessage = "No Results getting CDR info.`r`n";
+													}else{
+														$strMessage = $objResults.Rows[0].Message + " getting CDR info.`r`n" + $objResults.Rows[0].Results;
+													}
+													UpdateResults "  $strMessage`r`n" $False;
+												}
+												#Assume name is OK
+												$bolNameOK = $True;
+											}
+											else{
+												#Got results, so should retry.
+												$strMessage = "CDR shows that the name '" + $strNewName + "' is in use (or will be).`r`n";
+												UpdateResults "  $strMessage`r`n" $False;
+												$bolNameOK = $False;
+											}
+											$strMessage = "  Done checking the proposed name in CDR...`r`n";
+											$strMessage = $strMessage + " " + ([System.DateTime]::Now).ToString() + "`r`n";
+											UpdateResults $strMessage $False;
+										}
+
+										#Check AD again
+										if ($bolNameOK -eq $True){
+											UpdateResults "  Checking the proposed name in AD, again...`r`n" $False;
+											$UserADInfo = $null;
+											$UserADInfo = FindUser $strNewName;						#FindUser() searches all domains for the provided username.
+											UpdateResults "`r`n" $False;
+											if ((($UserADInfo -ne "") -and ($UserADInfo -ne $null))){
+												#Found an existing AD account.
+												$bolNameOK = $False;
+											}
+										}
+									} while (($bolNameOK -eq $False) -or ($strNewName -eq "") -or ($strNewName -eq $null))
+									# ---=== End Increment Account Name ===---
+									$strNewName = $strNewName.ToLower();
+
+
+
+
+
+
+									#Now we have figured out the new name, remember to update the form, the DGV, and CDR as needed.
+									if ($bolNameOK -eq $True){
+										#Update the Form fields.
+										#Home Folder Path
+										if (($txbHomeDrivePath.Text -ne "") -or (($dgvBulk.SelectedRows[0].Cells['HomeFolder'].Value -ne "") -and ($dgvBulk.SelectedRows[0].Cells['HomeFolder'].Value -ne $null))){
+											#Make sure username is part of the path
+											if ($txbHomeDrivePath.Text.Contains($txbPreWindowsName.Text) -eq $False){
+												$txbHomeDrivePath.Text = $dgvBulk.SelectedRows[0].Cells['HomeFolder'].Value;
+												if ($txbHomeDrivePath.Text.EndsWith("\") -eq $False){
+													$txbHomeDrivePath.Text = $txbHomeDrivePath.Text + "\";
+												}
+												$txbHomeDrivePath.Text = $txbHomeDrivePath.Text + $strNewName;
+											}else{
+												$txbHomeDrivePath.Text = $txbHomeDrivePath.Text.Replace(($txbPreWindowsName.Text), $strNewName);
+											}
+										}
+										$txbPreWindowsName.Text = $strNewName;
+										#Alias
+										$txbAlias.Text = $txbPreWindowsName.Text;
+										if ((($dgvBulk.SelectedRows[0].Cells['Rank'].Value -eq "CTR") -or ($txbPersonalTitle.Text -eq "CTR")) -and (!($txbAlias.Text.Contains(".ctr")))){
+											$txbAlias.Text = $txbAlias.Text + ".ctr";
+										}
+										#Email
+										$txbEmail.Text = $txbPreWindowsName.Text + "@navy.mil";
+										if ($txbUserLogonName.Text -eq $strUserName){
+											$txbUserLogonName.Text = $txbPreWindowsName.Text;
+										}
+
+										#Update the CN field.  Fct Mailboxe Sam must be 20, but their CN can be what they requested.
+										if ($strWhatToDo -eq "Create-Fct-Mail"){
+											$lblCN.Text = $dgvBulk.SelectedRows[0].Cells['Logon'].Value;
+										}else{
+											$lblCN.Text = $strNewName;
+										}
+
+										#Update the DataGridView.
+										$dgvBulk.SelectedRows[0].Cells['Logon'].Value = $strNewName;
+
+										#Check if have RelatedSam (extAtt8) name.  Means this is an NNPI account.
+										if (($strOtherName -ne "") -and ($strOtherName -ne $null)){
+											#Loop through the rest of the list and find a matching account, so we can update that name too.
+											for ($intY = 0; $intY -lt $dgvBulk.Rows.Count; $intY++){
+												if (($dgvBulk.Rows[$intY].Cells['Path'].Value -eq "") -or ($dgvBulk.Rows[$intY].Cells['Path'].Value -eq $null)){
+													if ($dgvBulk.Rows[$intY].Cells['Logon'].Value -eq $strOtherName){
+														#Found a match
+														#$dgvBulk.Rows[$intY].Cells['RelatedSam'].Value = $strNewName;
+														$dgvBulk.Rows[$intY].Cells['RelatedSam'].Value = $dgvBulk.SelectedRows[0].Cells['Logon'].Value;
+														#Need to increment this account too.
+														
+													}
+												}
+											}
+										}
+
+										#Update CDR.
+										if ($rdoOCM.Checked -eq $True){
+											$strUserID = $dgvBulk.SelectedRows[0].Cells['CDR_UserID'].Value;
+											$strResults = UpdateCDR "objects" 5 $strUserID $strNewName;
+											UpdateResults "$strResults`r`n" $False;
+										}
+
+										$strUserName = $strNewName;
+										$UserADInfo = $null;
+									}
+								}
+							}
+						}
