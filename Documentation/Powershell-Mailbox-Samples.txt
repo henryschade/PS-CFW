@@ -1,0 +1,213 @@
+This text doc is best viewed w/ "Word Wrap" turned off.
+To open PowerShell (Shift + Right Click -> Run as Admin):
+	"Start" -> "All Programs" -> "Accessories" -> "Windows PowerShell" -> "Windows PowerShell"
+
+--set PowerShell’s execution policy (only needed to be run once, ever, per machine)
+	Set-ExecutionPolicy RemoteSigned -Force;
+
+--PowerShell Scripts:
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\Exchange.ps1" SetUp;
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\Exchange.ps1" CleanUp;
+
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-Scripts\PS-GetBoxSize.ps1";
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-Scripts\PS-MoveMailbox.ps1";
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-Scripts\PS-MonitorMove.ps1";
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-Scripts\PS-MoveADObj.ps1";
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-Scripts\PS-CreateMailbox.ps1";
+
+
+
+--Setup a Connection (3 lines) to Exchange (in PowerShell) (as admin) (initial testing seams the Source domain has better results):
+--This line (East)
+	$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri "http://naeaNRFKxh01v.nadsusea.nads.navy.mil/PowerShell/" -Authentication Kerberos;
+--or this line (West)
+	$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri "http://naweSDNIxh01v.nadsuswe.nads.navy.mil/PowerShell/" -Authentication Kerberos;
+--or this line (PADS)
+	$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri "http://PADSPRLHXF01V.pads.pacom.mil/PowerShell/" -Authentication Kerberos;
+
+	Import-PSSession $Session -AllowClobber;
+	Set-ADServerSettings -ViewEntireForest $true;
+--or
+	Set-ADServerSettings -ViewEntireForest $true -PreferredServer NAEAMECHDC02.nadsusea.nads.navy.mil;
+--or
+        Set-ADServerSettings -ViewEntireForest $true -PreferredServer PADSPRLHDC02.pads.pacom.mil;
+
+
+--or (this one line)
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\Exchange.ps1" SetUp;
+
+
+
+
+--Get Size from a DOS window on a Win7 box running as admin.
+	"\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-Scripts\PS-MailboxSize.bat"
+
+--Get Size in a PowerShell window (as admin).
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-Scripts\PS-GetBoxSize.ps1";
+
+--Get Size with PowerShell (after a connection to Exchange has been made) (as admin):
+	Get-Mailbox -Identity "user.name";
+	Get-Mailbox -Identity "first.*";
+--or
+	Get-MailboxStatistics -Identity "user.name" | Select DisplayName, TotalItemSize, ItemCount, TotalDeletedItemSize, StorageLimitStatus, ServerName, DatabaseName, MailboxGUID;
+
+
+
+
+--Search for users w/ the same email address (after a connection to Exchange has been made) (as admin):
+	(still testing this command, not 100% sure it works.)
+	(takes a while to run, and may even be longer than the PowerShell AD Time limit of 2 Min)
+	Get-ADUser -Server "nadsuswe" -ResultPageSize:5 -properties proxyAddresses -filter {proxyAddresses -like "*user.name*" -and ObjectClass -eq "user"}
+	Get-ADUser -Server "nadsuswe" -SearchScope Subtree -ResultPageSize:5 -properties proxyAddresses -filter {proxyAddresses -like "*user.name*" -and ObjectClass -eq "user"}
+	Get-ADUser -Server "nadsusea" -SearchBase "DC=nadsusea,DC=nads,DC=navy,DC=mil" -SearchScope Subtree -ResultPageSize:50 -properties * -filter {(proxyAddresses -like "*user.name*") -and (ObjectClass -eq "user") -and (ObjectCategory -eq "person")}
+(I could not get the above to run w/out timing out.)
+So the following commands will find users by email address, using .NET and ADO.
+
+	.\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\AD-Routines.ps1;
+	$Username = "first.last";
+	$strFilter = "(&(objectCategory=user)(proxyAddresses=*" + $Username + "*))";
+	$arrDesiredProps = "name", "proxyAddresses";
+	$objSearch = ADSearchADO $Username "nadsusea" $strFilter $arrDesiredProps;
+
+	$objSearch | FL
+	$objSearch.Returns[0].Properties;
+	foreach ($objResult in $objSearch.Returns){$objItem = $objResult.Properties;$objItem.name;$objItem.proxyaddresses;};
+
+	
+
+
+--Check who the Owners (ManagedBy) are of a Group (after a connection to Exchange has been made) (as admin):
+	(Get-DistributionGroup -Identity "GroupName").ManagedBy
+
+
+
+
+
+--Use these commands (Exchange 2010 SP1 specific) to clear/delete the Dumpster only (still testing this command, use at your own risk!!!!!)
+	(still testing this command, use at your own risk!!!!!)
+	Add-MailboxPermission -Identity "user.name" -User "agent.name.adm" -AccessRights FullAccess -AutoMapping $False
+	Search-Mailbox -Identity "user.name" -SearchDumpsterOnly -DeleteContent
+	Remove-MailboxPermission -Identity "user.name" -User "agent.name.adm" -AccessRights FullAccess
+
+
+
+--Move a Mailbox with PowerShell (after a connection to Exchange has been made) (as admin):
+	New-MoveRequest -Identity "user.name" -TargetDatabase ‘SDNI-M-250-91MS6’ -BadItemLimit 100 –AcceptLargeDataLoss
+--or
+	New-MoveRequest -Identity "user.name" -TargetDatabase ‘NAWESDNSEZ08V-SG1-MS2’ -BadItemLimit 100 –AcceptLargeDataLoss
+	New-MoveRequest -Identity "user.name" -TargetDatabase ‘SDNI-M-250-91MS6’ -BadItemLimit 100 –AcceptLargeDataLoss
+
+--Check the status of a Mailbox Move with PowerShell (after a connection to Exchange has been made) (as admin):
+	Get-MoveRequestStatistics -Identity "user.name" | Select Status, DisplayName, PercentComplete, TargetDatabase, BadItemsEncountered, TotalMailboxSize, TotalMailboxItemCount, QueuedTimestamp, TotalInProgressDuration, TotalSuspendedDuration, TotalQueuedDuration;
+
+--Resume a Mailbox move that is Suspended with PowerShell (after a connection to Exchange has been made) (as admin):
+	Resume-MoveRequest -Identity "user.name"
+
+--CleanUp a Job, or cancel a running job, that is finished running with PowerShell (after a connection to Exchange has been made) (as admin):
+		--Once a mailbox move request has a status of Completed or CompletedWithWarning it should be removed.  
+		--If the request is not removed then the next time this mailbox is attempted to be moved it will fail.
+	Get-MoveRequest -Identity "user.name" | Remove-MoveRequest
+--or (to avoid the confirmation prompt)
+	Get-MoveRequest -Identity "user.name" | Remove-MoveRequest -Confirm:$false
+
+
+
+
+
+--Check Mailbox permissions (i.e. Group Mailbox or NNPI) (after a connection to Exchange has been made) (as admin):
+	Get-MailboxPermission -Identity "functional.mailbox"
+--Grant Mailbox permissions (i.e. Group Mailbox or NNPI) (after a connection to Exchange has been made) (as admin):
+    --Admin
+	Add-MailboxPermission -Identity "functional.mailbox" -User "user.name" -AccessRights FullAccess,DeleteItem,ReadPermission,ChangePermission,ChangeOwner -InheritanceType All -Automapping $False
+    --Member
+	Add-MailboxPermission -Identity "functional.mailbox" -User "user.name" -AccessRights FullAccess,DeleteItem -InheritanceType All -Automapping $False
+
+--Grant Admin permissions (i.e. Group Mailbox or NNPI) (after a connection to Exchange has been made) (as admin):
+	Add-MailboxPermission -Identity "functional.mailbox" -Owner "user.name" -Automapping $False
+
+--Remove Mailbox permissions (i.e. Group Mailbox or NNPI) (after a connection to Exchange has been made) (as admin):
+    --Admin
+	Remove-MailboxPermission -Identity "functional.mailbox" -User "user.name" -AccessRights FullAccess,DeleteItem,ReadPermission,ChangePermission,ChangeOwner -InheritanceType All
+    --Member
+	Remove-MailboxPermission -Identity "functional.mailbox" -User "user.name" -AccessRights FullAccess,DeleteItem -InheritanceType All
+
+
+
+
+
+--Check current Delivery Restrictions, and check if "From authenticated users only" is checked (after a connection to Exchange has been made) (as admin):
+	Get-Mailbox -Identity "user.name" | fl AcceptMessagesOnlyFrom, AcceptMessagesOnlyFromDLMembers, RejectMessagesFrom, RejectMessagesFromDLMembers, RequireSenderAuthenticationEnabled
+
+--Remove Delivery Restrictions (after a connection to Exchange has been made) (as admin):
+	Set-Mailbox -Identity "user.name" -AcceptMessagesOnlyFrom @{remove="SDCPMACMAIL"};
+--or
+	Set-Mailbox -Identity "user.name" -AcceptMessagesOnlyFrom @{remove="srmusmc@navy.mil"};
+
+--Add Delivery Restrictions (after a connection to Exchange has been made) (as admin):
+	Set-Mailbox -Identity "user.name" -AcceptMessagesOnlyFrom @{add="SDCPMACMAIL"};
+--or
+	Set-Mailbox -Identity "user.name" -AcceptMessagesOnlyFrom @{add="srmusmc@navy.mil"};
+
+--Uncheck "From authenticated users only" (after a connection to Exchange has been made) (as admin):
+	Set-Mailbox -Identity "user.name" -RequireSenderAuthenticationEnabled $False;
+
+--Hide user in GAL
+	Set-Mailbox -Identity "user.name" -HiddenFromAddressListsEnabled $True;
+--UnHide user in Gal
+	Set-Mailbox -Identity "user.name" -HiddenFromAddressListsEnabled $False;
+
+
+
+
+--Contact get info:
+	Get-MailContact ("CN=Contact Name,OU=Contacts,OU=NRFK,DC=nmci-isf,DC=com") | Select *;
+
+--Contact, Remove email address:
+	Set-MailContact ("CN=Contact Name,OU=Contacts,OU=NRFK,DC=nmci-isf,DC=com") -EmailAddresses @{Remove="first.last@email.com"};
+
+
+
+
+--Create Exchange 2010 Mailbox for a user (after a connection to Exchange has been made) (as admin):
+	Enable-Mailbox "user.name" -Alias "user.name.ctr" -Database "MailboxDatabase";
+
+--or (this one line)
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-Scripts\PS-CreateMailbox.ps1"
+
+
+--Add additional Email Addresses (after a connection to Exchange has been made) (as admin):
+	Set-Mailbox -Identity "user.name" -EmailAddressPolicyEnabled $False;
+	Set-Mailbox -Identity "user.name" -EmailAddresses @{Add="user.name@navy.mil"};
+	Set-Mailbox -Identity "user.name" -EmailAddressPolicyEnabled $True;
+
+
+
+
+
+
+--Set Primary SMTP eMail address (after a connection to Exchange has been made) (as admin):
+	Set-Mailbox -Identity "user.name" -EmailAddressPolicyEnabled $False
+	Get-Mailbox -Identity "user.name" | Set-Mailbox -PrimarySMTPAddress "email.address@navy.mil"
+	Set-Mailbox -Identity "user.name" -EmailAddressPolicyEnabled $True
+
+
+
+
+--Check current email addresses
+	Get-Mailbox -Identity "user.name" | fl EmailAddressPolicyEnabled, EmailAddresses
+
+
+
+
+
+--CleanUp the connection/session (in PowerShell) (as admin)
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\Exchange.ps1" CleanUp
+
+
+
+
+
+--Move AD USER (same as the MoveTree command)
+	$InitializeDefaultDrives=$False; if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
+	Get-ADUser -Server "Source_DC" -Identity "user.name" | Move-ADObject -Server "Source_DC" -TargetPath "OU=USERS,OU=BASE,OU=COMMAND,DC=nadsusea,DC=nads,DC=navy,DC=mil" -TargetServer "Target_DC"
+
