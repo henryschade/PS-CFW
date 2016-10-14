@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	29 September 2016
+# Updated Date:	14 October 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -10,7 +10,8 @@
 		#Added Change Log.
 	#29 Sept 2016
 		#Added code to be able to read/check TSProfile properties. (line 4463)
-
+	#14 Oct 2016
+		#Routine formatting updates.
 #>
 
 
@@ -185,7 +186,8 @@
 					break;
 				}
 			}
-		}else{
+		}
+		else{
 			$objGroup =  $(Try {Get-ADGroup -Identity $GroupName -Server $DomainOrDC -Properties *;} Catch {$null});
 		}
 
@@ -203,13 +205,15 @@
 				$strGroupDN = [String]($objGroup).DistinguishedName;
 				$Error.Clear();
 				Add-ADGroupMember -Identity $strGroupDN -Member $UserName -Server $DomainOrDC;
-			}else{
+			}
+			else{
 				#DL
 				#Import exchange commands for the DL actions.
 				$Session = Get-PSSession | Select Name;
 				if (($Session -ne "") -and ($Session -ne $null)){
 					#Write-Host "have at least one session";
-				}else{
+				}
+				else{
 					if (!(Get-Command "SetupConn" -ErrorAction SilentlyContinue)){
 						$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
 						if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
@@ -224,7 +228,8 @@
 
 				if (([String]($objGroup).DistinguishedName -eq "") -or ([String]($objGroup).DistinguishedName -eq $null)){
 					$strGroupDN = [String]$objGroup;
-				}else{
+				}
+				else{
 					$strGroupDN = [String]($objGroup).DistinguishedName;
 				}
 				$Error.Clear();
@@ -237,11 +242,13 @@
 				$strMessage = "Error, Could not add user/computer '" + $UserName + "' to Group '" + $GroupName + "'.`r`n";
 				$strMessage = $strMessage + $Error + "`r`n";
 				$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "";
-			}else{
+			}
+			else{
 				$objReturn.Results = 1;
 				$strMessage = "Success";
 			}
-		}else{
+		}
+		else{
 			$objReturn.Results = 0;
 			$strMessage = "Error, Could not find the Group '" + $GroupName + "'.`r`n"
 		}
@@ -325,7 +332,8 @@
 				}
 			}
 			#$objGroup;
-		}else{
+		}
+		else{
 			$objGroup =  $(Try {Get-ADGroup -Identity $GroupName -Server $DomainOrDC;} Catch {$null});
 		}
 
@@ -334,7 +342,8 @@
 			#Found an existing Group
 			$objReturn.Results = $False;
 			$strResults = "Error Found a Group named '" + $GroupName + "' already exists.`r`n" + ($objGroup.DistinguishedName)
-		}else{
+		}
+		else{
 			#Check that the OU exists ($OUPath), and if $DomainOrDC is not set, set it.
 			$objOUReturn = Check4OU $OUPath $DomainOrDC;
 			if (($objOUReturn.Results -gt 1) -and ((($DomainOrDC -ne "") -and ($DomainOrDC -ne $null)))){
@@ -434,13 +443,15 @@
 							#CleanUpConn;
 						}
 						SetupConn "w" "Random";
-					}else{
+					}
+					else{
 						#Write-Host "have at least one session";
 						#if ($Session -is [array]){
 						#	For ($i=0; $i -lt $Session.length; $i++){
 						#		Write-Host $Session[$i].Name;
 						#	}
-						#}else{
+						#}
+						#else{
 						#	$Session = (Get-PSSession).Name;
 						#	Write-Host "Session is: " $Session;
 						#}
@@ -450,7 +461,8 @@
 						if (($GroupDisp -eq "") -or ($GroupDisp -eq $null)){
 							$GroupAlias = $GroupName;
 							$GroupDisp = $GroupName;
-						}else{
+						}
+						else{
 							$GroupAlias = $GroupDisp;
 						}
 					}
@@ -472,20 +484,23 @@
 									#$objJobCode = [scriptblock]::create({param($strGroupName, $strOpsMaster, $strGroupDisplayName, $strPath, $strGroupAlias, $strGroupEmail, $strGroupNotes, $strManagedBy); New-DistributionGroup -Name $strGroupName -Type "Distribution" -DomainController $strOpsMaster -DisplayName $strGroupDisplayName -SamAccountName $strGroupName -OrganizationalUnit $strPath -Alias $strGroupAlias -PrimarySmtpAddress $strGroupEmail -Notes $strGroupNotes -ManagedBy $strManagedBy;});
 									#$arrArgs = @($GroupName, $strGroupDomain, $GroupDisp, $OUPath, $GroupAlias, ($GroupAlias + "@navy.mil"), $GroupNotes, $ManagedBy);
 							}
-						}else{
+						}
+						else{
 							if ($Members){
 								#NO Manager & Has Users
 									$strResults = New-DistributionGroup -Name $GroupName -Type "Distribution" -DomainController $DomainOrDC -DisplayName $GroupDisp -SamAccountName $GroupName -OrganizationalUnit $OUPath -Alias $GroupAlias -Notes $GroupNotes -Members $Members;
 									#$objJobCode = [scriptblock]::create({param($strGroupName, $strOpsMaster, $strGroupDisplayName, $strPath, $strGroupAlias, $strGroupEmail, $strGroupNotes, $strGrpMembers); New-DistributionGroup -Name $strGroupName -Type "Distribution" -DomainController $strOpsMaster -DisplayName $strGroupDisplayName -SamAccountName $strGroupName -OrganizationalUnit $strPath -Alias $strGroupAlias -PrimarySmtpAddress $strGroupEmail -Notes $strGroupNotes -Members $strGrpMembers;});
 									#$arrArgs = @($GroupName, $strGroupDomain, $GroupDisp, $OUPath, $GroupAlias, ($GroupAlias + "@navy.mil"), $GroupNotes, $Members);
-							}else{
+							}
+							else{
 								#NO Manager & NO Users
 									$strResults = New-DistributionGroup -Name $GroupName -Type "Distribution" -DomainController $DomainOrDC -DisplayName $GroupDisp -SamAccountName $GroupName -OrganizationalUnit $OUPath -Alias $GroupAlias -Notes $GroupNotes;
 									#$objJobCode = [scriptblock]::create({param($strGroupName, $strOpsMaster, $strGroupDisplayName, $strPath, $strGroupAlias, $strGroupEmail, $strGroupNotes); New-DistributionGroup -Name $strGroupName -Type "Distribution" -DomainController $strOpsMaster -DisplayName $strGroupDisplayName -SamAccountName $strGroupName -OrganizationalUnit $strPath -Alias $strGroupAlias -PrimarySmtpAddress $strGroupEmail -Notes $strGroupNotes;});
 									#$arrArgs = @($GroupName, $strGroupDomain, $GroupDisp, $OUPath, $GroupAlias, $strGroupFullEmail, $GroupNotes);
 							}
 						}
-					}else{
+					}
+					else{
 						#Create Exch Mail Enabled Security Group
 						$strMessage = " - Exch Mail Enabled Security Group";
 						$Error.Clear();
@@ -496,19 +511,22 @@
 									$strResults = New-DistributionGroup -Name $GroupName -Type "Security" -DomainController $DomainOrDC -DisplayName $GroupDisp -SamAccountName $GroupName -OrganizationalUnit $OUPath -Alias $GroupAlias -Notes $GroupNotes -ManagedBy $ManagedBy -Members $Members;
 									#$objJobCode = [scriptblock]::create({param($strGroupName, $strOpsMaster, $strGroupDisplayName, $strPath, $strGroupAlias, $strGroupEmail, $strGroupNotes, $strManagedBy, $strGrpMembers); New-DistributionGroup -Name $strGroupName -Type "Security" -DomainController $strOpsMaster -DisplayName $strGroupDisplayName -SamAccountName $strGroupName -OrganizationalUnit $strPath -Alias $strGroupAlias -PrimarySmtpAddress $strGroupEmail -Notes $strGroupNotes -ManagedBy $strManagedBy -Members $strGrpMembers;});
 									#$arrArgs = @($GroupName, $strGroupDomain, $GroupDisp, $OUPath, $GroupAlias, ($GroupAlias + "@navy.mil"), $GroupNotes, $ManagedBy, $Members);
-							}else{
+							}
+							else{
 								#Has Manager & NO Users
 									$strResults = New-DistributionGroup -Name $GroupName -Type "Security" -DomainController $DomainOrDC -DisplayName $GroupDisp -SamAccountName $GroupName -OrganizationalUnit $OUPath -Alias $GroupAlias -Notes $GroupNotes -ManagedBy $ManagedBy;
 									#$objJobCode = [scriptblock]::create({param($strGroupName, $strOpsMaster, $strGroupDisplayName, $strPath, $strGroupAlias, $strGroupEmail, $strGroupNotes, $strManagedBy); New-DistributionGroup -Name $strGroupName -Type "Security" -DomainController $strOpsMaster -DisplayName $strGroupDisplayName -SamAccountName $strGroupName -OrganizationalUnit $strPath -Alias $strGroupAlias -PrimarySmtpAddress $strGroupEmail -Notes $strGroupNotes -ManagedBy $strManagedBy;});
 									#$arrArgs = @($GroupName, $strGroupDomain, $GroupDisp, $OUPath, $GroupAlias, ($GroupAlias + "@navy.mil"), $GroupNotes, $ManagedBy);
 							}
-						}else{
+						}
+						else{
 							if ($Members){
 								#NO Manager & Has Users
 									$strResults = New-DistributionGroup -Name $GroupName -Type "Security" -DomainController $DomainOrDC -DisplayName $GroupDisp -SamAccountName $GroupName -OrganizationalUnit $OUPath -Alias $GroupAlias -Notes $GroupNotes -Members $Members;
 									#$objJobCode = [scriptblock]::create({param($strGroupName, $strOpsMaster, $strGroupDisplayName, $strPath, $strGroupAlias, $strGroupEmail, $strGroupNotes, $strGrpMembers); New-DistributionGroup -Name $strGroupName -Type "Security" -DomainController $strOpsMaster -DisplayName $strGroupDisplayName -SamAccountName $strGroupName -OrganizationalUnit $strPath -Alias $strGroupAlias -PrimarySmtpAddress $strGroupEmail -Notes $strGroupNotes -Members $strGrpMembers;});
 									#$arrArgs = @($GroupName, $strGroupDomain, $GroupDisp, $OUPath, $GroupAlias, ($GroupAlias + "@navy.mil"), $GroupNotes, $Members);
-							}else{
+							}
+							else{
 								#NO Manager & NO Users
 									$strResults = New-DistributionGroup -Name $GroupName -Type "Security" -DomainController $DomainOrDC -DisplayName $GroupDisp -SamAccountName $GroupName -OrganizationalUnit $OUPath -Alias $GroupAlias -Notes $GroupNotes;
 									#$objJobCode = [scriptblock]::create({param($strGroupName, $strOpsMaster, $strGroupDisplayName, $strPath, $strGroupAlias, $strGroupEmail, $strGroupNotes); New-DistributionGroup -Name $strGroupName -Type "Security" -DomainController $strOpsMaster -DisplayName $strGroupDisplayName -SamAccountName $strGroupName -OrganizationalUnit $strPath -Alias $strGroupAlias -PrimarySmtpAddress $strGroupEmail -Notes $strGroupNotes;});
@@ -516,7 +534,8 @@
 							}
 						}
 					}
-				}else{
+				}
+				else{
 					#if (($GroupName.StartsWith("W")) -or ($GroupName.StartsWith("w"))){
 						#Create AD Security Group
 						$strMessage = " - AD Security Group";
@@ -529,17 +548,20 @@
 								#$strResults = New-ADGroup -Name $GroupName -GroupScope $Scope -Server $DomainOrDC -SamAccountName $GroupName -Path $OUPath -ManagedBy $ManagedBy;
 								if ($GroupType -eq "Distribution"){
 									$strResults = New-ADGroup -Name $GroupName -GroupScope $Scope -GroupCategory "Distribution" -Server $DomainOrDC -SamAccountName $GroupName -Path $OUPath -ManagedBy $ManagedBy -OtherAttributes @{'info'=$GroupNotes};
-								}else{
+								}
+								else{
 									$strResults = New-ADGroup -Name $GroupName -GroupScope $Scope -Server $DomainOrDC -SamAccountName $GroupName -Path $OUPath -ManagedBy $ManagedBy -OtherAttributes @{'info'=$GroupNotes};
 								}
 								#$objJobCode = [scriptblock]::create({param($strGroupName, $strGrpType, $strOpsMaster, $strPath, $strManagedBy); New-ADGroup -Name $strGroupName -GroupScope $strGrpType -Server $strOpsMaster -SamAccountName $strGroupName -Path $strPath -ManagedBy $strManagedBy;});
 								#$arrArgs = @($GroupName, $strGroupScope, $strGroupDomain, $OUPath, $ManagedBy);
-						}else{
+						}
+						else{
 							#NO Manager
 								#$strResults = New-ADGroup -Name $GroupName -GroupScope $Scope -Server $DomainOrDC -SamAccountName $GroupName -Path $OUPath;
 								if ($GroupType -eq "Distribution"){
 									$strResults = New-ADGroup -Name $GroupName -GroupScope $Scope -GroupCategory "Distribution" -Server $DomainOrDC -SamAccountName $GroupName -Path $OUPath -OtherAttributes @{'info'=$GroupNotes};
-								}else{
+								}
+								else{
 									$strResults = New-ADGroup -Name $GroupName -GroupScope $Scope -Server $DomainOrDC -SamAccountName $GroupName -Path $OUPath -OtherAttributes @{'info'=$GroupNotes};
 									#$strResults = New-ADGroup -Name $GroupName -GroupScope $Scope -GroupCategory "Security" -Server $DomainOrDC -SamAccountName $GroupName -Path $OUPath -OtherAttributes @{'info'=$GroupNotes};
 								}
@@ -557,7 +579,8 @@
 					$objReturn.Message = "Error";
 					$objReturn.Message = $objReturn.Message + $strMessage + "`r`n";
 					$objReturn.Message = $objReturn.Message + $Error;
-				}else{
+				}
+				else{
 					$objReturn.Results = $True;
 					$objReturn.Message = "Success";
 					$objReturn.Message = $objReturn.Message + $strMessage;
@@ -565,7 +588,8 @@
 						$objReturn.Returns = $strResults;
 					}
 				}
-			}else{
+			}
+			else{
 				$objReturn.Results = $False;
 
 				if ($objOUReturn.Results -gt 1){
@@ -575,7 +599,8 @@
 					}
 
 					$strResults = "The OU provided, to create the group in, was found on multiple Domains.`r`n $strTemp";
-				}else{
+				}
+				else{
 					#OU path provided does not exist.
 					$strResults = "The OU path provided, to create the group in, could not be found found on any available Domains.";
 				}
@@ -614,7 +639,8 @@
 			if ($ADObject.Contains("\")){
 				#$objADObject = (Get-ADUser -Identity $arrSplit[1] -Server $arrSplit[0] -Properties MemberOf, DistinguishedName, sAMAccountName | Select-Object MemberOf, DistinguishedName, sAMAccountName);
 				$objADObject = $(Try {(Get-ADUser -Identity $ADObject.Split("\")[-1] -Server $ADObject.Split("\")[0] -Properties MemberOf, DistinguishedName, sAMAccountName | Select-Object MemberOf, DistinguishedName, sAMAccountName)} Catch {$null});
-			}else{
+			}
+			else{
 				#$objADObject = (Get-ADUser -Identity $ADObject -Properties MemberOf, DistinguishedName, sAMAccountName | Select-Object MemberOf, DistinguishedName, sAMAccountName);
 				$objADObject = $(Try {(Get-ADUser -Identity $ADObject -Properties MemberOf, DistinguishedName, sAMAccountName | Select-Object MemberOf, DistinguishedName, sAMAccountName)} Catch {$null});
 			}
@@ -623,7 +649,8 @@
 				#Could not find an AD Object, check if it is a Group.
 				if ($ADObject.Contains("\")){
 					$objADObject = $(Try {Get-ADObject $ADObject.Split("\")[-1] -Server $ADObject.Split("\")[0] -Properties MemberOf, sAMAccountName, DistinguishedName} Catch {$null});
-				}else{
+				}
+				else{
 					$objADObject = $(Try {Get-ADObject $ADObject -Properties MemberOf, sAMAccountName, DistinguishedName} Catch {$null});
 				}
 			}
@@ -632,7 +659,8 @@
 				#Could not find an AD Object, check if it is a Machine.
 				if ($ADObject.Contains("\")){
 					$objADObject = $(Try {Get-ADComputer -Identity $ADObject.Split("\")[-1] -Server $ADObject.Split("\")[0] -Properties MemberOf, sAMAccountName, DistinguishedName} Catch {$null});
-				}else{
+				}
+				else{
 					$objADObject = $(Try {Get-ADComputer -Identity $ADObject -Properties MemberOf, sAMAccountName, DistinguishedName} Catch {$null});
 				}
 			}
@@ -651,7 +679,8 @@
 							$arrList = GetGroups $objGroup $arrList $bolRecurse;
 						}
 					}
-				}else{
+				}
+				else{
 					#Failed to find an AD object for these ones, just from the DistinguishedName.
 					#So now we need to specify a DC to search against.
 					$arrSplit = $strGroup -Split ',';
@@ -673,24 +702,29 @@
 							if ($txbRidW -ne $null){
 								if ($txbRidW.Text -ne ""){
 									$strRIDMasterW = $txbRidW.Text.Trim();
-								}else{
+								}
+								else{
 									if (!(($strRIDMasterW -ne $null) -and ($strRIDMasterW -ne ""))){
 										$strStatus = CheckRunSpaceJob "GetRIDMasterW" $global:objJobs;
 										if ($strStatus -ne "Failed"){
 											$strRIDMasterW = WaitForRunSpaceJob "GetRIDMasterW" $global:objJobs $txbRidW;
-										}else{
+										}
+										else{
 											$strRIDMasterW = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
 											$txbRidW.Text = $strRIDMasterW;
 										}
-									#}else{
+									#}
+									#else{
 										#Have $strRIDMasterW already.
 									}
 								}
-							}else{
+							}
+							else{
 								#This Function is probably running in the background.
 								if (!(($strRIDMasterW -ne $null) -and ($strRIDMasterW -ne ""))){
 									$strRIDMasterW = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
-								#}else{
+								#}
+								#else{
 									#Have $strRIDMasterW already.
 								}
 							}
@@ -700,24 +734,29 @@
 							if ($txbRidE -ne $null){
 								if ($txbRidE.Text -ne ""){
 									$strRIDMasterE = $txbRidE.Text.Trim();
-								}else{
+								}
+								else{
 									if (!(($strRIDMasterE -ne $null) -and ($strRIDMasterE -ne ""))){
 										$strStatus = CheckRunSpaceJob "GetRIDMasterE" $global:objJobs;
 										if ($strStatus -ne "Failed"){
 											$strRIDMasterE = WaitForRunSpaceJob "GetRIDMasterE" $global:objJobs $txbRidE;
-										}else{
+										}
+										else{
 											$strRIDMasterE = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
 											$txbRidE.Text = $strRIDMasterE;
 										}
-									#}else{
+									#}
+									#else{
 										#Have $strRIDMasterE already.
 									}
 								}
-							}else{
+							}
+							else{
 								#This Function is probably running in the background.
 								if (!(($strRIDMasterE -ne $null) -and ($strRIDMasterE -ne ""))){
 									$strRIDMasterE = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
-								#}else{
+								#}
+								#else{
 									#Have $strRIDMasterE already.
 								}
 							}
@@ -727,24 +766,29 @@
 							if ($txbRidP -ne $null){
 								if ($txbRidP.Text -ne ""){
 									$strRIDMasterP = $txbRidP.Text.Trim();
-								}else{
+								}
+								else{
 									if (!(($strRIDMasterP -ne $null) -and ($strRIDMasterP -ne ""))){
 										$strStatus = CheckRunSpaceJob "GetRIDMasterP" $global:objJobs;
 										if ($strStatus -ne "Failed"){
 											$strRIDMasterP = WaitForRunSpaceJob "GetRIDMasterP" $global:objJobs $txbRidP;
-										}else{
+										}
+										else{
 											$strRIDMasterP = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
 											$txbRidP.Text = $strRIDMasterP;
 										}
-									#}else{
+									#}
+									#else{
 										#Have $strRIDMasterP already.
 									}
 								}
-							}else{
+							}
+							else{
 								#This Function is probably running in the background.
 								if (!(($strRIDMasterP -ne $null) -and ($strRIDMasterP -ne ""))){
 									$strRIDMasterP = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
-								#}else{
+								#}
+								#else{
 									#Have $strRIDMasterP already.
 								}
 							}
@@ -754,24 +798,29 @@
 							if ($txbRidN -ne $null){
 								if ($txbRidN.Text -ne ""){
 									$strRIDMasterN = $txbRidN.Text.Trim();
-								}else{
+								}
+								else{
 									if (!(($strRIDMasterN -ne $null) -and ($strRIDMasterN -ne ""))){
 										$strStatus = CheckRunSpaceJob "GetRIDMasterN" $global:objJobs;
 										if ($strStatus -ne "Failed"){
 											$strRIDMasterN = WaitForRunSpaceJob "GetRIDMasterN" $global:objJobs $txbRidN;
-										}else{
+										}
+										else{
 											$strRIDMasterN = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
 											$txbRidN.Text = $strRIDMasterN;
 										}
-									#}else{
+									#}
+									#else{
 										#Have $strRIDMasterN already.
 									}
 								}
-							}else{
+							}
+							else{
 								#This Function is probably running in the background.
 								if (!(($strRIDMasterN -ne $null) -and ($strRIDMasterN -ne ""))){
 									$strRIDMasterN = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
-								#}else{
+								#}
+								#else{
 									#Have $strRIDMasterN already.
 								}
 							}
@@ -795,7 +844,8 @@
 								$arrList = GetGroups $objGroup $arrList $bolRecurse;
 							}
 						}
-					}else{
+					}
+					else{
 						#Still could not find it, so just return the DistinguishedName.
 						for ($intX = 0; $intX -lt $arrSplit.Count; $intX++){
 							if ($arrSplit[$intX].Contains("CN=")){
@@ -807,7 +857,8 @@
 					}
 				}
 			}
-		}else{
+		}
+		else{
 			$arrList += "Error Could not find $ADObject in AD.";
 		}
 		#$strPSCmds = $strPSCmds.Replace(", ", ",`r`n");
@@ -925,7 +976,8 @@
 
 		if ($Error){
 			$objReturn.Message = "Error" + "`r`n" + $Error;
-		}else{
+		}
+		else{
 			$objReturn.Message = "Success";
 			$objReturn.Results = [Int]$colResults.Count;
 			if ($colResults.Count -gt 0){
@@ -1017,19 +1069,22 @@
 
 		if (($strDomain -eq "") -or ($strDomain -eq $null)){
 			$objReturn.Message = "Error, need a full DN.  Could not parse a domain out of the supplied DN.";
-		}else{
+		}
+		else{
 			$objTarget = $null;
 			$Error.Clear();
 			#$objAcl = Get-Acl $objTarget;
 			if (($strDomainOrDC -eq "") -or ($strDomainOrDC -eq $null)){
 				$objTarget = [ADSI]("LDAP://" + $strCompDN);
-			}else{
+			}
+			else{
 				$objTarget = [ADSI]("LDAP://" + $strDomainOrDC + "/" + $strCompDN);
 			}
 
 			if (($objTarget -eq "") -or ($objTarget -eq $null) -or ($Error) -or ($objTarget.Path -eq "") -or ($objTarget.Path -eq $null)){
 				$objReturn.Message = "Error, Could not find a Target AD object that matched the DN provided.";
-			}else{
+			}
+			else{
 				#To get the GUIDs from the Network:
 				#$rootdse = Get-ADRootDSE;
 				#$guidmap = @{};
@@ -1252,7 +1307,8 @@
 			#Last, First[or KnownBy]
 			if (($KnownBy -ne "") -and ($KnownBy -ne $null)){
 				$strDisplayName = $LastName + ", " + $KnownBy + " ";
-			}else{
+			}
+			else{
 				$strDisplayName = $LastName + ", " + $FirstName + " ";
 			}
 			#Middle
@@ -1303,10 +1359,12 @@
 			$objReturn.Results = $False;
 			if ($Error){
 				$objReturn.Message = "Error: `r`n" + $Error;
-			}else{
+			}
+			else{
 				$objReturn.Message = "Error: Display Name is blank, make sure you provided a valid Company. `r`n";
 			}
-		}else{
+		}
+		else{
 			$objReturn.Results = $True;
 			$objReturn.Message = "Success";
 		}
@@ -1495,7 +1553,8 @@
 					#$strMessage = "EDIPI in use: " + ([String]($objResults.Returns)[0].samAccountName).Trim() + " (UPN: " + ([String]($objResults.Returns)[0].UserPrincipalName).Trim() + ") is using EDIPI ";
 					#if ([String]::IsNullOrEmpty(([String]($objResults.Returns)[0].EDIPI).Trim())){
 					#	$strMessage = $strMessage + "'" + $strEDIPI + "'.";
-					#}else{
+					#}
+					#else{
 					#	$strMessage = $strMessage + "'" + ([String]($objResults.Returns)[0].EDIPI).Trim() + "'.";
 					#}
 					$strMessage = "EDIPI in use: " + ([String]($objResults.Returns)[0].samAccountName).Trim() + " (UPN: " + ([String]($objResults.Returns)[0].UserPrincipalName).Trim() + ") is using EDIPI " + "'" + $strEDIPI + "'.";
@@ -1590,7 +1649,8 @@
 				#if ($strNewName -eq ""){
 				if ([String]::IsNullOrEmpty($strNewName)){
 					$strMessage = "Found an existing AD account with a SamAccountName of '" + $strOrigName + "'.`r`n";
-				}else{
+				}
+				else{
 					$strMessage = "Found an existing AD account with a SamAccountName of '" + $strNewName + "'.`r`n";
 				}
 				#$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
@@ -1600,7 +1660,8 @@
 				if ([String]::IsNullOrEmpty($strMI)){
 					$strNewName = ($FirstName + "." + $LastName).ToLower();
 					$bHadMI = $True;
-				}else{
+				}
+				else{
 					$strNewName = ($FirstName + "." + $strMI + "." + $LastName).ToLower();
 				}
 
@@ -1807,7 +1868,8 @@
 			#		if (($objResults.Returns -Contains $strDomain) -eq $False){
 			#			#$strDomain = $strDomain;
 			#			$bMatch = $True;
-			#		}else{
+			#		}
+			#		else{
 			#			for ($intX = 1; $intX -lt $objResults.Results; $intX++){
 			#				#$strTemp = $strTemp + ", " + $objResults.Returns[$intX];
 
@@ -1823,7 +1885,8 @@
 			#			$objReturn.Message = "OU found on multiple domains, but none of them match the domain supplied.";
 			#			$strDomain = "";
 			#		}
-			#	}else{
+			#	}
+			#	else{
 			#		if (!($strDomain -eq $objResults.Returns[0])){
 			#			$objReturn.Message = "OU found, but the domain it was found on does NOT match the supplied domain.";
 			#			$strDomain = "";
@@ -1859,10 +1922,12 @@
 								if (($strProp.Value -eq $True) -or ($strProp.Value -eq "True") -or ($strProp.Value -eq $False) -or ($strProp.Value -eq "False")){
 									if (($strProp.Value -eq $True) -or ($strProp.Value -eq "True")){
 										$strPSCmd = $strPSCmd + " -" + $strProp.Name + " $" + $True;
-									}else{
+									}
+									else{
 										$strPSCmd = $strPSCmd + " -" + $strProp.Name + " $" + $False;
 									}
-								}else{
+								}
+								else{
 									$strPSCmd = $strPSCmd + " -" + $strProp.Name + " '" + $strProp.Value + "'";
 								}
 							}
@@ -1880,7 +1945,8 @@
 					Invoke-Expression $strPSCmd;
 					if ($Error){
 						$objReturn.Message = $Error;
-					}else{
+					}
+					else{
 						$objReturn.Results = $True;
 						$objReturn.Message = "Success";
 
@@ -1966,7 +2032,8 @@
 			#$objOU = [ADSI]"LDAP://DomainController/OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil"
 			#if ([String]::IsNullOrEmpty($strDC)){
 			#	#$objOU = [ADSI]"LDAP://OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil";
-			#}else{
+			#}
+			#else{
 			#	#$objOU = [ADSI]"LDAP://$strDC/OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil";
 			#}
 
@@ -2037,7 +2104,8 @@
 					if ($Error){
 						$strSomePass = 'Re@][Y.!S0.R@nd0m.' + (Get-Date).ToString("yyyyMMdd");
 					}
-				}else{
+				}
+				else{
 					#$objUser.SetPassword($oADInfo.password);
 					$strSomePass = $oADInfo.password;
 				}
@@ -2198,14 +2266,17 @@
 					$arrDomains[$intX] = $arrDomains[$intX].SubString($arrDomains[$intX].IndexOf("=") + 1).Trim();
 					if ($strDomain -eq ""){
 						$strDomain = $arrDomains[$intX].SubString($arrDomains[$intX].IndexOf("=") + 1).Trim();
-					}else{
+					}
+					else{
 						$objReturn.Message = "The OU was found on multiple Domains.";
 					}
-				}else{
+				}
+				else{
 					#Remove the entry
 					$arrDomains.Remove($arrDomains[$intX]);
 				}
-			}else{
+			}
+			else{
 				#Remove the entry
 				$arrDomains.Remove($arrDomains[$intX]);
 			}
@@ -2260,7 +2331,8 @@
 				if ($lblSize.Text -eq "GB"){
 					[Long]$lngDefaultMailSize = ($lng1GB * $lngDefaultMailSize);
 				}
-			}else{
+			}
+			else{
 				#$txbDefaultMailSize does not exist, or is blank.
 				[Long]$lngDefaultMailSize = $lng250MB;
 			}
@@ -2296,7 +2368,8 @@
 					#$objADUser.mDBOverHardQuotaLimit = $lngProSendRec;
 					UpdateADField $objADUser.DistinguishedName "mDBOverHardQuotaLimit" $lngProSendRec $False $strRIDMaster;
 				}
-			}else{
+			}
+			else{
 				if ($NumCLINs -eq 0){
 					#Update the Interface if it exists (not running in the background).
 					if (($txbDefaultMailSize.Text -ne "") -and ($txbDefaultMailSize.Text -ne $null)){
@@ -2328,7 +2401,8 @@
 			if ($chkMBDefaults.Checked -eq $False){
 				[Int]$intCLINs = [Int]($txbMBProhibitSend.Text - $lngDefaultMailSize) / $lng25MB;
 			}
-		}else{
+		}
+		else{
 			#$txbDefaultMailSize does not exist, or is blank.
 			if (($objADUser -ne "") -and ($objADUser -ne $null)){
 				if ($objADUser.mDBUseDefaults -eq $False){
@@ -2356,7 +2430,8 @@
 				$arrDomains += $ComputerName.Split("\")[0];
 				$ComputerName = $ComputerName.Split("\")[-1];
 			}
-		}else{
+		}
+		else{
 			##Need to get Domains.  GetDomains() requires "AD-Routines.ps1".
 			#if (!(Get-Command "GetDomains" -ErrorAction SilentlyContinue)){
 			#	$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
@@ -2390,7 +2465,8 @@
 		foreach ($strDomain in $arrDomains){
 			if (($strDomain -eq $null) -or ($strDomain -eq "")){
 				#break;
-			}else{
+			}
+			else{
 				if ($strDomain -ne "nads"){
 					$strProgress = "  Looking in " + $strDomain + " domain for " + $ComputerName + ".`r`n";
 
@@ -2398,7 +2474,8 @@
 						UpdateResults $strProgress $False;
 
 						$strRIDMaster = GetOpsMaster2WorkOn $strDomain;
-					}else{
+					}
+					else{
 						#$strProgress;		#Outputs info for when running as background job.
 
 						#$strRIDMaster = (Get-ADDomain $strDomain -ErrorAction SilentlyContinue).RIDMaster;
@@ -2628,7 +2705,8 @@
 		#Read current ACLs
 		if (($strDC -eq "") -or ($strDC -eq $null)){
 			$objTarget = [ADSI]("LDAP://" + $strDistName);
-		}else{
+		}
+		else{
 			$objTarget = [ADSI]("LDAP://" + $strDC + "/" + $strDistName);
 		}
 		$objACL = $objTarget.psbase.ObjectSecurity;
@@ -2775,7 +2853,8 @@
 			#			if ($arrDomains -NotContains $strDomain.flatName){
 			#				$arrDomains += $strDomain.flatName;
 			#			}
-			#		}else{
+			#		}
+			#		else{
 			#			if ($arrDomains -NotContains $strDomain.Name){
 			#				$arrDomains += $strDomain.Name;
 			#			}
@@ -2793,7 +2872,8 @@
 						if ($arrDomains -NotContains $strDomain.NetBiosName){
 							$arrDomains += $strDomain.NetBiosName;
 						}
-					}else{
+					}
+					else{
 						if ($arrDomains -NotContains $strDomain.DnsName){
 							$arrDomains += $strDomain.DnsName;
 						}
@@ -2911,22 +2991,26 @@
 					if ($objResults.Returns -Contains $strDomain){
 						#We can move the User.
 						#$strDomain = $strDomain;
-					}else{
+					}
+					else{
 						#Don't know what Domain to use.
 						$objReturn.Message = "The OU Path provided was found on more than one Domain," + "`r`n" + "and did not match the Domain specified in the provided OU Path.";
 						$objReturn.Results = $False;
 						$strDomain = "";
 					}
-				}else{
+				}
+				else{
 					#Don't know what Domain to use.
 					$objReturn.Message = "The OU Path provided was found on more than one Domain.";
 					$objReturn.Results = $False;
 				}
-			}else{
+			}
+			else{
 				#We can move the User.
 				$strDomain = $objResults.Returns;
 			}
-		}else{
+		}
+		else{
 			#OU Path provided could not be found on any of the Domain.
 			$objReturn.Message = "The OU Path provided could not be found on any available Domains.";
 			$objReturn.Results = $False;
@@ -2947,7 +3031,8 @@
 				#Get an AD User Object
 				#$objUser = $(Try {Get-ADUser -Server $strRIDMaster -Identity $ADUser} Catch {$null});
 				$objUser = FindUser $ADUser;
-			}else{
+			}
+			else{
 				#Already have an AD Object
 				$objUser = $ADUser;
 			}
@@ -3036,24 +3121,28 @@
 					If ($objUser.DistinguishedName.Contains($DestOU)){
 						$objReturn.Message = $objReturn.Message + "The AD object is already at the OU Path provided.`r`n";
 						$objReturn.Results = $True;
-					}else{
+					}
+					else{
 						$Error.Clear();
 						if ($strDestRIDMaster -ne $strSrcRIDMaster){
 							$(Try {Get-ADUser -Server $strSrcRIDMaster -Identity $objUser.DistinguishedName | Move-ADObject -Server $strSrcRIDMaster -TargetPath $DestOU -TargetServer $strDestRIDMaster} Catch {$null});
-						}else{
+						}
+						else{
 							$(Try {Get-ADUser -Server $strSrcRIDMaster -Identity $objUser.DistinguishedName | Move-ADObject -Server $strSrcRIDMaster -TargetPath $DestOU} Catch {$null});
 						}
 						if ($Error){
 							$objReturn.Message = $objReturn.Message + "Failed to move the AD object '" + $objUser.SamAccountName + "' to the Destination OU `r`n'$DestOU'.`r`n";
 							$objReturn.Message = $objReturn.Message + $Error + "`r`n";
 							$objReturn.Results = $False;
-						}else{
+						}
+						else{
 							$objReturn.Results = $True;
 							$strMessage = "Successfully moved the AD object '" + $objUser.SamAccountName + "' to the Destination OU.`r`n"
 							if ($strDestRIDMaster -ne $strSrcRIDMaster){
 								$objUser = Get-ADUser -Server $strDestRIDMaster -Identity $objUser.SamAccountName -Properties *;
 								$strMessage = $strMessage + $strDestRIDMaster
-							}else{
+							}
+							else{
 								$objUser = Get-ADUser -Server $strSrcRIDMaster -Identity $objUser.SamAccountName -Properties *;
 								$strMessage = $strMessage + $strSrcRIDMaster
 							}
@@ -3063,7 +3152,8 @@
 							$objReturn.Message = $objReturn.Message + $strMessage;
 						}
 					}
-				}else{
+				}
+				else{
 					#Could not get the RID Master for the Destination Domain.
 					$objReturn.Results = $False;
 					$objReturn.Message = $objReturn.Message + "Failed to move the AD object '" + $objUser.SamAccountName + "' to the Destination OU `r`n'$DestOU'.`r`nCould not determine the RID/Ops Master DC from the network.`r`n";
@@ -3071,7 +3161,8 @@
 						$objReturn.Message = $objReturn.Message + $strTempError + "`r`n";
 					}
 				}
-			}else{
+			}
+			else{
 				$objReturn.Results = $False;
 				$objReturn.Message = "Could not find an AD object with a name of '" + $ADUser + "' in any Domain on the network.`r`n";
 			}
@@ -3129,7 +3220,8 @@
 						if ($Property -eq $($strProperty)){
 							$arrValues += $($objADSIUser.PSBase.InvokeGet($strProperty)).ToString();
 						}
-					}else{
+					}
+					else{
 						#$strMessage = "$($strProperty) value: $($objADSIUser.PSBase.InvokeGet($strProperty))";
 						#MsgBox $strMessage;
 						$arrValues += "$($strProperty) = $($objADSIUser.PSBase.InvokeGet($strProperty))";
@@ -3138,7 +3230,8 @@
 
 				#$objReturn.Results = $True;
 				#$objReturn.Message = "Success";
-			}else{
+			}
+			else{
 				#$objReturn.Message = "Error `r`n" + $Error;
 			}
 		}
@@ -3213,7 +3306,8 @@
 
 			if (($frmAScIIGUI -ne "") -and ($frmAScIIGUI -ne $null)){
 				$RIDMaster = GetOpsMaster2WorkOn $RIDMaster;
-			}else{
+			}
+			else{
 				#$RIDMaster = (Get-ADDomain $RIDMaster).RIDMaster;
 				$RIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $RIDMaster))).RidRoleOwner.Name;
 			}
@@ -3232,15 +3326,18 @@
 			if ((($MultiVal -eq "yes") -or ($MultiVal -eq $True) -and ($NewValue -ne "")) -or ($MultiVal -eq "Remove")){
 				Set-ADUser -Identity $ADUserDN -Server $RIDMaster -Remove @{$FieldName = $NewValue};
 			}
-		}else{
+		}
+		else{
 			if (($NewValue -eq "") -or ($NewValue -eq $null)){
 				Set-ADUser -Identity $ADUserDN -Server $RIDMaster -Clear $FieldName;
-			}else{
+			}
+			else{
 				$strCheckVal = [String](Get-ADUser -Identity $ADUserDN -Server $RIDMaster -Properties * | Select $FieldName);
 				if ($strCheckVal.Contains("Microsoft.ActiveDirectory.Management.ADPropertyValueCollection")){
 					#The field name supplied probably does not exist.
 					$strCheckVal = "";
-				}else{
+				}
+				else{
 					$strCheckVal = $strCheckVal.Replace("@{", "");
 					$strCheckVal = $strCheckVal.Replace("}", "");
 					$strCheckVal = $strCheckVal.Replace($FieldName + "=", "").Trim();
@@ -3248,7 +3345,8 @@
 
 				if (($strCheckVal.Trim() -eq "") -or ($strCheckVal -eq $null)){
 					Set-ADUser -Identity $ADUserDN -Server $RIDMaster -Add @{$FieldName = $NewValue};
-				}else{
+				}
+				else{
 					Set-ADUser -Identity $ADUserDN -Server $RIDMaster -Replace @{$FieldName = $NewValue};
 				}
 			}
