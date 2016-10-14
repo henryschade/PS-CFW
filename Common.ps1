@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	5 October 2016
+# Updated Date:	14 October 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -14,6 +14,8 @@
 		#Add ECMD SIPR info to GetPathing().
 		#Update MiscSettings.txt default path to be CFW instead of SupportFiles.
 		#Added GetCurrentFiles() back in from the 20160614b backup copy, and updated it.
+	#Changes for 14 Oct 2016
+		#fixed a bug in SaveConfig().  Would only save one config setting.
 
 #>
 
@@ -933,7 +935,7 @@
 		$arrDefaults.Add("CDRDevSIPR", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gRE1DSVNETklTUTAxdlxzcTAxdmluc3QwMQ0Kc3RyREJOYW1lID0gRGJQaG9lbml4NTUxDQpzdHJEQkxvZ2luUiA9IGlzZnVzZXINCnN0ckRCUGFzc1IgPSBwLXINCnN0ckRCTG9naW5XID0gaXNmdXNlcg0Kc3RyREJQYXNzVyA9IHAtdw==");
 		$arrDefaults.Add("CDRSIPR", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAxDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h");
 		$arrDefaults.Add("ECMD", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTUzXFNRNTNJTlNUMDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==");
-		$arrDefaults.Add("ECMDSIPR", "xxx");
+		$arrDefaults.Add("ECMDSIPR", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbm1jaW5yZmtzcTAyXHNxMDJpbnN0MDENCnN0ckRCTmFtZSA9IEVDTUQNCnN0ckRCTG9naW5SID0ga2JTaXRlQ29kZURCVXNlcg0Kc3RyREJQYXNzUiA9IEtCU2l0QENvZEBVc2VyMQ0Kc3RyREJMb2dpblcgPSBub25lDQpzdHJEQlBhc3NXID0gbm9uZQ==");
 		$arrDefaults.Add("Score", $arrDefaults.AgentActivity);
 		$arrDefaults.Add("Sites", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFFQU5SRktTUTc1VkFcU1E3NVZBSU5TVDAxDQpzdHJEQk5hbWUgPSBTaXRlQ29kZXMNCnN0ckRCTG9naW5SID0gS0J1c2VyDQpzdHJEQlBhc3NSID0ga2M1JHNxMDI=");
 		$arrDefaults.Add("SRMDB", "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gTkFXRVNETklTUTcyVkJcU1E3MlZCSU5TVDAxDQpzdHJEQk5hbWUgPSBTUk1fQXBwc19Ub29scw0Kc3RyREJMb2dpblIgPSBTUk1fQXBwc19Ub29sc19XRk0NCnN0ckRCUGFzc1IgPSAhU1JNX0FwcHNfVG9vbHNfV0ZNNjkNCnN0ckRCTG9naW5XID0gU1JNX0FwcHNfVG9vbHMNCnN0ckRCUGFzc1cgPSAhU1JNX0FwcHNfVG9vbHM2OQ==");
@@ -1435,32 +1437,28 @@
 		if ($strConfigFile -ne ($strProject + ".ini")){
 			if (Test-Path -Path $strConfigFile){
 				if ($hSettings.Count -gt 0){
-					#Read file into Hash Array
+					#Read file into an Array
 					$arrFile = [System.IO.File]::ReadAllLines($strConfigFile);
 					for ($intX = 0; $intX -lt $arrFile.Count; $intX++){
 						$strKey = "";
-						#$strVal = "";
+						$strVal = "";
 						if (!([String]::IsNullOrEmpty($arrFile[$intX]))){
 							if ($arrFile[$intX].Contains(" : ")){
 								$strKey = $arrFile[$intX].SubString(0, $arrFile[$intX].IndexOf(" : ")).Trim();
-								#$strVal = $arrFile[$intX].SubString($arrFile[$intX].IndexOf(" : ") + 2).Trim();
+								$strVal = $arrFile[$intX].SubString($arrFile[$intX].IndexOf(" : ") + 2).Trim();
 							}
 
 							if (!([String]::IsNullOrEmpty($strKey))){
-								#foreach ($strEntry in $hSettings.Keys){
-									if ($hSettings.ContainsKey($strKey)){
-										$arrFile[$intX] = $strKey + " : " + $hSettings.$strKey;
-								#		break;
-									}
-								#}
+								#Check if the provided info is already in the config file, update it if so.
+								if ($hSettings.ContainsKey($strKey)){
+									#$arrFile[$intX] = $strKey + " : " + $hSettings.$strKey;
+									#$hSettings.Remove($strKey);
+								}
+								else{
+									$hSettings.Add($strKey, $strVal);
+								}
 							}
 						}
-					}
-
-					$Error.Clear();
-					$arrFile | Out-File -filepath $strConfigFile -Encoding Default;
-					if (!($Error)){
-						$bolComplete = $True;
 					}
 				}
 				else{
@@ -1476,19 +1474,21 @@
 					}
 				}
 			}
-			else{
-				#Currently no existing config file, so need to create one.
-				if ($hSettings.Count -gt 0){
-					$arrFile = @();
-					foreach ($strKey in $hSettings.Keys){
-						$arrFile += $strKey + " : " + $hSettings.$strKey;
-					}
+			#else{
+			#	#Currently no existing config file, so will need to create one.
+			#}
 
-					$Error.Clear();
-					$arrFile | Out-File -filepath $strConfigFile -Encoding Default;
-					if (!($Error)){
-						$bolComplete = $True;
-					}
+			if ($hSettings.Count -gt 0){
+				$arrFile = @();
+				foreach ($strKey in $hSettings.Keys){
+					$arrFile += $strKey + " : " + $hSettings.$strKey;
+				}
+
+				$Error.Clear();
+				#$arrFile | Out-File -Append -filepath $strConfigFile -Encoding Default;
+				$arrFile | Out-File -filepath $strConfigFile -Encoding Default;
+				if (!($Error)){
+					$bolComplete = $True;
 				}
 			}
 		}
