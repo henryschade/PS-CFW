@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	4 October 2016
+# Updated Date:	5 October 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -13,6 +13,7 @@
 		#Add CDR SIPR info to GetPathing().
 		#Add ECMD SIPR info to GetPathing().
 		#Update MiscSettings.txt default path to be CFW instead of SupportFiles.
+		#Added GetCurrentFiles() back in from the 20160614b backup copy, and updated it.
 
 #>
 
@@ -874,6 +875,19 @@
 		}
 
 		return $hashSettings;
+	}
+
+	function GetCurrentFiles{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strLocalDir, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strProjName, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolDoPrompts = $False
+		)
+		#A place holder.  Should be using UpdateLocalFiles() instead of this one.
+
+		$strResults = UpdateLocalFiles $strLocalDir $strProjName $bolDoPrompts;
+
+		return $strResults;
 	}
 
 	function GetPathing{
