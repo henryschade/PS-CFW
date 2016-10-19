@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	29 September 2016
+# Updated Date:	19 October 2016
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process. 
@@ -12,6 +12,8 @@
 		#Added Change Log.
 	#29 Sept 2016
 		#Updated CreateMailBox() to check extensionAttribute8 for NNPI account names.
+	#19 Oct 2016
+		#Update SetupConn() to accomodate SIPR.
 
 #>
 
@@ -1900,7 +1902,13 @@
 			#Write-Host "East it is";
 			$strDomain = "nadsusea";
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
-				$strServer = "naeaNRFKxh01v.nadsusea.nads.navy.mil";
+				if ($env:UserDomain.toLower().Contains("snmci-isf")){
+					#SIPR
+					$strServer = "NAEANRFKXh02V.nadsusea.nads.navy.smil.mil";
+				}
+				else{
+					$strServer = "naeaNRFKxh01v.nadsusea.nads.navy.mil";
+				}
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 				#if ((Test-Connection -CN $strFQDN -buffersize 16 -Count 1 -ErrorAction 0 -quiet) -ne $True){
 					#Specify a new Server to connect to.
@@ -1926,7 +1934,13 @@
 			#Write-Host "West it is";
 			$strDomain = "nadsuswe";
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
-				$strServer = "naweSDNIxh01v.nadsuswe.nads.navy.mil";
+				if ($env:UserDomain.toLower().Contains("snmci-isf")){
+					#SIPR
+					$strServer = "naweSDNIXh02V.nadsuswe.nads.navy.smil.mil";
+				}
+				else{
+					$strServer = "naweSDNIxh01v.nadsuswe.nads.navy.mil";
+				}
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 			}
 			else{
@@ -1949,7 +1963,13 @@
 			#Write-Host "Pacom it is";
 			$strDomain = "pads";
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
-				$strServer = "PADSPRLHXF01V.pads.pacom.mil";
+				if ($env:UserDomain.toLower().Contains("snmci-isf")){
+					#SIPR
+					$strServer = "PADSPRLHXH02V.pads.pacom.navy.smil.mil";
+				}
+				esle{
+					$strServer = "PADSPRLHXF01V.pads.pacom.mil";
+				}
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 			}
 			else{
