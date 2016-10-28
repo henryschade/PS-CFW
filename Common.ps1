@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	14 October 2016
+# Updated Date:	27 October 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -16,6 +16,10 @@
 		#Added GetCurrentFiles() back in from the 20160614b backup copy, and updated it.
 	#Changes for 14 Oct 2016
 		#fixed a bug in SaveConfig().  Would only save one config setting.
+	#Changes for 24 Oct 2016
+		#Bug fix in BackUpDir().  If $strBackUpDir was provided did not check to make sure directory existed.
+	#Changes for 27 Oct 2016
+		#Improve the EnableDotNet4() message about running/restarting as admin.
 
 #>
 
@@ -125,16 +129,16 @@
 				$strBackUpDir = $strBackUpDir + "..\";
 			}
 			$strBackUpDir = $strBackUpDir + "BackUps\";
-			if (!(Test-Path -Path $strBackUpDir)){
-				$strUpdate = "Creating BackUp Directory: " + $strBackUpDir;
-				if ($bPrompts -eq $True){
-					Write-Host $strUpdate;
-				}
-				else{
-					$strMessage = $strMessage + $strUpdate + "`r`n";
-				}
-				mkdir $strBackUpDir | Out-Null;
-			}
+			#if (!(Test-Path -Path $strBackUpDir)){
+			#	$strUpdate = "Creating BackUp Directory: " + $strBackUpDir;
+			#	if ($bPrompts -eq $True){
+			#		Write-Host $strUpdate;
+			#	}
+			#	else{
+			#		$strMessage = $strMessage + $strUpdate + "`r`n";
+			#	}
+			#	mkdir $strBackUpDir | Out-Null;
+			#}
 		}
 
 		#Make sure directory paths end with "\".
@@ -151,6 +155,18 @@
 		#Write-Host "strDestDir $strDestDir";
 		#Write-Host "strBackUpDir $strBackUpDir";
 		#Write-Host "";
+
+		#Make sure backup directory exists
+		if (!(Test-Path -Path $strBackUpDir)){
+			$strUpdate = "Creating BackUp Directory: " + $strBackUpDir;
+			if ($bPrompts -eq $True){
+				Write-Host $strUpdate;
+			}
+			else{
+				$strMessage = $strMessage + $strUpdate + "`r`n";
+			}
+			mkdir $strBackUpDir | Out-Null;
+		}
 
 		$objSrcSubItems = Get-ChildItem $strSourceDir -Force;		#force is necessary to get hidden files/folders
 		$objDestSubItems = Get-ChildItem $strDestDir -Force;		#force is necessary to get hidden files/folders
@@ -681,10 +697,10 @@
 		$bolAsAdmin = $False;
 
 		if ($PSVersionTable.CLRVersion.Major -lt 4){
-			$bReturn = $True;
+			$bReturn = $False;
 			$bolAsAdmin = AsAdmin;
 			if ($bolAsAdmin -ne $True){
-				$strMessage = "You should run this PS Script with admin permissions." + "`r`n" + "Want us to restart this PS Script for you?";
+				$strMessage = "To check .NET 4x support, and enable if needed, you need to run this PS Script with admin permissions." + "`r`n" + "Want us to restart this PS Script for you?";
 				if ((!(Get-Command "MsgBox" -ErrorAction SilentlyContinue))){
 					Write-Host "`r`n$strMessage ([Y]es, [N]o)";
 					#Write-Host "Press any key to continue ..."
@@ -721,9 +737,10 @@
 						$objProcess = (Get-WmiObject -Class Win32_Process -Filter "ParentProcessID=$PID").ProcessID;
 						Stop-Process -Id $PID;
 					}
-				}else{
-					$bolAsAdmin = $True;
 				}
+				#else{
+				#	$bolAsAdmin = $False;
+				#}
 			}
 
 			#http://tfl09.blogspot.com/2010/08/using-newer-versions-of-net-with.html
@@ -752,7 +769,8 @@
 				if (Test-Path -Path ($strConfigFile + ".bak")){
 					#Have a backup copy already
 					$strXML | Out-File ($strConfigFile);
-				}else{
+				}
+				else{
 					#Don't have a backup file yet.
 					if (Test-Path -Path ($strConfigFile)){
 						#Copy the original config file to *.bak.
@@ -761,7 +779,8 @@
 							#Update/overwrite the config file
 							$strXML | Out-File ($strConfigFile);
 						}
-					}else{
+					}
+					else{
 						#Config file does not exist, so create both
 						$strXML | Out-File ($strConfigFile + ".bak");
 						$strXML | Out-File ($strConfigFile);
@@ -771,6 +790,9 @@
 
 			if ($Error){
 				$bReturn = $False;
+			}
+			else{
+				$bReturn = $True;
 			}
 		}
 		else{

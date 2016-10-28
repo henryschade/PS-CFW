@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	14 October 2016
+# Updated Date:	28 October 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -12,6 +12,8 @@
 		#Added code to be able to read/check TSProfile properties. (line 4463)
 	#14 Oct 2016
 		#Routine formatting updates.
+	#28 Oct 2016
+		#Routine documentation templates.
 #>
 
 
@@ -126,12 +128,12 @@
 
 	
 	function AddUserToGroup{
-		#Adds a User/computer to a Group as a Member.
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$GroupName, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$UserName, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$DomainOrDC
 		)
+		#Adds a User/computer to a Group as a Member.
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= 0 or 1.  0 = Error, 1 = Success
@@ -271,6 +273,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$GroupAlias, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$GroupNotes = ""
 		)
+		#Description....
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  $False = Error, $True = Success
@@ -613,19 +616,21 @@
 	}
 
 	function GetGroups{
-		#Based heavily on code from:
-		#http://www.reich-consulting.net/2013/12/05/retrieving-recursive-group-memberships-powershell/
-		#Which we got to from:
-		#http://stackoverflow.com/questions/5072996/how-to-get-all-groups-that-a-user-is-a-member-of
-
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)]$ADObject, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Array]$arrList, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolRecurse = $False
 		)
+		#Description....
+		#Return.....
 		#$ADObject = An AD object, or the sAMAccountName (String) of the AD object to get.
 		#$arrList = The Array, of strings, that will be updated/returned, that will have the list of Memberships $ADObject has.
 		#$bolRecurse = Get the Groups any Groups are Members Of as well.
+
+		#Based heavily on code from:
+		#http://www.reich-consulting.net/2013/12/05/retrieving-recursive-group-memberships-powershell/
+		#Which we got to from:
+		#http://stackoverflow.com/questions/5072996/how-to-get-all-groups-that-a-user-is-a-member-of
 
 		$InitializeDefaultDrives=$False;
 		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
@@ -877,6 +882,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Array]$arrDesiredProps = @("name"), 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bPSobj = $False
 		)
+		#Description....
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= # of objects found.
@@ -1008,17 +1014,12 @@
 	}
 
 	function AssignDevPerms{
-		#https://social.technet.microsoft.com/Forums/windowsserver/en-US/df3bfd33-c070-4a9c-be98-c4da6e591a0a/forum-faq-using-powershell-to-assign-permissions-on-active-directory-objects?forum=winserverpowershell
-		#http://blogs.technet.com/b/joec/archive/2013/04/25/active-directory-delegation-via-powershell.aspx
-		#http://blogs.msdn.com/b/adpowershell/archive/2009/10/13/add-object-specific-aces-using-active-directory-powershell.aspx
-
-		#https://social.technet.microsoft.com/Forums/windowsserver/en-US/f7855fb7-99e9-43fe-9852-93e97011df5f/adsicomitchanges-a-constraint-violation-occurred?forum=winserverpowershell
-		#https://msdn.microsoft.com/en-us/library/system.security.accesscontrol.objectaccessrule(v=vs.110).aspx
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strCompDN, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strDelegateSID, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomainOrDC
 		)
+		#Description....
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= True or False (Were there Errors).
@@ -1034,6 +1035,14 @@
 			#$objRet = AssignDevPerms ((FindComputer "DLCHLK085463").DistinguishedName) ((FindUser $strUserName).SID.Value);
 			#$objRet.Returns
 			#$objRet.Returns.ObjectSecurity.Access | Where-Object {$_.IdentityReference -Match $strUserName};
+		
+		#Helpful URL's:
+			#https://social.technet.microsoft.com/Forums/windowsserver/en-US/df3bfd33-c070-4a9c-be98-c4da6e591a0a/forum-faq-using-powershell-to-assign-permissions-on-active-directory-objects?forum=winserverpowershell
+			#http://blogs.technet.com/b/joec/archive/2013/04/25/active-directory-delegation-via-powershell.aspx
+			#http://blogs.msdn.com/b/adpowershell/archive/2009/10/13/add-object-specific-aces-using-active-directory-powershell.aspx
+
+			#https://social.technet.microsoft.com/Forums/windowsserver/en-US/f7855fb7-99e9-43fe-9852-93e97011df5f/adsicomitchanges-a-constraint-violation-occurred?forum=winserverpowershell
+			#https://msdn.microsoft.com/en-us/library/system.security.accesscontrol.objectaccessrule(v=vs.110).aspx
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -1251,6 +1260,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)]$bNNPI = $False
 			#[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bNNPI = $False
 		)
+		#Description....
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Were there errors?
@@ -1270,7 +1280,8 @@
 			#20160325 - Naming standards are being updated. - The NNPI display name for NIPR should be like the display name for SIPR:
 			#LastName<COMMA><SPACE>FirstName<SPACE>Initials<SPACE>GenerationQualifier<SPACE>Rank<SPACE>NNPI<HYPHEN>Department<COMMA><SPACE>Office
 
-		#$strDisplayName = (BuildDisplayName $LastName $FirstName $MI $Rank $Dep $Office $Company $KnownBy $Gen $FNcc).Returns;
+		#Sample Usage:
+			#$strDisplayName = (BuildDisplayName $LastName $FirstName $MI $Rank $Dep $Office $Company $KnownBy $Gen $FNcc).Returns;
 
 		#Display Names - per NMCI Naming Standards (D400 11939.01 section 3.9.4.1)
 		#Navy --> Last, First[or KnownBy] MI [Generation] [FORNATL-cc] Rank Department [or GalCMD], Office [or GalOff]
@@ -1384,8 +1395,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bForceInc = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strEmailEnding = "@navy.mil"
 		)
-		#CheckNameAvail() requires isNumeric() in Common.ps1.
-
+		#Description....
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Found a new "good" name.
@@ -1808,6 +1818,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDC = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)]$objADInfo = $null
 		)
+		#Description....
 		#Note: If the SAMAccountName string provided, does not end with a '$', one will be appended (by powershell) if needed.
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
@@ -1973,6 +1984,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)]$strDomain, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)]$strDC
 		)
+		#Description....
+		#Taking about 6 seconds in my initial testing.
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Did the AD User get created?
@@ -1987,7 +2000,6 @@
 		#$strOU = The LDAP OU path. i.e. "OU=USERS,OU=BASE,OU=CMD".
 		#$strDomain = The Domain to create the account on.  i.e. "sysadmingeek", or "sysadmingeek.com" or "DC=nadsusea,DC=nads,DC=navy,DC=mil".
 		#$strDC = The Domain Controller to create the account at.  FQDN or just the server name.
-		#Taking about 6 seconds in my initial testing.
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -2191,6 +2203,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$OUPath, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$RequiredDomain = ""
 		)
+		#Description....
+		#Return.....
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= # (typically 0 or 1, but could be more) of domains the OU was found on/in.
@@ -2294,6 +2308,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Int]$NumCLINs, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Long]$lngDefaultMailSize
 		)
+		#Description....
+		#Return.....
 		#$objADUser = AD User Object.
 		#$Action = The Action to perform.  "Read" (Default), "Set"
 		#$NumCLINs = The Number of CLIN16's to assign, if Action = "Set".
@@ -2420,6 +2436,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain
 		)
 		#Checks All domains (gotten from the Network) for $ComputerName, or just the ones provided.
+		#Return.....
+		#Paramater Explanation.....
 
 		$InitializeDefaultDrives=$False;
 		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
@@ -2501,7 +2519,7 @@
  			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDC
  		)
  		#Checks All domains (gotten from the Network) for $GrpName, or just the ones provided.
- 			#Returns the AD Group object.
+ 		#Returns the AD Group object.
  		#$GrpName = The group, samaccountname, to look for.
  		#$strDomain = The domain to look for $GrpName in.
  		#$strDC = The DC to use to do the search, over rides $strDomain.  (Short or FQDN.)
@@ -2578,6 +2596,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDC
 		)
 		#Checks All domains (gotten from the Network) for $Username, or just the ones provided.
+		#Return.....
 		#$Username = The user, samaccountname, to look for.
 		#$strDomain = The domain to look for $Username in.
 		#$strDC = The DC to use to do the search, over rides $strDomain.  (Short or FQDN.)
@@ -2645,11 +2664,11 @@
 	}
 
 	function GetACLs{
-		#https://social.technet.microsoft.com/Forums/windowsserver/en-US/df3bfd33-c070-4a9c-be98-c4da6e591a0a/forum-faq-using-powershell-to-assign-permissions-on-active-directory-objects?forum=winserverpowershell
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strDistName, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolTranslate = $True
 		)
+		#Description....
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= True or False (Were there Errors).
@@ -2657,6 +2676,9 @@
 			#$objReturn.Returns		= $null, or an array/list of the ACLs.
 		#$strDistName = The AD objects DistinguishedName to get ACL's of.  (i.e. CN=WLNRFK390tst,OU=COMPUTERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil  or  CN=DDALNT000032,OU=COMPUTERS,OU=ALNT,OU=ONR,DC=nadsusea,DC=nads,DC=navy,DC=mil)
 		#$bolTranslate = $True or $False. Translate the GUID's into meaningful names.  (i.e. F3A64788-5306-11D1-A9C5-0000F80367C1 = "Validated Write Service Principle Name")
+
+		#Helpful URL's:
+			#https://social.technet.microsoft.com/Forums/windowsserver/en-US/df3bfd33-c070-4a9c-be98-c4da6e591a0a/forum-faq-using-powershell-to-assign-permissions-on-active-directory-objects?forum=winserverpowershell
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -2814,6 +2836,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolFQDN = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolTrusted = $False
 		)
+		#Description....
+		#Return.....
 		#$bolFQDN = $True, $False.  Return results in FQDN format.
 		#$bolTrusted = $True, $False.  Get Trusted Domains too.
 
@@ -2897,6 +2921,7 @@
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain 
 		)
+		#Description....
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= True or False (Were there Errors).
@@ -2950,6 +2975,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$ADUser, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$DestOU
 		)
+		#Description....
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Moved or not.
@@ -3176,6 +3202,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strUserDN, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Property
 		)
+		#Description....
+		#Return.....
 		#$strUserDN = The DistinguishedName of the account. (i.e. CN=redirect.test,OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil)
 		#$Property = What TS Property to get. (blank or $null returns all) "allowLogon", "TerminalServicesHomeDirectory", "TerminalServicesHomeDrive", "TerminalServicesProfilePath"
 
@@ -3247,6 +3275,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$Attribute, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Value
 		)
+		#Description....
+		#Return.....
 		#$strUserDN = The DistinguishedName of the account. (i.e. CN=redirect.test,OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil)
 		#$Attribute = What TS Property to update.  "allowLogon", "TerminalServicesHomeDirectory", "TerminalServicesHomeDrive", "TerminalServicesProfilePath"
 		#$Value = The Value to populate $Attribute with.
@@ -3288,9 +3318,11 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$ADUserDN, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$FieldName, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)]$NewValue, 
-			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$MultiVal, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$MultiVal = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$RIDMaster
 		)
+		#Description....
+		#No Return.
 		#$ADUserDN = AD User DistinguishedName.  (i.e. CN=redirect.test,OU=USERS,OU=SDNI,OU=COMPACFLT,DC=nadsuswe,DC=nads,DC=navy,DC=mil)
 		#$FieldName = AD field name to update.
 		#$NewValue = The new value to put in FieldName.
