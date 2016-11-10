@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	27 October 2016
+# Updated Date:	10 November 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -20,6 +20,8 @@
 		#Bug fix in BackUpDir().  If $strBackUpDir was provided did not check to make sure directory existed.
 	#Changes for 27 Oct 2016
 		#Improve the EnableDotNet4() message about running/restarting as admin.
+	#Changes for 10 Nov 2016
+		#Update isADInstalled() to better check Servers for AD installed and enabled.
 
 #>
 
@@ -1219,8 +1221,8 @@
 			#Installed
 			#Client Checks:
 			if ((($arrFiltered -Match "RemoteServerAdministrationTools-Roles-AD-Powershell -- Enabled").Count -eq 0) -or (($arrFiltered -Match "RemoteServerAdministrationTools-Roles-AD -- Enabled").Count -eq 0)){
-				#Server Checks:
-				if ((($arrFiltered -Match "ActiveDirectory-PowerShell -- Enabled").Count -eq 0) -or (($arrFiltered -Match "DirectoryServices-ADAM -- Enabled").Count -eq 0)){
+				#Server Checks:  (I think "ActiveDirectory-PowerShell" is the important one, but not 100% sure still)
+				if ((($arrFiltered -Match "ActiveDirectory-PowerShell -- Enabled").Count -eq 0) -or ((($arrFiltered -Match "DirectoryServices-ADAM -- Enabled").Count -eq 0) -and (($arrFiltered -Match "DirectoryServices-ADAM-Tools -- Enabled").Count -eq 0))){
 					#AD Checkboxes are NOT Checked.
 					$bInstalled = $False;
 				}
