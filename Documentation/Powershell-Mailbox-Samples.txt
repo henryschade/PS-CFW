@@ -116,11 +116,15 @@ So the following commands will find users by email address, using .NET and ADO.
 
 --Check Mailbox permissions (i.e. Group Mailbox or NNPI) (after a connection to Exchange has been made) (as admin):
 	Get-MailboxPermission -Identity "functional.mailbox"
+
 --Grant Mailbox permissions (i.e. Group Mailbox or NNPI) (after a connection to Exchange has been made) (as admin):
     --Admin
 	Add-MailboxPermission -Identity "functional.mailbox" -User "user.name" -AccessRights FullAccess,DeleteItem,ReadPermission,ChangePermission,ChangeOwner -InheritanceType All -Automapping $False
     --Member
 	Add-MailboxPermission -Identity "functional.mailbox" -User "user.name" -AccessRights FullAccess,DeleteItem -InheritanceType All -Automapping $False
+    --NNPI
+	Add-MailboxPermission -Identity "user.name.nnpi" -User "user.name" -AccessRights FullAccess -AutoMapping -AutoMapping $False;
+	& "\\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-Scripts\PS-NNPIAutoMap.ps1" "first.last.nnpi" "first.last";
 
 --Grant Admin permissions (i.e. Group Mailbox or NNPI) (after a connection to Exchange has been made) (as admin):
 	Add-MailboxPermission -Identity "functional.mailbox" -Owner "user.name" -Automapping $False
