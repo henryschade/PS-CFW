@@ -9,6 +9,7 @@
 		#Added Change Log.
 	#Changes for 21 November 2016
 		#Updated ParseLogFile() documentation, and added a PS progress bar.
+		#Added Close-OpenFile() routine.
 #>
 
 
@@ -261,6 +262,45 @@
 		}
 	}
 
+
+	function Close-OpenFile{
+		[CmdletBinding()]
+		Param (
+			[Parameter(Mandatory=$true,
+				ValueFromPipeline = $true,
+				ValueFromPipelineByPropertyName=$true,
+				Position=0)]
+			[String[]]$filesToClose
+		)
+		#http://serverfault.com/questions/718875/close-locked-file-in-windows-share-using-powershell-and-openfiles
+		#If a file is locked open, this will close it.
+		#$filesToClose = The file, with path, to close, or an array list of the files, with paths.
+
+		Begin {
+			$netFile = net file
+			if($netFile.length -lt 7) { Throw "No Files are Open" }
+			$netFile = $netFile[4..($netFile.length-3)]
+			$netFile = $netFile | ForEach-Object {
+				$column = $_ -split "\s+", 4
+				New-Object -Type PSObject -Property @{
+					ID = $column[0]
+					FilePath = $column[1]
+					UserName = $column[2]
+					Locks = $column[3]
+				}
+			}
+			$count = 0
+		} Process {
+			ForEach ($file in $filesToClose) {
+				ForEach ($openFile in $netFile) {
+					if($openFile.FilePath -eq $file) {
+						$count++
+						net file $openfile.ID /close > $null
+					}
+				}
+			}
+		} End { Write-Output "Closed $count Files" }
+	}
 
 	function DeCode{
 		Param(
