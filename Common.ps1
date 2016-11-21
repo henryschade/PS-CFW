@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	10 November 2016
+# Updated Date:	21 November 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: DB-Routines.ps1 for the CheckVer() routine.
 #				.\MiscSettings.txt
@@ -22,6 +22,8 @@
 		#Improve the EnableDotNet4() message about running/restarting as admin.
 	#Changes for 10 Nov 2016
 		#Update isADInstalled() to better check Servers for AD installed and enabled.
+	#Changes for 21 Nov 2016
+		#Update LoadRequired() to have a progress bar, so one can tell if things are still running.
 
 #>
 
@@ -1281,8 +1283,8 @@
 				#http://stackoverflow.com/questions/15187510/dot-sourcing-functions-from-file-to-global-scope-inside-of-function
 			#Above method would not work.  But found the following too, and it works.
 				#https://blairconrad.wordpress.com/2010/01/29/expand-your-scope-you-can-dot-source-more-than-just-files/
-		#Returns $True or $False.  $True if no errors, else $False.
 		#Updates $global:LoadedFiles.
+		#Returns $True or $False.  $True if no errors, else $False.
 		#$RequiredFiles = An array of the files to "dot" source / include.
 		#$RootDir = The (Split-Path $MyInvocation.MyCommand.Path) of the running project.
 		#$LogDir = The log Directory, that contains $LogFile, that any errors will be reported to.
@@ -1298,7 +1300,17 @@
 			$RootDir = $RootDir.SubString(0, $RootDir.Length - 1);
 		}
 
+		$intLineCount = 0;
 		foreach ($strInclude in $RequiredFiles){
+			$intLineCount++;
+			#Display a PowerShell progress bar
+				#https://msdn.microsoft.com/powershell/reference/5.1/microsoft.powershell.utility/Write-Progress
+			$dblPercentComp = (($intLineCount / $RequiredFiles.count) * 100);
+			if ($dblPercentComp -gt 100){
+				$dblPercentComp = 100;
+			}
+			Write-Progress -Activity "Loading Required Files" -Status "Processing..." -PercentComplete $dblPercentComp;
+
 			$Error.Clear();
 			if (Test-Path -Path ($RootDir + "\PS-CFW\" + $strInclude)){
 				#if (Test-Path -Path ($RootDir + "\PS-CFW\" + $strInclude)){
