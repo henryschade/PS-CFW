@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	28 October 2016
+# Updated Date:	28 November 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -14,6 +14,8 @@
 		#Routine formatting updates.
 	#28 Oct 2016
 		#Routine documentation templates.
+	#28 November 2016
+		#Update AddUserToGroup() to turn on Inheritance from Parent if error "Insufficient access rights to perform the operation" is encountered.
 #>
 
 
@@ -25,6 +27,15 @@
 
 		#$InitializeDefaultDrives=$False;
 		#if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
+
+
+		#https://blogs.msdn.microsoft.com/muaddib/2013/12/30/how-to-modify-security-inheritance-on-active-directory-objects-using-powershell/
+		#Get a Groups ACL's
+		##(Get-Acl "AD:$((Get-ADGroup "far15devs").DistinguishedName)").access;
+		#$GroupName = "far15devs";
+		##$objACLs = (Get-Acl ('AD:\' + (Get-ADGroup $GroupName).DistinguishedName)).access;
+		##$objACLs = $objACLs | Sort-Object -Property IdentityReference;
+		#$objACLs = (Get-Acl ('AD:\' + (Get-ADGroup $GroupName).DistinguishedName));
 
 
 
@@ -207,6 +218,24 @@
 				$strGroupDN = [String]($objGroup).DistinguishedName;
 				$Error.Clear();
 				Add-ADGroupMember -Identity $strGroupDN -Member $UserName -Server $DomainOrDC;
+				if ($Error){
+					if ($Error -Match "Insufficient access rights to perform the operation"){
+						#Need to update the Groups ACL's, turning on Inherit from Parent.
+						#https://blogs.msdn.microsoft.com/muaddib/2013/12/30/how-to-modify-security-inheritance-on-active-directory-objects-using-powershell/
+						#If the box was checked the following command will return FALSE.  If the box was unchecked it will return TRUE.
+						if ($objGroup.nTSecurityDescriptor.AreAccessRulesProtected){
+							$Error.Clear();
+							$objACLs = (Get-Acl ('AD:\' + $strGroupDN));
+							#“check” the inheritance checkbox
+							$objACLs.SetAccessRuleProtection($False,$True);
+							#Write updated ACL's back to the Group
+							Set-ACL -AclObject $objACLs -path ('AD:\' + $strGroupDN);
+							if (!($Error)){
+								Add-ADGroupMember -Identity $strGroupDN -Member $UserName -Server $DomainOrDC;
+							}
+						}
+					}
+				}
 			}
 			else{
 				#DL
