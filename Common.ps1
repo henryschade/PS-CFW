@@ -1301,6 +1301,7 @@
 		}
 
 		$intLineCount = 0;
+		$dblPercentComp = 0;
 		foreach ($strInclude in $RequiredFiles){
 			$intLineCount++;
 			#Display a PowerShell progress bar
@@ -1358,6 +1359,7 @@
 					#$global:LoadedFiles.Add(($objFile.Name), (@{"Ver" = $strDateVer; "Date" = $Date}));
 			}
 		}
+		Write-Progress -Activity "Loading Required Files" -Status "Processing..." -Completed;
 
 		return $bLoaded;
 	}
