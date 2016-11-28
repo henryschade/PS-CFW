@@ -8,8 +8,8 @@
 	#Changes for 28 June 2016:
 		#Added Change Log.
 	#Changes for 21 November 2016
+		#Updated ParseLogFile() documentation, and added a PS progress bar.
 		#Added Close-OpenFile() routine.
-
 #>
 
 
@@ -755,9 +755,11 @@
 			[ValidateNotNull()][parameter(Mandatory=$False, HelpMessage='Destination Path for Report')][String]$DestPath
 		)
 		#$SourceFile = The log file to search through.  (i.e. "\\Nawespscfs101v.nadsuswe.nads.navy.mil\isf-ios$\ITSS-Tools\Logs\AScII\20160425_BO-12864827_CreatedBy_AScII.log")
-		#$SearchString = The sring to look for in each line.  (i.e. " INTO Transactions " or "283821")
+		#$SearchString = The string to look for in each line.  (i.e. " INTO Transactions " or "283821")
 		#$DestPath = The destination path to generate the "Filtered" log file to.
 			#ParseLogFile "\\Nawespscfs101v.nadsuswe.nads.navy.mil\isf-ios$\ITSS-Tools\Logs\AScII\20160426_AScII.log" "283821" "C:\Projects\PS-Scripts\Tests\";
+			#ParseLogFile $SourceFile $SearchString $DestPath;
+			#ParseLogFile $SourceFile $SearchString;
 
 		Write-Host "`r`n";
 		Write-Host "Parsing log '$SourceFile'.";
@@ -778,11 +780,12 @@
 							Write-Host "Destination path '$DestPath' does not exist, so using:";
 						}
 						$DestPath = $objFile.Directory.FullName;
-						Write-Host "  $DestPath";
 					}
 					if ($DestPath.EndsWith("\") -eq $False){
 						$DestPath = $DestPath + "\";
 					}
+					Write-Host "  $DestPath";
+
 					$ErrorActionPreference = 'SilentlyContinue';
 					$strOutFile = $DestPath + ($objFile.Name).SubString(0, ($objFile.Name.Length - $objFile.Extension.Length)) + "-Filtered-(" + $SearchString + ")" + $objFile.Extension;
 					$Error.Clear();
@@ -805,6 +808,14 @@
 						$objReader = New-Object System.IO.StreamReader($objStream);
 						while (!$objReader.EndOfStream){
 							$intLineCount++;
+							#Display a PowerShell progress bar
+								#https://msdn.microsoft.com/powershell/reference/5.1/microsoft.powershell.utility/Write-Progress
+							$dblPercentComp = (($intLineCount / $intTotalLines) * 100);
+							if ($dblPercentComp -gt 100){
+								$dblPercentComp = 100;
+							}
+							Write-Progress -Activity "Parsing log $SourceFile" -Status "Processing $intTotalLines total lines." -PercentComplete $dblPercentComp;
+
 							if (!(([String]($intLineCount / $intDivisor)).Contains("."))){
 								Write-Host "." -NoNewline;
 							}
