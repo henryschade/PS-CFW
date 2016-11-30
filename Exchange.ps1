@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	19 October 2016
+# Updated Date:	30 November 2016
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process. 
@@ -14,6 +14,8 @@
 		#Updated CreateMailBox() to check extensionAttribute8 for NNPI account names.
 	#19 Oct 2016
 		#Update SetupConn() to accomodate SIPR.
+	#30 November 2016
+		#Updated SetupConn() to accomodate Dev, and fixed a bug.
 
 #>
 
@@ -1901,13 +1903,19 @@
 		if ($WhatSide -eq "e"){
 			#Write-Host "East it is";
 			$strDomain = "nadsusea";
+			if ($env:UserDomain.toLower().Contains("dadsuswe")){
+				#Dev
+				$strDomain = "dadsusea";
+			}
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
+				$strServer = "naeaNRFKxh01v.nadsusea.nads.navy.mil";
 				if ($env:UserDomain.toLower().Contains("snmci-isf")){
 					#SIPR
 					$strServer = "NAEANRFKXh02V.nadsusea.nads.navy.smil.mil";
 				}
-				else{
-					$strServer = "naeaNRFKxh01v.nadsusea.nads.navy.mil";
+				if ($env:UserDomain.toLower().Contains("dadsuswe")){
+					#Dev
+					$strServer = "DAEANRFKXE77V.dadsusea.dads.navy.mil";
 				}
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 				#if ((Test-Connection -CN $strFQDN -buffersize 16 -Count 1 -ErrorAction 0 -quiet) -ne $True){
@@ -1917,7 +1925,8 @@
 			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
-					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsusea") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					#$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsusea") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					$objExchServers = GetExchangeServers | where {(($_.FQDN -match $strDomain) -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 
 					#select a random server from the list
 					if($objExchServers.Count -gt 1) {
@@ -1933,20 +1942,27 @@
 		if ($WhatSide -eq "w"){
 			#Write-Host "West it is";
 			$strDomain = "nadsuswe";
+			if ($env:UserDomain.toLower().Contains("dadsuswe")){
+				#Dev
+				$strDomain = "dadsuswe";
+			}
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
+				$strServer = "naweSDNIxh01v.nadsuswe.nads.navy.mil";
 				if ($env:UserDomain.toLower().Contains("snmci-isf")){
 					#SIPR
 					$strServer = "naweSDNIXh02V.nadsuswe.nads.navy.smil.mil";
 				}
-				else{
-					$strServer = "naweSDNIxh01v.nadsuswe.nads.navy.mil";
+				if ($env:UserDomain.toLower().Contains("dadsuswe")){
+					#Dev
+					$strServer = "DAWEBREMXE20V.dadsuswe.dads.navy.mil";
 				}
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 			}
 			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
-					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsuswe") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					#$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsuswe") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					$objExchServers = GetExchangeServers | where {(($_.FQDN -match $strDomain) -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 
 					#select a random server from the list
 					if($objExchServers.Count -gt 1) {
@@ -1963,19 +1979,18 @@
 			#Write-Host "Pacom it is";
 			$strDomain = "pads";
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
+				$strServer = "PADSPRLHXF01V.pads.pacom.mil";
 				if ($env:UserDomain.toLower().Contains("snmci-isf")){
 					#SIPR
 					$strServer = "PADSPRLHXH02V.pads.pacom.navy.smil.mil";
-				}
-				esle{
-					$strServer = "PADSPRLHXF01V.pads.pacom.mil";
 				}
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 			}
 			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
-					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "pacom") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					#$objExchServers = GetExchangeServers | where {(($_.FQDN -match "pacom") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					$objExchServers = GetExchangeServers | where {(($_.FQDN -match $strDomain) -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 
 					#select a random server from the list
 					if($objExchServers.Count -gt 1) {
@@ -1991,13 +2006,23 @@
 		if ($WhatSide -eq "n"){
 			#Write-Host "nmci-isf it is";
 			$strDomain = "nmci-isf";
-			if (($strServer -eq "Default") -or ($strServer -eq "D")){
+			if ($env:UserDomain.toLower().Contains("snmci-isf")){
+				#SIPR
+				$strDomain = "snmci-isf";
+				$strServer = "Random";
+			}
+			if ((($strServer -eq "Default") -or ($strServer -eq "D")) -and (!($env:UserDomain.toLower().Contains("snmci-isf")))){
 				$strServer = "NMCINRFKXF01V.nmci-isf.com";
+				if ($env:UserDomain.toLower().Contains("snmci-isf")){
+					#SIPR
+					$strServer = "xxxxxxx.snmci-isf.com";
+				}
 			}
 			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
-					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nmci") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					#$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nmci") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					$objExchServers = GetExchangeServers | where {(($_.FQDN -match $strDomain) -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 
 					#select a random server from the list
 					if($objExchServers.Count -gt 1) {
