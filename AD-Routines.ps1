@@ -16,6 +16,7 @@
 		#Routine documentation templates.
 	#28 November 2016
 		#Update AddUserToGroup() to turn on Inheritance from Parent if error "Insufficient access rights to perform the operation" is encountered.
+		#Still having issues w/ SIPR adding Computers to Groups, so added a check that will use ADSI if error above happens.
 #>
 
 
@@ -217,23 +218,48 @@
 			if ((($objGroup.mail -eq "") -or ($objGroup.mail -eq $null))){
 				$strGroupDN = [String]($objGroup).DistinguishedName;
 				$Error.Clear();
+				#set the Primary Group if the name has "_SnTDev_GS", and account ends in .dev
+				#Add-ADPrincipalGroupMembership
 				Add-ADGroupMember -Identity $strGroupDN -Member $UserName -Server $DomainOrDC;
 				if ($Error){
 					if ($Error -Match "Insufficient access rights to perform the operation"){
-						#Need to update the Groups ACL's, turning on Inherit from Parent.
 						#https://blogs.msdn.microsoft.com/muaddib/2013/12/30/how-to-modify-security-inheritance-on-active-directory-objects-using-powershell/
 						#If the box was checked the following command will return FALSE.  If the box was unchecked it will return TRUE.
-						if ($objGroup.nTSecurityDescriptor.AreAccessRulesProtected){
+						#if ($objGroup.nTSecurityDescriptor.AreAccessRulesProtected){
 							$Error.Clear();
-							$objACLs = (Get-Acl ('AD:\' + $strGroupDN));
-							#“check” the inheritance checkbox
-							$objACLs.SetAccessRuleProtection($False,$True);
-							#Write updated ACL's back to the Group
-							Set-ACL -AclObject $objACLs -path ('AD:\' + $strGroupDN);
-							if (!($Error)){
-								Add-ADGroupMember -Identity $strGroupDN -Member $UserName -Server $DomainOrDC;
-							}
-						}
+							##Need to update the Groups ACL's, turning on Inherit from Parent.
+							#$objACLs = (Get-Acl ('AD:\' + $strGroupDN));
+							##“check” the inheritance checkbox
+							#$objACLs.SetAccessRuleProtection($False,$True);
+							##Write updated ACL's back to the Group
+							#Set-ACL -AclObject $objACLs -path ('AD:\' + $strGroupDN);
+							#if (!($Error)){
+							#	Add-ADGroupMember -Identity $strGroupDN -Member $UserName -Server $DomainOrDC;
+							#}
+
+							#https://powershell.org/forums/topic/bulk-add-ad-computers-to-ad-group/
+							#$computers = @(); # list of computer distinguishedName values
+							#$group = [ADSI]"LDAP://CN=TestGroup,OU=Groups,DC=example,DC=com";
+							#foreach($computerDn in $computers) {
+							#	# The .Add() method outputs the number of objects in the list, so Out-Null to avoid unnecessary clutter
+							#	$group.Properties["member"].Add($computerDn) | Out-Null;
+							#}
+							#$group.CommitChanges();
+
+							#$objGroupRetry = [ADSI]("LDAP://" + $strGroupDN);
+							#$objGroupRetry.Properties["member"].Add($UserName) | Out-Null;
+							#$objGroupRetry.CommitChanges();
+
+							#https://powershell.org/forums/topic/sccm-2012-add-computer-to-ad-group-during-build/
+							$objGroupRetry = [ADSI]("LDAP://" + $strGroupDN);
+							$objGroupRetry.Add("$UserName");
+							$objGroupRetry.SetInfo();
+
+							##https://justanothersysadmin.wordpress.com/2008/01/19/modifying-group-memberships-with-powershell-part-1/
+							#$objGroupRetry = [ADSI]("LDAP://" + $strGroupDN);
+							#$objGroupRetry.Member.Add("$UserName");
+							#$objGroupRetry.SetInfo();
+						#}
 					}
 				}
 			}
