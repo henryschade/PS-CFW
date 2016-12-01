@@ -259,6 +259,8 @@
 							#$objGroupRetry = [ADSI]("LDAP://" + $strGroupDN);
 							#$objGroupRetry.Member.Add("$UserName");
 							#$objGroupRetry.SetInfo();
+
+							#https://gallery.technet.microsoft.com/scriptcenter/Auto-adding-computer-to-AD-6ffa96bb
 						#}
 					}
 				}
