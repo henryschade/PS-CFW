@@ -1840,6 +1840,9 @@
 
 		CleanUpConn;
 
+		Write-Host $env:UserDomain;
+		Write-Host $env:UserDomain.toLower();
+
 		if (($WhatSide -eq $null) -or ($WhatSide -eq "")){
 			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom or [N]mci-isf)';
 		}
@@ -1907,6 +1910,11 @@
 				#Dev
 				$strDomain = "dadsusea";
 			}
+			if ($env:UserDomain.toLower().Contains("americas")){
+				#HPE
+				$strDomain = "americas";
+				$strServer = "Random";
+			}
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
 				$strServer = "naeaNRFKxh01v.nadsusea.nads.navy.mil";
 				if ($env:UserDomain.toLower().Contains("snmci-isf")){
@@ -1946,6 +1954,11 @@
 				#Dev
 				$strDomain = "dadsuswe";
 			}
+			if ($env:UserDomain.toLower().Contains("americas")){
+				#HPE
+				$strDomain = "americas";
+				$strServer = "Random";
+			}
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
 				$strServer = "naweSDNIxh01v.nadsuswe.nads.navy.mil";
 				if ($env:UserDomain.toLower().Contains("snmci-isf")){
@@ -1978,6 +1991,11 @@
 		if ($WhatSide -eq "p"){
 			#Write-Host "Pacom it is";
 			$strDomain = "pads";
+			if ($env:UserDomain.toLower().Contains("americas")){
+				#HPE
+				$strDomain = "americas";
+				$strServer = "Random";
+			}
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
 				$strServer = "PADSPRLHXF01V.pads.pacom.mil";
 				if ($env:UserDomain.toLower().Contains("snmci-isf")){
@@ -2009,6 +2027,11 @@
 			if ($env:UserDomain.toLower().Contains("snmci-isf")){
 				#SIPR
 				$strDomain = "snmci-isf";
+				$strServer = "Random";
+			}
+			if ($env:UserDomain.toLower().Contains("americas")){
+				#HPE
+				$strDomain = "americas";
 				$strServer = "Random";
 			}
 			if ((($strServer -eq "Default") -or ($strServer -eq "D")) -and (!($env:UserDomain.toLower().Contains("snmci-isf")))){
