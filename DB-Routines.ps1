@@ -451,6 +451,7 @@
 			#The SQL statement should look something like (notice the at sign "@"):
 				#$strSQL = "INSERT INTO SourceFiles(SourceDesc_GUID, Date_Up, File_Binary) VALUES ('$strGUID', '$dteDateTime', @File_Binary)"
 				#$strSQL = "UPDATE SourceFiles SET File_Binary = @File_Binary WHERE (GUID = '$strGUID')"
+		#Should add $strSysType = "MSSQL", "Oracle", "Access".
 
 		$strServer = $Server;
 		$strDataBase = $DataBase;
