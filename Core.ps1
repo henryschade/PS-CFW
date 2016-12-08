@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	5 December 2016
+# Updated Date:	8 December 2016
 # Purpose:		StartUp routines to all/most projects.
 # Requirements: DB-Routines.ps1 for GetPathing() routine [it will try to load it automatically].
 #				...\PS-CFW\MiscSettings.txt
@@ -8,6 +8,8 @@
 <# ---=== Change Log ===---
 	#Changes for 5 December 2016:
 		#Create Core.ps1, with routines from Common.ps1, that has only the routines needed to start an App and check the basics.
+	#Changes for 8 December 2016
+		#Add "#Returns: " to functions, for routine documentation.
 #>
 
 
@@ -19,6 +21,7 @@
 
 	function AsAdmin{
 		#Checks if the loged in user of the PowerShell session has admin privileges.
+		#Returns: 
 
 		$bolAsAdmin = $False;
 
@@ -56,7 +59,7 @@
 		#Copies/Backups Source Directory files to Destination Directory.
 			#The SrcFile.LastWriteTime MUST be greater than the DestFileLastWriteTime, or the file is NOT copied/backedup.
 			#(If a file starts with a 2 digit #, it is assumed to be a backup file, and is NOT copied/backedup.)
-		#Returns a string, if work was done in the format of:    "Copied # of # files."
+		#Returns: a string, if work was done in the format of:    "Copied # of # files."
 		#$strSourceDir = The Source Directory.
 		#$strDestDir = The Destination Directory.
 		#$bSubs = $True or $False.  Also backup subdirectories.
@@ -366,6 +369,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)]$strProjPath
 		)
 		#Checks if .NET 4 is enabled, and if NOT then creates the *.xml config file to enable .NET4 support.
+		#Returns: 
 		#$bISE2 = $True or $False.  Create the "*\powershell_ise.exe.config" files along with the "*\powershell.exe.config" files.
 		#Returns $True if created config files, or .NET 4.x already enabled.
 		#Returns $False if Config Files were NOT created.
@@ -485,7 +489,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strWhatGet = "Personal"
 		)
 		#Load/get config/ini info/file.
-			#Returns a HashArray.
+		#Returns: a HashArray.
 		#$strProject = The Project/file name.
 		#$strWhatGet = What settings/file info to get.  "Personal", "Global", "Both".
 			#Global settings file is in Project root dir.
@@ -584,7 +588,7 @@
 		)
 		#Querys a DB for Pathing info, so that can update pathing info w/out having to release new code versions.
 		#Has default values incase DB is unreachable.
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
 			#$objReturn.Results		= # of Rows of data returning.
 			#$objReturn.Message		= "Success" or the error message.
@@ -814,7 +818,7 @@
 			#Above method would not work.  But found the following too, and it works.
 				#https://blairconrad.wordpress.com/2010/01/29/expand-your-scope-you-can-dot-source-more-than-just-files/
 		#Updates $global:LoadedFiles.
-		#Returns $True or $False.  $True if no errors, else $False.
+		#Returns: $True or $False.  $True if no errors, else $False.
 		#$RequiredFiles = An array of the files to "dot" source / include.
 		#$RootDir = The (Split-Path $MyInvocation.MyCommand.Path) of the running project.
 		#$LogDir = The log Directory, that contains $LogFile, that any errors will be reported to.
@@ -902,6 +906,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strShareLoc = "", 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLocalLoc = ""
 		)
+		#Returns: 
 		#$strProjName = Project Name. The directory Logs should be put in.
 		#$strLogDirS = The Path to logs on the Share.
 		#$strLogDirL = The Path to logs Locally.
@@ -982,7 +987,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogFile = ""
 		)
 		#Update Local files from Production.   From:(\\Server\"ITSS-Root"\ + $strProjName)  To:("C:\Users\Public\ITSS-Tools\" + $strProjName)
-			#Returns a string.
+		#Returns: a string.
 		#$strLocalDir = The Project/file directory.  Typically $ScriptDir.
 		#$strProjName = The Project/file name.
 		#$bolDoPrompts = True or False.  Should this routine be interactive.  If files were updated, prompt user to restart from local.
@@ -1113,6 +1118,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Header = ""
 		)
 		#Uses Out-File to append $Message to the $LogFile, in the path $LogDir.
+		#Returns: 
 		#$Message = The message to add to $LogFile.  gets PrePended with a "Header":
 		#$LogDir = The location of $LogFile.
 		#$LogFile = The file to add $Message to.  get updated to a format of "yyyymmdd_"$LogFile.  (i.e. 20150513_AscII.log)

@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	28 November 2016
+# Updated Date:	7 December 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -17,6 +17,8 @@
 	#28 November 2016
 		#Update AddUserToGroup() to turn on Inheritance from Parent if error "Insufficient access rights to perform the operation" is encountered.
 		#Still having issues w/ SIPR adding Computers to Groups, so added a check that will use ADSI if error above happens.
+	#Changes for 7 December 2016
+		#Add "#Returns: " to functions, for routine documentation.
 #>
 
 
@@ -146,7 +148,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$DomainOrDC
 		)
 		#Adds a User/computer to a Group as a Member.
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= 0 or 1.  0 = Error, 1 = Success
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -331,7 +333,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$GroupNotes = ""
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  $False = Error, $True = Success
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -679,7 +681,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolRecurse = $False
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#$ADObject = An AD object, or the sAMAccountName (String) of the AD object to get.
 		#$arrList = The Array, of strings, that will be updated/returned, that will have the list of Memberships $ADObject has.
 		#$bolRecurse = Get the Groups any Groups are Members Of as well.
@@ -940,7 +942,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bPSobj = $False
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= # of objects found.
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -1077,7 +1079,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomainOrDC
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= True or False (Were there Errors).
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -1318,7 +1320,7 @@
 			#[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bNNPI = $False
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Were there errors?
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -1453,7 +1455,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strEmailEnding = "@navy.mil"
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Found a new "good" name.
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -1877,7 +1879,7 @@
 		)
 		#Description....
 		#Note: If the SAMAccountName string provided, does not end with a '$', one will be appended (by powershell) if needed.
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Did the AD Computer get created?
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -2043,7 +2045,7 @@
 		)
 		#Description....
 		#Taking about 6 seconds in my initial testing.
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Did the AD User get created?
 			#$objReturn.Message		= A verbose message of the results (Or the error message).
@@ -2261,7 +2263,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$RequiredDomain = ""
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= # (typically 0 or 1, but could be more) of domains the OU was found on/in.
@@ -2366,7 +2368,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Long]$lngDefaultMailSize
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#$objADUser = AD User Object.
 		#$Action = The Action to perform.  "Read" (Default), "Set"
 		#$NumCLINs = The Number of CLIN16's to assign, if Action = "Set".
@@ -2493,7 +2495,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain
 		)
 		#Checks All domains (gotten from the Network) for $ComputerName, or just the ones provided.
-		#Return.....
+		#Returns: .....
 		#Paramater Explanation.....
 
 		$InitializeDefaultDrives=$False;
@@ -2576,7 +2578,7 @@
  			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDC
  		)
  		#Checks All domains (gotten from the Network) for $GrpName, or just the ones provided.
- 		#Returns the AD Group object.
+ 		#Returns: the AD Group object.
  		#$GrpName = The group, samaccountname, to look for.
  		#$strDomain = The domain to look for $GrpName in.
  		#$strDC = The DC to use to do the search, over rides $strDomain.  (Short or FQDN.)
@@ -2653,7 +2655,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDC
 		)
 		#Checks All domains (gotten from the Network) for $Username, or just the ones provided.
-		#Return.....
+		#Returns: .....
 		#$Username = The user, samaccountname, to look for.
 		#$strDomain = The domain to look for $Username in.
 		#$strDC = The DC to use to do the search, over rides $strDomain.  (Short or FQDN.)
@@ -2726,7 +2728,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolTranslate = $True
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= True or False (Were there Errors).
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -2894,7 +2896,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolTrusted = $False
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#$bolFQDN = $True, $False.  Return results in FQDN format.
 		#$bolTrusted = $True, $False.  Get Trusted Domains too.
 
@@ -2978,8 +2980,8 @@
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain 
 		)
-		#Description....
-		#Returns a PowerShell object.
+		#Description ....
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= True or False (Were there Errors).
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -3033,7 +3035,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$DestOU
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Moved or not.
 			#$objReturn.Message		= A verbose message of the results. (The error message, or the DN.)
@@ -3260,7 +3262,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Property
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#$strUserDN = The DistinguishedName of the account. (i.e. CN=redirect.test,OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil)
 		#$Property = What TS Property to get. (blank or $null returns all) "allowLogon", "TerminalServicesHomeDirectory", "TerminalServicesHomeDrive", "TerminalServicesProfilePath"
 
@@ -3333,7 +3335,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Value
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#$strUserDN = The DistinguishedName of the account. (i.e. CN=redirect.test,OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil)
 		#$Attribute = What TS Property to update.  "allowLogon", "TerminalServicesHomeDirectory", "TerminalServicesHomeDrive", "TerminalServicesProfilePath"
 		#$Value = The Value to populate $Attribute with.
@@ -3379,7 +3381,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$RIDMaster
 		)
 		#Description....
-		#No Return.
+		#Returns: nothing, no return.
 		#$ADUserDN = AD User DistinguishedName.  (i.e. CN=redirect.test,OU=USERS,OU=SDNI,OU=COMPACFLT,DC=nadsuswe,DC=nads,DC=navy,DC=mil)
 		#$FieldName = AD field name to update.
 		#$NewValue = The new value to put in FieldName.

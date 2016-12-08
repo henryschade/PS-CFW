@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	5 December 2016
+# Updated Date:	8 December 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: Core.ps1 [will try to load it automatically].
 #				DB-Routines.ps1 for the CheckVer() routine [it will try to load it automatically].
@@ -27,6 +27,8 @@
 		#Update LoadRequired() to have a progress bar, so one can tell if things are still running.
 	#Changes for 5 December 2016
 		#Remove routines from Common.ps1, and create Core.ps1 with them.
+	#Changes for 8 December 2016
+		#Add "#Returns: " to functions, for routine documentation.
 #>
 
 
@@ -58,7 +60,7 @@
 		)
 		#Checks the running version of $Project against the posted Production version.
 		#Can also checks that the files in $global:LoadedFiles are up to date.
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
 			#$objReturn.Results		= $True or $False.  Running correct Production\Beta version.
 			#$objReturn.Message		= "Success", "Disable", or the error message.
@@ -240,6 +242,7 @@
 		#Cleans files out of directories based on the DateLastModified.  
 		#Checks the "NumDays2KeepLogs" entry in MiscSettings.txt file, if $HowOld is -2, blank, or null.
 		#   (180 days) if error reading NumDays2KeepLogs.
+		#Returns: 
 		#$Directory = Folder/Directory path to clean.  i.e. "C:\SRM_Apps_N_Tools" or "\\Server.Name.FQDN\Path1\Path2\Path3"
 		#$DoSubs = True/False. (defult = False) Check/Clean sub folders too.
 		#$TypesToSkip = file types NOT to delete/clean. 
@@ -335,7 +338,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Array of file path (full) to add.")][Array]$Files
 		)
 		#Should use ZipCreateFile() in Documents.ps1.
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
 			#$objReturn.Results		= $True or $False.  Was a zip file created.
 			#$objReturn.Message		= "Success" or the error message.
@@ -368,6 +371,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolDoPrompts = $False
 		)
 		#A place holder.  Should be using UpdateLocalFiles() instead of this one.
+		#Returns: 
 
 		$strResults = UpdateLocalFiles $strLocalDir $strProjName $bolDoPrompts;
 
@@ -380,6 +384,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bDisable = $False
 		)
 		#Check if have AD Installed and Enabled.
+		#Returns: 
 		#$bEnable = $True, $False.  Turn on the AD Features (that are part of the NMCI SRM default set) ONLY if RSAT is installed.
 		#$bDisable = $True, $False.  Turn off the AD Features (that are NOT part of the NMCI SRM default set) ONLY if RSAT is installed.
 
@@ -492,7 +497,8 @@
 
 	function isNumeric($intX){
 		#Check if passed in value is a number.
-		#IsNumeric() equivelant is -> [Boolean]([String]($x -as [int]))
+			#IsNumeric() equivelant is -> [Boolean]([String]($x -as [int]))
+		#Returns: 
 
 		#http://rosettacode.org/wiki/Determine_if_a_string_is_numeric
 		try {
@@ -509,6 +515,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "Local time to convert to UTC / GMT time.")][String]$strTime
 		)
 		#Converts passed in time, local time, to UTC.
+		#Returns: 
 
 		return ((Get-Date $strTime).ToUniversalTime()).ToString();
 	}
@@ -520,7 +527,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strWhatSet = "Personal"
 		)
 		#Save config/ini info/file.
-			#Returns True or False.
+		#Returns: True or False.
 		#$strProject = The Project/file name.
 		#$hSettings = A HashTable/Array of the settings to save.  MUST provide at least one key/setting.  Providing 0 Keys triggers a config file reset.
 		#$strWhatSet = What settings/file info to set/save.  "Personal", "Global".
@@ -682,6 +689,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogDir, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strLogFile
 		)
+		#Returns: 
 		#$strText = The text to put in $objControl ($objControl ideally should to be a TextBox).  ($txbResults by default)
 		#$bolClear = True or False.  Clear the Control B4 entering $strText into it.
 		#$objControl = The control to put $strText into.
@@ -719,6 +727,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True, HelpMessage = "UTC / GMT time to convert to Local time.")][String]$strTime
 		)
 		#Convert passed in time, UTC time, to local time.
+		#Returns: 
 
 		return [System.TimeZone]::CurrentTimeZone.ToLocalTime($strTime);
 	}
@@ -730,6 +739,7 @@
 
 		)
 		#Checks if both paths exist, and tries creating them if not, returns Share path unless it does not exist.
+		#Returns: 
 		#$sLocalPath = The local path for the program.
 		#$sSharePath = The Share path for the program. 
 
