@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	30 November 2016
+# Updated Date:	8 December 2016
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process. 
@@ -16,7 +16,8 @@
 		#Update SetupConn() to accomodate SIPR.
 	#30 November 2016
 		#Updated SetupConn() to accomodate Dev, and fixed a bug.
-
+	#8 December 2016
+		#Updated SetupConn() to accomodate snmci-isf.
 #>
 
 
@@ -1831,8 +1832,9 @@
 			[Parameter(Mandatory=$False)][String]$WhatSide, 
 			[Parameter(Mandatory=$False)][String]$strServer
 		);
-		#Returns a list of all the PowerShell commandlets imported.
-		#$WhatSide = What domain to connect to. nadsuswe or nadsusea or pacom or nmci-isf
+		#Creates a connection to an Exchange 2010 server and imports the available Exchange PowerShell commands into the current session.
+		#Returns: a list of all the PowerShell commandlets imported.
+		#$WhatSide = What domain to connect to. nadsuswe or nadsusea or pacom or nmci-isf or snmci-isf
 		#$strServer = What server to connect to.  "Default", "Random", "naeaNRFKxh01v"
 
 		$Session = "";
@@ -1840,34 +1842,33 @@
 
 		CleanUpConn;
 
-		Write-Host $env:UserDomain;
-		Write-Host $env:UserDomain.toLower();
-
 		if (($WhatSide -eq $null) -or ($WhatSide -eq "")){
-			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom or [N]mci-isf)';
+			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom or [N]mci-isf or [S]nmci-isf)';
 		}
 		if ($WhatSide.Length -gt 1){
-			#if (($WhatSide -eq "nadsusea") -or ($WhatSide -eq "nadsuswe") -or ($WhatSide -eq "pads") -or ($WhatSide -eq "nmci-isf")){
-			if (($WhatSide -eq "nadsusea") -or ($WhatSide -eq "nadsuswe")){
+			if (($WhatSide -eq "nadsusea") -or ($WhatSide -eq "nadsuswe") -or ($WhatSide -eq "snmci-isf")){
 				if ($WhatSide -eq "nadsusea"){
 					$WhatSide = "e";
 				}
 				if ($WhatSide -eq "nadsuswe"){
 					$WhatSide = "w";
 				}
+				if ($WhatSide -eq "snmci-isf"){
+					$WhatSide = "s";
+				}
+			}
+			else{
 				#if ($WhatSide -eq "pads"){
 				#	$WhatSide = "p";
 				#}
 				#if ($WhatSide -eq "nmci-isf"){
 				#	$WhatSide = "n";
 				#}
-			}
-			else{
 				$WhatSide = $WhatSide.substring(0, 1);
 			}
 		}
-		if (($WhatSide -ne "e") -and ($WhatSide -ne "w") -and ($WhatSide -ne "p") -and ($WhatSide -ne "n")){
-			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom or [N]mci-isf)';
+		if (($WhatSide -ne "e") -and ($WhatSide -ne "w") -and ($WhatSide -ne "p") -and ($WhatSide -ne "n") -and ($WhatSide -ne "s")){
+			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom or [N]mci-isf or [S]nmci-isf)';
 		}
 		if ($WhatSide.Length -gt 1){
 			$WhatSide.substring(0, 1)
@@ -2021,7 +2022,7 @@
 			}
 			$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
 		}
-		if ($WhatSide -eq "n"){
+		if (($WhatSide -eq "n") -or ($WhatSide -eq "s")){
 			#Write-Host "nmci-isf it is";
 			$strDomain = "nmci-isf";
 			if ($env:UserDomain.toLower().Contains("snmci-isf")){
@@ -2034,7 +2035,7 @@
 				$strDomain = "americas";
 				$strServer = "Random";
 			}
-			if ((($strServer -eq "Default") -or ($strServer -eq "D")) -and (!($env:UserDomain.toLower().Contains("snmci-isf")))){
+			if ((($strServer -eq "Default") -or ($strServer -eq "D"))){
 				$strServer = "NMCINRFKXF01V.nmci-isf.com";
 				if ($env:UserDomain.toLower().Contains("snmci-isf")){
 					#SIPR
@@ -2044,7 +2045,6 @@
 			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
-					#$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nmci") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 					$objExchServers = GetExchangeServers | where {(($_.FQDN -match $strDomain) -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 
 					#select a random server from the list
@@ -2059,6 +2059,7 @@
 			$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
 		}
 
+		Write-Host $strServer;
 		$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri "http://$strServer/PowerShell/" -Authentication Kerberos;
 
 		if (($Session -ne "") -and ($Session -ne $null)){
