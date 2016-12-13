@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	6 October 2016
+# Updated Date:	8 December 2016
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -11,7 +11,8 @@
 		#Add CDR SIPR info to GetDBInfo()
 		#Add ECMD SIPR info to GetDBInfo()
 		#Update MiscSettings.txt default path to be CFW instead of SupportFiles.
-
+	#Changes for 8 December 2016
+		#Add "#Returns: " to functions, for routine documentation.
 #>
 
 
@@ -122,6 +123,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strWhatSystem
 		)
 		#Sets the DB variables (DBType, DBServer, DBName, LoginR, PassR, LoginW, PassW), and returns an array.
+		#Returns: 
 		#strWhatSystem = The DB info we are after.
 			#Current values coded for are: "AgentActivity", "Score", "Sites" (Server Farm LookUp), "SRMDB", "CDR", "ECMD"
 
@@ -263,9 +265,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strQuoteNum, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strBONum
 		)
-		#Returns the SQL command that should be used.
-			#Needs to be updated to use the SP Andrew created.
-		#Should pass in the above with info.
+		#Needs to be updated to use the SP Andrew created.
+		#Returns: the SQL command that should be used.
 		#strCOI = Domain/Network.
 		#strSource = The source that is initiating this work.  i.e "Ticket", "Email"
 		#strTeam = i.e. SRM
@@ -434,10 +435,10 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Boolean]$ForceTableRet = $True, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Hashtable]$Files
 		)
-		#http://irisclasson.com/2013/10/16/how-do-i-query-a-sql-server-db-using-powershell-and-how-do-i-filter-format-and-output-to-a-file-stupid-question-251-255/
-		#Returns a System.Data.DataTable of results  (converted to an Array).
-		#$objResults.Rows[0].Message = "Error", if error.    $objResults.Rows[0].Results = The error message.
-
+		#Description....
+			#http://irisclasson.com/2013/10/16/how-do-i-query-a-sql-server-db-using-powershell-and-how-do-i-filter-format-and-output-to-a-file-stupid-question-251-255/
+		#Returns: a System.Data.DataTable of results  (converted to an Array).
+			#$objResults.Rows[0].Message = "Error", if error.    $objResults.Rows[0].Results = The error message.
 		#$Server = The SQL Server name.
 		#$DataBase = The DB name.
 		#$SQL = The SQL command to run.  For Stored Procedures that return a result set, prepend "GetSP_" to the SP command, unless it starts "sp_".
@@ -629,7 +630,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strQuoteNum, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strBONum
 		)
-		#Returns a PowerShell object.
+		#Description....
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with the paramaters passed in.
 			#$objReturn.Results		= $True or $False.
 			#$objReturn.Message		= "Success" or the error message.

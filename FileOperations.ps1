@@ -1,11 +1,13 @@
 ﻿##########################################
-# Updated Date:	28 June 2016
+# Updated Date:	12 December 2016
 # Purpose:		Routines to set NTFS permissions, set owners on files/folders, create/delete shares, and set share permissions.
 ##########################################
 
 <# ---=== Change Log ===---
 	#Changes for 28 June 2016:
 		#Added Change Log.
+	#Changes for 12 December 2016:
+		#Updated variables in SetNTFS_EXAMPLE_USAGE() routine.
 
 #>
 
@@ -121,15 +123,15 @@ function SetNTFS_EXAMPLE_USAGE{
 	#Local system:
 	$bRecursive = $True;
 	$bInheritFromParentAce = $True;
-	$sSecID = "S-1-5-21-1801674531-2146617017-725345543-3908115";
-	$sPath = "C:\SRM_Apps_N_Tools\PS-Scripts\Testing";
+	$strSID = "S-1-5-21-1801674531-2146617017-725345543-3908115";
+	$strDirectory = "C:\SRM_Apps_N_Tools\PS-Scripts\Testing";
 
 	#FileServer system:
 	$bRecursive = $True;
 	$bInheritFromParentAce = $True;
-	$sSecID = "S-1-5-21-1801674531-2146617017-725345543-3908115";
+	$strSID = "S-1-5-21-1801674531-2146617017-725345543-3908115";
 	$strUserName = "redirect.test";
-	$sPath = "\\NAEAPHILFS11\USER01\usr2\" + $strUserName;
+	$strDirectory = "\\NAEAPHILFS11\USER01\usr2\" + $strUserName;
 
 	#Add the DefaultRequiredPrivileges to the current proccess token.
 	#Without DefaultRequiredPrivileges you may not have access/permission to make changes.
@@ -145,27 +147,28 @@ function SetNTFS_EXAMPLE_USAGE{
 		#Set the Sid/Trustee in our PermissionSet.
 			#$PermSetUser.UserSid = "S-1-5-21-2362956667-2133453920-1756558540-1001";
 			#$PermSetReader.UserSid = "S-1-5-18";
-		$PermSet.UserSid = $sSecID
+		$PermSet.UserSid = $strSID
 		#Or use one of the "Well Know" default SID's
 			#https://msdn.microsoft.com/en-us/library/system.security.principal.wellknownsidtype(v=vs.110).aspx
 			#$PermSetAdmin.wellKnown = [System.Security.Principal.WellKnownSidType]::BuiltinAdministratorsSid;
 		$PermSet.wellKnown = [System.Security.Principal.WellKnownSidType]::AccountGuestSid;
 
+
 		#Add the PermissionSet.
-		[FileOperations.Ntfs]::SetPermissions($sPath, $bRecursive, $PermSet, $bInheritFromParentAce);
+		$PermSet = [FileOperations.Ntfs]::SetPermissions($strDirectory, $bRecursive, $PermSet, $bInheritFromParentAce);
 		#No output from the results
 
 		#Stop inheriting from Parent folder
-		[FileOperations.Ntfs]::RemoveAllInheritedPermissions($sPath, $bRecursive);
+		$PermSet = [FileOperations.Ntfs]::RemoveAllInheritedPermissions($strDirectory, $bRecursive);
 		#No output from the results
 
 		#A routine that will set the default NMCI Home Folder Permissions.  (The above 2 steps).
 		#("User" [by SID] and "System Admin" both get "Full Control", remove all others, NO inherit from Parent.)
-		[FileOperations.Ntfs]::SetDefaultHomeFolderPermissions($sPath, $sSecID);
+		$PermSet = [FileOperations.Ntfs]::SetDefaultHomeFolderPermissions($strDirectory, $strSID);
 		#No output from the results
 
 		#Remove Permissions.
-		[FileOperations.Ntfs]::RemovePermission($sPath, $bRecursive, $sSecID);
+		$PermSet = [FileOperations.Ntfs]::RemovePermission($strDirectory, $bRecursive, $strSID);
 		#No output from the results
 	}else{
 		#DefaultRequiredPrivileges could NOT be added to the current proccess token.

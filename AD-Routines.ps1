@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	7 December 2016
+# Updated Date:	8 December 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -17,7 +17,7 @@
 	#28 November 2016
 		#Update AddUserToGroup() to turn on Inheritance from Parent if error "Insufficient access rights to perform the operation" is encountered.
 		#Still having issues w/ SIPR adding Computers to Groups, so added a check that will use ADSI if error above happens.
-	#Changes for 7 December 2016
+	#Changes for 8 December 2016
 		#Add "#Returns: " to functions, for routine documentation.
 #>
 

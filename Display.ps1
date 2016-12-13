@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	28 June 2016
+# Updated Date:	8 December 2016
 # Purpose:		Hide/Show PowerShell Console Window.
 # 				Display Orientation Methods.
 # Requirements: None
@@ -8,28 +8,29 @@
 <# ---=== Change Log ===---
 	#Changes for 28 June 2016:
 		#Added Change Log.
-
+	#Changes for 8 December 2016
+		#Add "#Returns: " to functions, for routine documentation.
 #>
 
+	<#  Notes
+		#http://www.aspnet-answers.com/microsoft/Powershell/30523953/invisible-windows.aspx
+
+		#http://blogs.msdn.com/b/frankfi/archive/2008/08/13/changing-the-display-resolution-in-a-multi-monitor-environment.aspx
+
+		#Foreground and background colors for the console:  ([system.consolecolor]::GetNames("consolecolor");)
+		#Black, White, 
+		#Gray, DarkGray, 
+		#Red, DarkRed, 
+		#Blue, DarkBlue, 
+		#Green, DarkGreen, 
+		#Yellow, DarkYellow, 
+		#Cyan, DarkCyan, 
+		#Magenta, DarkMagenta
+		#$Host.UI.RawUI.BackgroundColor = "DarkMagenta";
+	#>
 
 
-	#http://www.aspnet-answers.com/microsoft/Powershell/30523953/invisible-windows.aspx
-
-	#http://blogs.msdn.com/b/frankfi/archive/2008/08/13/changing-the-display-resolution-in-a-multi-monitor-environment.aspx
-
-	#Foreground and background colors for the console:  ([system.consolecolor]::GetNames("consolecolor");)
-	#Black, White, 
-	#Gray, DarkGray, 
-	#Red, DarkRed, 
-	#Blue, DarkBlue, 
-	#Green, DarkGreen, 
-	#Yellow, DarkYellow, 
-	#Cyan, DarkCyan, 
-	#Magenta, DarkMagenta
-	#$Host.UI.RawUI.BackgroundColor = "DarkMagenta";
-
-
-	function DisplaySampleUsage{
+	function SampleUsageDisplay{
 		[cDisplaySettings]::GetDispOrientation();
 
 		#Flip display to 180 degrees (Upside down)
@@ -44,7 +45,7 @@
 		[cDisplaySettings]::GetDispProps();
 	}
 
-	function ConsoleSampleUsage1{
+	function SampleUsage1Console{
 		#Hide the PowerShell Console.
 		[ConsoleHelper]::HideConsole();
 
@@ -65,7 +66,7 @@
 		[ConsoleHelper]::ShowConsole();
 	}
 
-	function ConsoleSampleUsage2{
+	function SampleUsage2Console{
 		#Hide the PowerShell Console.
 		$ch::HideConsole();
 
@@ -77,12 +78,13 @@
 	}
 
 	Function SetWallpaper{
-		#http://www.theagreeablecow.com/2014/09/set-desktop-wallpaper-using-powershell.html
 		Param(
 			[Parameter(Mandatory=$True)]$Path, 
 			[ValidateSet('Center','Stretch','Fill','Tile','Fit')]$Style
 		)
 		#Sets the wallpaper for the current running user.
+			#http://www.theagreeablecow.com/2014/09/set-desktop-wallpaper-using-powershell.html
+		#Returns: nothing
 
 		Try {
 			if (-not ([System.Management.Automation.PSTypeName]'Wallpaper.Setter').Type) {

@@ -2059,7 +2059,7 @@
 			$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
 		}
 
-		Write-Host $strServer;
+		#Write-Host $strServer;
 		$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri "http://$strServer/PowerShell/" -Authentication Kerberos;
 
 		if (($Session -ne "") -and ($Session -ne $null)){
