@@ -2070,7 +2070,7 @@
 				# http://www.get-exchangeserver.com/powershell-script-ile-exchange-server-20132010-uzerinde-health-check-report-olusturma/
 				#Set-ADServerSettings -ViewEntireForest $true -WarningAction SilentlyContinue;
 				if (!(Get-ADServerSettings).ViewEntireForest){
-					Set-ADServerSettings -ViewEntireForest $true;
+					Set-ADServerSettings -ViewEntireForest $True;
 				}
 
 				#if ((Get-ADServerSettings).UserPreferredDomainControllers -eq ""){
@@ -2079,21 +2079,15 @@
 						Set-ADServerSettings -PreferredServer $strRIDMaster -ErrorAction SilentlyContinue;
 					}
 					if ($Error){
-						Write-Host "";
-						Write-Host "An error occurred trying to run this command:";
-						Write-Host "";
-						Write-Host "Set-ADServerSettings -PreferredServer $strRIDMaster;";
-						Write-Host "";
+						Write-Host "`r`n" + "An error occurred trying to run the following command:";
+						Write-Host "Set-ADServerSettings -PreferredServer $strRIDMaster;" + "`r`n";
 					}
 				#}
 				return $strModule;
 			}
 			else{
-				Write-Host "";
-				Write-Host "An error occurred trying to import the Exchange PowerShell CommandLets.";
-				Write-Host "";
-				Write-Host "Import-PSSession $Session -AllowClobber;";
-				Write-Host "";
+				Write-Host "`r`n" + "An error occurred trying to import the Exchange PowerShell CommandLets.";
+				Write-Host "Import-PSSession $Session -AllowClobber;" + "`r`n";
 			}
 		}
 	}

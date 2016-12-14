@@ -29,6 +29,7 @@
 		#Remove routines from Common.ps1, and create Core.ps1 with them.
 	#Changes for 8 December 2016
 		#Add "#Returns: " to functions, for routine documentation.
+		#Added documentation to isNumeric().
 #>
 
 
@@ -498,7 +499,8 @@
 	function isNumeric($intX){
 		#Check if passed in value is a number.
 			#IsNumeric() equivelant is -> [Boolean]([String]($x -as [int]))
-		#Returns: 
+		#Returns: True or False
+		#$intX = The value to check to see if it is a number.
 
 		#http://rosettacode.org/wiki/Determine_if_a_string_is_numeric
 		try {

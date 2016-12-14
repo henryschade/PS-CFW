@@ -1532,15 +1532,20 @@
 			}
 		}
 
+		#Check the characters starting at the right
 		$intNameCount = 0;
-		for ($intY = 1; $intY -le $strSamName.Length; $intY++){
+		for ($intY = 1; $intY -lt $strSamName.Length; $intY++){
 			#$Error.Clear();
-			if (isNumeric ($strSamName.SubString(($strSamName.Length - $intY), $intY))){
+			if (isNumeric($strSamName.SubString(($strSamName.Length - $intY), $intY))){
 				$intNameCount = $strSamName.SubString(($strSamName.Length - $intY), $intY);
 			}
-			$Error.Clear();		#The if statements errors when ever a number is NOT found.
+			else{
+				$Error.Clear();		#The if statements errors when ever a number is NOT found.
+				break;
+			}
 		}
 		[Int]$intNameCount = [Int]$intNameCount;
+
 		if ($bForceInc){
 			$intNameCount++;
 			if ($intNameCount -eq 1){
