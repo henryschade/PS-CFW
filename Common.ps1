@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	8 December 2016
+# Updated Date:	15 December 2016
 # Purpose:		Common routines to all/most projects.
 # Requirements: Core.ps1 [will try to load it automatically].
 #				DB-Routines.ps1 for the CheckVer() routine [it will try to load it automatically].
@@ -30,6 +30,8 @@
 	#Changes for 8 December 2016
 		#Add "#Returns: " to functions, for routine documentation.
 		#Added documentation to isNumeric().
+	#Changes for 15 December 2016
+		#Updated isADInstalled() to help accomodate Servers.
 #>
 
 
@@ -429,8 +431,6 @@
 		#To get a list of all "RemoteServerAdministrationTools" and if they are enabled or disabled:
 		#[System.Collections.ArrayList]$arrResults = DISM /online /get-features | Select-String -Pattern ":";
 		$arrResults = DISM /online /get-features | Select-String -Pattern ":";
-		#if (($arrResults.GetType().Name -eq "ArrayList") -or ($arrResults.GetType().BaseType.Name -eq "Array")){
-		#if (($arrResults.GetType().Name -eq "ArrayList") -or ($arrResults.GetType().IsArray) -or ($arrResults.GetType().BaseType.Name -eq "Array")){
 		if (($arrResults.GetType().IsArray) -or ($arrResults.GetType().BaseType.Name -eq "Array")){
 			[System.Collections.ArrayList]$arrResults = $arrResults;
 		}else{
@@ -451,6 +451,59 @@
 			}
 		}
 
+		<# $arrFiltered results:
+			#My Desktop:
+				RemoteServerAdministrationTools-Features-Wsrm -- Disabled
+				RemoteServerAdministrationTools-Features-StorageManager -- Disabled
+				RemoteServerAdministrationTools-Features-StorageExplorer -- Disabled
+				RemoteServerAdministrationTools-Features-SmtpServer -- Disabled
+				RemoteServerAdministrationTools-Features-LoadBalancing -- Disabled
+				RemoteServerAdministrationTools-Features-GP -- Disabled
+				RemoteServerAdministrationTools-Features-Clustering -- Disabled
+				RemoteServerAdministrationTools-Features-BitLocker -- Disabled
+				RemoteServerAdministrationTools-Features -- Disabled
+				RemoteServerAdministrationTools-Roles-RDS -- Enabled
+				RemoteServerAdministrationTools-Roles-HyperV -- Disabled
+				RemoteServerAdministrationTools-Roles-FileServices-StorageMgmt -- Disabled
+				RemoteServerAdministrationTools-Roles-FileServices-Fsrm -- Disabled
+				RemoteServerAdministrationTools-Roles-FileServices-Dfs -- Disabled
+				RemoteServerAdministrationTools-Roles-FileServices -- Disabled
+				RemoteServerAdministrationTools-Roles-DNS -- Enabled
+				RemoteServerAdministrationTools-Roles-DHCP -- Disabled
+				RemoteServerAdministrationTools-Roles-AD-Powershell -- Enabled
+				RemoteServerAdministrationTools-Roles-AD-LDS -- Enabled
+				RemoteServerAdministrationTools-Roles-AD-DS-NIS -- Disabled
+				RemoteServerAdministrationTools-Roles-AD-DS-AdministrativeCenter -- Enabled
+				RemoteServerAdministrationTools-Roles-AD-DS-SnapIns -- Enabled
+				RemoteServerAdministrationTools-Roles-AD-DS -- Enabled
+				RemoteServerAdministrationTools-Roles-AD -- Enabled
+				RemoteServerAdministrationTools-Roles-CertificateServices-OnlineResponder -- Disabled
+				RemoteServerAdministrationTools-Roles-CertificateServices-CA -- Disabled
+				RemoteServerAdministrationTools-Roles-CertificateServices -- Disabled
+				RemoteServerAdministrationTools-Roles -- Enabled
+				RemoteServerAdministrationTools-ServerManager -- Disabled
+				RemoteServerAdministrationTools -- Enabled
+
+			#Server #1:
+				DirectoryServices-ISM-Smtp -- Disabled
+				DirectoryServices-ADAM-Tools -- Enabled
+				DirectoryServices-AdministrativeCenter -- Enabled
+				ActiveDirectory-PowerShell -- Enabled
+				DirectoryServices-ADAM -- Disabled
+				DirectoryServices-DomainController -- Disabled
+				DirectoryServices-DomainController-Tools -- Enabled
+
+			#Server #2:
+				DirectoryServices-ISM-Smtp -- Disabled
+				DirectoryServices-ADAM-Tools -- Enabled
+				DirectoryServices-AdministrativeCenter -- Enabled
+				ActiveDirectory-PowerShell -- Enabled
+				DirectoryServices-ADAM -- Disabled
+				DirectoryServices-DomainController -- Disabled
+				DirectoryServices-DomainController-Tools -- Enabled
+
+		#>
+
 		if (($arrFiltered.Count -eq 0) -or ($arrFiltered.Count -eq $null)){
 			#NOT installed.
 			$bInstalled = $False;
@@ -460,18 +513,20 @@
 				#Write-Host "Error"
 				$bInstalled = $arrResults;
 			}
-		}else{
+		}
+		else{
 			#Installed
 			#Client Checks:
 			if ((($arrFiltered -Match "RemoteServerAdministrationTools-Roles-AD-Powershell -- Enabled").Count -eq 0) -or (($arrFiltered -Match "RemoteServerAdministrationTools-Roles-AD -- Enabled").Count -eq 0)){
+				#Client check failed.
 				#Server Checks:  (I think "ActiveDirectory-PowerShell" is the important one, but not 100% sure still)
-				if ((($arrFiltered -Match "ActiveDirectory-PowerShell -- Enabled").Count -eq 0) -or ((($arrFiltered -Match "DirectoryServices-ADAM -- Enabled").Count -eq 0) -and (($arrFiltered -Match "DirectoryServices-ADAM-Tools -- Enabled").Count -eq 0))){
-					#AD Checkboxes are NOT Checked.
-					$bInstalled = $False;
-				}
-				else{
+				if ((($arrFiltered -Match "ActiveDirectory-PowerShell -- Enabled").Count -eq 1) -or ((($arrFiltered -Match "DirectoryServices-ADAM -- Enabled").Count -eq 1) -and (($arrFiltered -Match "DirectoryServices-ADAM-Tools -- Enabled").Count -eq 1))){
 					#AD Checkboxes are Checked.
 					$bInstalled = $True;
+				}
+				else{
+					#AD Checkboxes are NOT Checked.
+					$bInstalled = $False;
 				}
 			}
 			else{
@@ -481,16 +536,20 @@
 
 			#if (($bInstalled -eq $False) -and ($bEnable)){
 			if ($bEnable){
-				#Turn ON these features
-				$strResults = DISM /online /enable-feature /featurename:RemoteServerAdministrationTools /featurename:RemoteServerAdministrationTools-Roles /featurename:RemoteServerAdministrationTools-Roles-AD /featurename:RemoteServerAdministrationTools-Roles-AD-DS /featurename:RemoteServerAdministrationTools-Roles-AD-DS-SnapIns /featurename:RemoteServerAdministrationTools-Roles-AD-DS-AdministrativeCenter /featurename:RemoteServerAdministrationTools-Roles-AD-LDS /featurename:RemoteServerAdministrationTools-Roles-AD-Powershell /featurename:RemoteServerAdministrationTools-Roles-DNS /featurename:RemoteServerAdministrationTools-Roles-RDS;
-				if ([String]($strResults -Match "completed successfully") -Like "*successfully*"){
-					$bInstalled = $True;
+				if (($arrFiltered -Match "RemoteServerAdministrationTools").Count -gt 0){
+					#Turn ON these features
+					$strResults = DISM /online /enable-feature /featurename:RemoteServerAdministrationTools /featurename:RemoteServerAdministrationTools-Roles /featurename:RemoteServerAdministrationTools-Roles-AD /featurename:RemoteServerAdministrationTools-Roles-AD-DS /featurename:RemoteServerAdministrationTools-Roles-AD-DS-SnapIns /featurename:RemoteServerAdministrationTools-Roles-AD-DS-AdministrativeCenter /featurename:RemoteServerAdministrationTools-Roles-AD-LDS /featurename:RemoteServerAdministrationTools-Roles-AD-Powershell /featurename:RemoteServerAdministrationTools-Roles-DNS /featurename:RemoteServerAdministrationTools-Roles-RDS;
+					if ([String]($strResults -Match "completed successfully") -Like "*successfully*"){
+						$bInstalled = $True;
+					}
 				}
 			}
 
 			if ($bDisable){
-				#Turn OFF these features
-				$strResults = DISM /online /disable-feature /featurename:RemoteServerAdministrationTools-Features /featurename:RemoteServerAdministrationTools-Features-BitLocker /featurename:RemoteServerAdministrationTools-Features-Clustering /featurename:RemoteServerAdministrationTools-Features-GP /featurename:RemoteServerAdministrationTools-Features-LoadBalancing /featurename:RemoteServerAdministrationTools-Features-SmtpServer /featurename:RemoteServerAdministrationTools-Features-StorageExplorer /featurename:RemoteServerAdministrationTools-Features-StorageManager /featurename:RemoteServerAdministrationTools-Features-Wsrm /featurename:RemoteServerAdministrationTools-Roles-AD-DS-NIS /featurename:RemoteServerAdministrationTools-Roles-DHCP /featurename:RemoteServerAdministrationTools-Roles-HyperV /featurename:RemoteServerAdministrationTools-Roles-FileServices /featurename:RemoteServerAdministrationTools-Roles-FileServices-Dfs /featurename:RemoteServerAdministrationTools-Roles-FileServices-Fsrm /featurename:RemoteServerAdministrationTools-Roles-FileServices-StorageMgmt /featurename:RemoteServerAdministrationTools-Roles-CertificateServices /featurename:RemoteServerAdministrationTools-Roles-CertificateServices-CA /featurename:RemoteServerAdministrationTools-Roles-CertificateServices-OnlineResponder /featurename:RemoteServerAdministrationTools-ServerManager;
+				if (($arrFiltered -Match "RemoteServerAdministrationTools").Count -gt 0){
+					#Turn OFF these features
+					$strResults = DISM /online /disable-feature /featurename:RemoteServerAdministrationTools-Features /featurename:RemoteServerAdministrationTools-Features-BitLocker /featurename:RemoteServerAdministrationTools-Features-Clustering /featurename:RemoteServerAdministrationTools-Features-GP /featurename:RemoteServerAdministrationTools-Features-LoadBalancing /featurename:RemoteServerAdministrationTools-Features-SmtpServer /featurename:RemoteServerAdministrationTools-Features-StorageExplorer /featurename:RemoteServerAdministrationTools-Features-StorageManager /featurename:RemoteServerAdministrationTools-Features-Wsrm /featurename:RemoteServerAdministrationTools-Roles-AD-DS-NIS /featurename:RemoteServerAdministrationTools-Roles-DHCP /featurename:RemoteServerAdministrationTools-Roles-HyperV /featurename:RemoteServerAdministrationTools-Roles-FileServices /featurename:RemoteServerAdministrationTools-Roles-FileServices-Dfs /featurename:RemoteServerAdministrationTools-Roles-FileServices-Fsrm /featurename:RemoteServerAdministrationTools-Roles-FileServices-StorageMgmt /featurename:RemoteServerAdministrationTools-Roles-CertificateServices /featurename:RemoteServerAdministrationTools-Roles-CertificateServices-CA /featurename:RemoteServerAdministrationTools-Roles-CertificateServices-OnlineResponder /featurename:RemoteServerAdministrationTools-ServerManager;
+				}
 			}
 		}
 		return $bInstalled;

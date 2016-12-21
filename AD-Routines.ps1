@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	8 December 2016
+# Updated Date:	21 December 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -19,6 +19,8 @@
 		#Still having issues w/ SIPR adding Computers to Groups, so added a check that will use ADSI if error above happens.
 	#Changes for 8 December 2016
 		#Add "#Returns: " to functions, for routine documentation.
+	#Changes for 21 December 2016
+		#Updated CheckNameAvail() documentation, and improved the return Message if an account is found.
 #>
 
 
@@ -1454,7 +1456,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bForceInc = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strEmailEnding = "@navy.mil"
 		)
-		#Description....
+		#Checks if the provided samAccountName is in use in the network.  Prompts for a new name if the name is found in use (if $bInteractive is $True).
 		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Found a new "good" name.
@@ -1622,7 +1624,7 @@
 			foreach ($strDomain in $arrDomains){
 				$objResults = $null;
 				$objResults = ADSearchADO $strOrigName $strDomain $strFilter $arrDesiredProps $True;
-				if ($objResults.Results -gt 0){
+				if ([Int]$objResults.Results -gt 0){
 					#Found EDIPI in use
 					#$strMessage = "EDIPI in use: " + ([String]($objResults.Returns)[0].samAccountName).Trim() + " (UPN: " + ([String]($objResults.Returns)[0].UserPrincipalName).Trim() + ") is using EDIPI ";
 					#if ([String]::IsNullOrEmpty(([String]($objResults.Returns)[0].EDIPI).Trim())){
@@ -1680,7 +1682,7 @@
 						foreach ($strDomain in $arrDomains){
 							$objResults = $null;
 							$objResults = ADSearchADO $strOrigName $strDomain $strFilter $arrDesiredProps $True;
-							if ($objResults.Results -gt 0){
+							if ([Int]$objResults.Results -gt 0){
 								#Found email in use
 								$UserADInfo = "Email in use.";
 								$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address *" + $strOrigName + "*" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
@@ -1760,6 +1762,7 @@
 					$strMessage = $strMessage + "Provide a new Login Name (SamAccountName) to use.`r`n`r`n" + "Type 'exit' to abort the process.";
 					$strNewName = MsgBox $strMessage "Name already in use." 6 $strNewName;
 					$strNewName = $strNewName.Trim();
+					$strWorkLog = $strWorkLog + "  (" + $strNewName + ")";
 					if ($strNewName -eq "exit"){
 						$bolNameOK = $False;
 						$bolDoWork = $False;
@@ -1771,7 +1774,7 @@
 					#OCM wanted this, and it can be useful for "Automated" processes.
 					$strNewName = $strNewName.Trim();
 					$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
-					$strWorkLog = $strWorkLog + "Assumed the proposed name '$strNewName' is good.";
+					$strWorkLog = $strWorkLog + "(No prompt) Assumed the proposed name '$strNewName' is good.";
 				}
 
 				if (([String]::IsNullOrEmpty($strNewName)) -or ($strNewName -eq "exit")){
@@ -1859,7 +1862,7 @@
 
 				#If we did not have a MI, we have now used it now (if available).
 				$bHadMI = $True;
-			} while (($bolNameOK -eq $False) -or ([String]::IsNullOrEmpty($strNewName)))
+			} while (($bolNameOK -eq $False) -or ([String]::IsNullOrEmpty($strNewName)));
 			$strNewName = $strNewName.ToLower().Trim();
 		}
 
