@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	8 December 2016
+# Updated Date:	10 Nov 2016
 # Purpose:		Hide/Show PowerShell Console Window.
 # 				Display Orientation Methods.
 # Requirements: None
@@ -8,25 +8,28 @@
 <# ---=== Change Log ===---
 	#Changes for 28 June 2016:
 		#Added Change Log.
+
 	#Changes for 8 December 2016
 		#Add "#Returns: " to functions, for routine documentation.
+	#Changes for 10 Nov 2016:
+		#Update the DisplayCode and ConsoleCode paths for if Add-Type() commandlet fails
 #>
 
 	<#  Notes
-		#http://www.aspnet-answers.com/microsoft/Powershell/30523953/invisible-windows.aspx
+	#http://www.aspnet-answers.com/microsoft/Powershell/30523953/invisible-windows.aspx
 
-		#http://blogs.msdn.com/b/frankfi/archive/2008/08/13/changing-the-display-resolution-in-a-multi-monitor-environment.aspx
+	#http://blogs.msdn.com/b/frankfi/archive/2008/08/13/changing-the-display-resolution-in-a-multi-monitor-environment.aspx
 
-		#Foreground and background colors for the console:  ([system.consolecolor]::GetNames("consolecolor");)
-		#Black, White, 
-		#Gray, DarkGray, 
-		#Red, DarkRed, 
-		#Blue, DarkBlue, 
-		#Green, DarkGreen, 
-		#Yellow, DarkYellow, 
-		#Cyan, DarkCyan, 
-		#Magenta, DarkMagenta
-		#$Host.UI.RawUI.BackgroundColor = "DarkMagenta";
+	#Foreground and background colors for the console:  ([system.consolecolor]::GetNames("consolecolor");)
+	#Black, White, 
+	#Gray, DarkGray, 
+	#Red, DarkRed, 
+	#Blue, DarkBlue, 
+	#Green, DarkGreen, 
+	#Yellow, DarkYellow, 
+	#Cyan, DarkCyan, 
+	#Magenta, DarkMagenta
+	#$Host.UI.RawUI.BackgroundColor = "DarkMagenta";
 	#>
 
 
@@ -396,7 +399,8 @@ if ($True -eq $True){
 			trap {
 				if (($MyInvocation.MyCommand.Path -eq "") -or ($MyInvocation.MyCommand.Path -eq $null)){
 					#$ScriptDir = "C:\SRM_Apps_N_Tools\PS-Scripts";
-					$ScriptDir = "C:\SRM_Apps_N_Tools\PS-CFW";
+					#$ScriptDir = "C:\SRM_Apps_N_Tools\PS-CFW";
+					$ScriptDir = "C:\Users\Public\ITSS-Tools\PS-CFW";
 				}else{
 					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;				#Gets the directory/path the Script was run from.
 				}
@@ -443,7 +447,8 @@ if ($True -eq $True){
 			trap {
 				if (($MyInvocation.MyCommand.Path -eq "") -or ($MyInvocation.MyCommand.Path -eq $null)){
 					#$ScriptDir = "C:\SRM_Apps_N_Tools\PS-Scripts";
-					$ScriptDir = "C:\SRM_Apps_N_Tools\PS-CFW";
+					#$ScriptDir = "C:\SRM_Apps_N_Tools\PS-CFW";
+					$ScriptDir = "C:\Users\Public\ITSS-Tools\PS-CFW";
 				}else{
 					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;				#Gets the directory/path the Script was run from.
 				}
