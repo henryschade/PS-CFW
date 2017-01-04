@@ -9,7 +9,7 @@
 	#Changes for 5 December 2016:
 		#Create Core.ps1, with routines from Common.ps1, that has only the routines needed to start an App and check the basics.
 	#Changes for 8 December 2016
-		#Add "#Returns: " to functions, for routine documentation.
+	#Add "#Returns: " to functions, for routine documentation.
 #>
 
 
