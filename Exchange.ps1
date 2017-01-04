@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	19 October 2016
+# Updated Date:	8 December 2016
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process. 
@@ -14,7 +14,10 @@
 		#Updated CreateMailBox() to check extensionAttribute8 for NNPI account names.
 	#19 Oct 2016
 		#Update SetupConn() to accomodate SIPR.
-
+	#30 November 2016
+		#Updated SetupConn() to accomodate Dev, and fixed a bug.
+	#8 December 2016
+		#Updated SetupConn() to accomodate snmci-isf.
 #>
 
 
@@ -1829,8 +1832,9 @@
 			[Parameter(Mandatory=$False)][String]$WhatSide, 
 			[Parameter(Mandatory=$False)][String]$strServer
 		);
-		#Returns a list of all the PowerShell commandlets imported.
-		#$WhatSide = What domain to connect to. nadsuswe or nadsusea or pacom or nmci-isf
+		#Creates a connection to an Exchange 2010 server and imports the available Exchange PowerShell commands into the current session.
+		#Returns: a list of all the PowerShell commandlets imported.
+		#$WhatSide = What domain to connect to. nadsuswe or nadsusea or pacom or nmci-isf or snmci-isf
 		#$strServer = What server to connect to.  "Default", "Random", "naeaNRFKxh01v"
 
 		$Session = "";
@@ -1839,30 +1843,32 @@
 		CleanUpConn;
 
 		if (($WhatSide -eq $null) -or ($WhatSide -eq "")){
-			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom or [N]mci-isf)';
+			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom or [N]mci-isf or [S]nmci-isf)';
 		}
 		if ($WhatSide.Length -gt 1){
-			#if (($WhatSide -eq "nadsusea") -or ($WhatSide -eq "nadsuswe") -or ($WhatSide -eq "pads") -or ($WhatSide -eq "nmci-isf")){
-			if (($WhatSide -eq "nadsusea") -or ($WhatSide -eq "nadsuswe")){
+			if (($WhatSide -eq "nadsusea") -or ($WhatSide -eq "nadsuswe") -or ($WhatSide -eq "snmci-isf")){
 				if ($WhatSide -eq "nadsusea"){
 					$WhatSide = "e";
 				}
 				if ($WhatSide -eq "nadsuswe"){
 					$WhatSide = "w";
 				}
+				if ($WhatSide -eq "snmci-isf"){
+					$WhatSide = "s";
+				}
+			}
+			else{
 				#if ($WhatSide -eq "pads"){
 				#	$WhatSide = "p";
 				#}
 				#if ($WhatSide -eq "nmci-isf"){
 				#	$WhatSide = "n";
 				#}
-			}
-			else{
 				$WhatSide = $WhatSide.substring(0, 1);
 			}
 		}
-		if (($WhatSide -ne "e") -and ($WhatSide -ne "w") -and ($WhatSide -ne "p") -and ($WhatSide -ne "n")){
-			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom or [N]mci-isf)';
+		if (($WhatSide -ne "e") -and ($WhatSide -ne "w") -and ($WhatSide -ne "p") -and ($WhatSide -ne "n") -and ($WhatSide -ne "s")){
+			$WhatSide = Read-Host 'What Domain? (nadsus[W]e or nadsus[E]a or [P]acom or [N]mci-isf or [S]nmci-isf)';
 		}
 		if ($WhatSide.Length -gt 1){
 			$WhatSide.substring(0, 1)
@@ -1901,13 +1907,24 @@
 		if ($WhatSide -eq "e"){
 			#Write-Host "East it is";
 			$strDomain = "nadsusea";
+			if ($env:UserDomain.toLower().Contains("dadsuswe")){
+				#Dev
+				$strDomain = "dadsusea";
+			}
+			if ($env:UserDomain.toLower().Contains("americas")){
+				#HPE
+				$strDomain = "americas";
+				$strServer = "Random";
+			}
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
+				$strServer = "naeaNRFKxh01v.nadsusea.nads.navy.mil";
 				if ($env:UserDomain.toLower().Contains("snmci-isf")){
 					#SIPR
 					$strServer = "NAEANRFKXh02V.nadsusea.nads.navy.smil.mil";
 				}
-				else{
-					$strServer = "naeaNRFKxh01v.nadsusea.nads.navy.mil";
+				if ($env:UserDomain.toLower().Contains("dadsuswe")){
+					#Dev
+					$strServer = "DAEANRFKXE77V.dadsusea.dads.navy.mil";
 				}
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 				#if ((Test-Connection -CN $strFQDN -buffersize 16 -Count 1 -ErrorAction 0 -quiet) -ne $True){
@@ -1917,7 +1934,8 @@
 			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
-					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsusea") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					#$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsusea") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					$objExchServers = GetExchangeServers | where {(($_.FQDN -match $strDomain) -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 
 					#select a random server from the list
 					if($objExchServers.Count -gt 1) {
@@ -1933,20 +1951,32 @@
 		if ($WhatSide -eq "w"){
 			#Write-Host "West it is";
 			$strDomain = "nadsuswe";
+			if ($env:UserDomain.toLower().Contains("dadsuswe")){
+				#Dev
+				$strDomain = "dadsuswe";
+			}
+			if ($env:UserDomain.toLower().Contains("americas")){
+				#HPE
+				$strDomain = "americas";
+				$strServer = "Random";
+			}
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
+				$strServer = "naweSDNIxh01v.nadsuswe.nads.navy.mil";
 				if ($env:UserDomain.toLower().Contains("snmci-isf")){
 					#SIPR
 					$strServer = "naweSDNIXh02V.nadsuswe.nads.navy.smil.mil";
 				}
-				else{
-					$strServer = "naweSDNIxh01v.nadsuswe.nads.navy.mil";
+				if ($env:UserDomain.toLower().Contains("dadsuswe")){
+					#Dev
+					$strServer = "DAWEBREMXE20V.dadsuswe.dads.navy.mil";
 				}
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 			}
 			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
-					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsuswe") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					#$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nadsuswe") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					$objExchServers = GetExchangeServers | where {(($_.FQDN -match $strDomain) -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 
 					#select a random server from the list
 					if($objExchServers.Count -gt 1) {
@@ -1962,20 +1992,24 @@
 		if ($WhatSide -eq "p"){
 			#Write-Host "Pacom it is";
 			$strDomain = "pads";
+			if ($env:UserDomain.toLower().Contains("americas")){
+				#HPE
+				$strDomain = "americas";
+				$strServer = "Random";
+			}
 			if (($strServer -eq "Default") -or ($strServer -eq "D")){
+				$strServer = "PADSPRLHXF01V.pads.pacom.mil";
 				if ($env:UserDomain.toLower().Contains("snmci-isf")){
 					#SIPR
 					$strServer = "PADSPRLHXH02V.pads.pacom.navy.smil.mil";
-				}
-				esle{
-					$strServer = "PADSPRLHXF01V.pads.pacom.mil";
 				}
 				#Test-Connection -CN $strComputer -buffersize 16 -Count 1 -ErrorAction 0 -quiet
 			}
 			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
-					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "pacom") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					#$objExchServers = GetExchangeServers | where {(($_.FQDN -match "pacom") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					$objExchServers = GetExchangeServers | where {(($_.FQDN -match $strDomain) -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 
 					#select a random server from the list
 					if($objExchServers.Count -gt 1) {
@@ -1988,16 +2022,30 @@
 			}
 			$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
 		}
-		if ($WhatSide -eq "n"){
+		if (($WhatSide -eq "n") -or ($WhatSide -eq "s")){
 			#Write-Host "nmci-isf it is";
 			$strDomain = "nmci-isf";
-			if (($strServer -eq "Default") -or ($strServer -eq "D")){
+			if ($env:UserDomain.toLower().Contains("snmci-isf")){
+				#SIPR
+				$strDomain = "snmci-isf";
+				$strServer = "Random";
+			}
+			if ($env:UserDomain.toLower().Contains("americas")){
+				#HPE
+				$strDomain = "americas";
+				$strServer = "Random";
+			}
+			if ((($strServer -eq "Default") -or ($strServer -eq "D"))){
 				$strServer = "NMCINRFKXF01V.nmci-isf.com";
+				if ($env:UserDomain.toLower().Contains("snmci-isf")){
+					#SIPR
+					$strServer = "xxxxxxx.snmci-isf.com";
+				}
 			}
 			else{
 				if (($strServer -eq "Random") -or ($strServer -eq "R")){
 					#Get all the Exchange Servers in the Domain (filter the results).
-					$objExchServers = GetExchangeServers | where {(($_.FQDN -match "nmci") -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
+					$objExchServers = GetExchangeServers | where {(($_.FQDN -match $strDomain) -and (($_.Roles -match 4) -or ($_.Roles -match 36)))};
 
 					#select a random server from the list
 					if($objExchServers.Count -gt 1) {
@@ -2011,6 +2059,7 @@
 			$strRIDMaster = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain((New-Object System.DirectoryServices.ActiveDirectory.DirectoryContext('Domain', $strDomain))).RidRoleOwner.Name;
 		}
 
+		#Write-Host $strServer;
 		$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri "http://$strServer/PowerShell/" -Authentication Kerberos;
 
 		if (($Session -ne "") -and ($Session -ne $null)){
@@ -2021,7 +2070,7 @@
 				# http://www.get-exchangeserver.com/powershell-script-ile-exchange-server-20132010-uzerinde-health-check-report-olusturma/
 				#Set-ADServerSettings -ViewEntireForest $true -WarningAction SilentlyContinue;
 				if (!(Get-ADServerSettings).ViewEntireForest){
-					Set-ADServerSettings -ViewEntireForest $true;
+					Set-ADServerSettings -ViewEntireForest $True;
 				}
 
 				#if ((Get-ADServerSettings).UserPreferredDomainControllers -eq ""){
@@ -2030,21 +2079,15 @@
 						Set-ADServerSettings -PreferredServer $strRIDMaster -ErrorAction SilentlyContinue;
 					}
 					if ($Error){
-						Write-Host "";
-						Write-Host "An error occurred trying to run this command:";
-						Write-Host "";
-						Write-Host "Set-ADServerSettings -PreferredServer $strRIDMaster;";
-						Write-Host "";
+						Write-Host "`r`n" + "An error occurred trying to run the following command:";
+						Write-Host "Set-ADServerSettings -PreferredServer $strRIDMaster;" + "`r`n";
 					}
 				#}
 				return $strModule;
 			}
 			else{
-				Write-Host "";
-				Write-Host "An error occurred trying to import the Exchange PowerShell CommandLets.";
-				Write-Host "";
-				Write-Host "Import-PSSession $Session -AllowClobber;";
-				Write-Host "";
+				Write-Host "`r`n" + "An error occurred trying to import the Exchange PowerShell CommandLets.";
+				Write-Host "Import-PSSession $Session -AllowClobber;" + "`r`n";
 			}
 		}
 	}

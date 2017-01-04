@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	28 October 2016
+# Updated Date:	21 December 2016
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -14,6 +14,13 @@
 		#Routine formatting updates.
 	#28 Oct 2016
 		#Routine documentation templates.
+	#28 November 2016
+		#Update AddUserToGroup() to turn on Inheritance from Parent if error "Insufficient access rights to perform the operation" is encountered.
+		#Still having issues w/ SIPR adding Computers to Groups, so added a check that will use ADSI if error above happens.
+	#Changes for 8 December 2016
+		#Add "#Returns: " to functions, for routine documentation.
+	#Changes for 21 December 2016
+		#Updated CheckNameAvail() documentation, and improved the return Message if an account is found.
 #>
 
 
@@ -25,6 +32,15 @@
 
 		#$InitializeDefaultDrives=$False;
 		#if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
+
+
+		#https://blogs.msdn.microsoft.com/muaddib/2013/12/30/how-to-modify-security-inheritance-on-active-directory-objects-using-powershell/
+		#Get a Groups ACL's
+		##(Get-Acl "AD:$((Get-ADGroup "far15devs").DistinguishedName)").access;
+		#$GroupName = "far15devs";
+		##$objACLs = (Get-Acl ('AD:\' + (Get-ADGroup $GroupName).DistinguishedName)).access;
+		##$objACLs = $objACLs | Sort-Object -Property IdentityReference;
+		#$objACLs = (Get-Acl ('AD:\' + (Get-ADGroup $GroupName).DistinguishedName));
 
 
 
@@ -134,7 +150,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$DomainOrDC
 		)
 		#Adds a User/computer to a Group as a Member.
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= 0 or 1.  0 = Error, 1 = Success
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -206,7 +222,52 @@
 			if ((($objGroup.mail -eq "") -or ($objGroup.mail -eq $null))){
 				$strGroupDN = [String]($objGroup).DistinguishedName;
 				$Error.Clear();
+				#set the Primary Group if the name has "_SnTDev_GS", and account ends in .dev
+				#Add-ADPrincipalGroupMembership
 				Add-ADGroupMember -Identity $strGroupDN -Member $UserName -Server $DomainOrDC;
+				if ($Error){
+					if ($Error -Match "Insufficient access rights to perform the operation"){
+						#https://blogs.msdn.microsoft.com/muaddib/2013/12/30/how-to-modify-security-inheritance-on-active-directory-objects-using-powershell/
+						#If the box was checked the following command will return FALSE.  If the box was unchecked it will return TRUE.
+						#if ($objGroup.nTSecurityDescriptor.AreAccessRulesProtected){
+							$Error.Clear();
+							##Need to update the Groups ACL's, turning on Inherit from Parent.
+							#$objACLs = (Get-Acl ('AD:\' + $strGroupDN));
+							##“check” the inheritance checkbox
+							#$objACLs.SetAccessRuleProtection($False,$True);
+							##Write updated ACL's back to the Group
+							#Set-ACL -AclObject $objACLs -path ('AD:\' + $strGroupDN);
+							#if (!($Error)){
+							#	Add-ADGroupMember -Identity $strGroupDN -Member $UserName -Server $DomainOrDC;
+							#}
+
+							#https://powershell.org/forums/topic/bulk-add-ad-computers-to-ad-group/
+							#$computers = @(); # list of computer distinguishedName values
+							#$group = [ADSI]"LDAP://CN=TestGroup,OU=Groups,DC=example,DC=com";
+							#foreach($computerDn in $computers) {
+							#	# The .Add() method outputs the number of objects in the list, so Out-Null to avoid unnecessary clutter
+							#	$group.Properties["member"].Add($computerDn) | Out-Null;
+							#}
+							#$group.CommitChanges();
+
+							#$objGroupRetry = [ADSI]("LDAP://" + $strGroupDN);
+							#$objGroupRetry.Properties["member"].Add($UserName) | Out-Null;
+							#$objGroupRetry.CommitChanges();
+
+							#https://powershell.org/forums/topic/sccm-2012-add-computer-to-ad-group-during-build/
+							$objGroupRetry = [ADSI]("LDAP://" + $strGroupDN);
+							$objGroupRetry.Add("$UserName");
+							$objGroupRetry.SetInfo();
+
+							##https://justanothersysadmin.wordpress.com/2008/01/19/modifying-group-memberships-with-powershell-part-1/
+							#$objGroupRetry = [ADSI]("LDAP://" + $strGroupDN);
+							#$objGroupRetry.Member.Add("$UserName");
+							#$objGroupRetry.SetInfo();
+
+							#https://gallery.technet.microsoft.com/scriptcenter/Auto-adding-computer-to-AD-6ffa96bb
+						#}
+					}
+				}
 			}
 			else{
 				#DL
@@ -274,7 +335,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$GroupNotes = ""
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  $False = Error, $True = Success
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -622,7 +683,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolRecurse = $False
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#$ADObject = An AD object, or the sAMAccountName (String) of the AD object to get.
 		#$arrList = The Array, of strings, that will be updated/returned, that will have the list of Memberships $ADObject has.
 		#$bolRecurse = Get the Groups any Groups are Members Of as well.
@@ -883,7 +944,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bPSobj = $False
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= # of objects found.
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -1020,7 +1081,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomainOrDC
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= True or False (Were there Errors).
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -1261,7 +1322,7 @@
 			#[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bNNPI = $False
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Were there errors?
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -1395,8 +1456,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bForceInc = $False, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strEmailEnding = "@navy.mil"
 		)
-		#Description....
-		#Returns a PowerShell object.
+		#Checks if the provided samAccountName is in use in the network.  Prompts for a new name if the name is found in use (if $bInteractive is $True).
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Found a new "good" name.
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -1473,15 +1534,20 @@
 			}
 		}
 
+		#Check the characters starting at the right
 		$intNameCount = 0;
-		for ($intY = 1; $intY -le $strSamName.Length; $intY++){
+		for ($intY = 1; $intY -lt $strSamName.Length; $intY++){
 			#$Error.Clear();
-			if (isNumeric ($strSamName.SubString(($strSamName.Length - $intY), $intY))){
+			if (isNumeric($strSamName.SubString(($strSamName.Length - $intY), $intY))){
 				$intNameCount = $strSamName.SubString(($strSamName.Length - $intY), $intY);
 			}
-			$Error.Clear();		#The if statements errors when ever a number is NOT found.
+			else{
+				$Error.Clear();		#The if statements errors when ever a number is NOT found.
+				break;
+			}
 		}
 		[Int]$intNameCount = [Int]$intNameCount;
+
 		if ($bForceInc){
 			$intNameCount++;
 			if ($intNameCount -eq 1){
@@ -1558,7 +1624,7 @@
 			foreach ($strDomain in $arrDomains){
 				$objResults = $null;
 				$objResults = ADSearchADO $strOrigName $strDomain $strFilter $arrDesiredProps $True;
-				if ($objResults.Results -gt 0){
+				if ([Int]$objResults.Results -gt 0){
 					#Found EDIPI in use
 					#$strMessage = "EDIPI in use: " + ([String]($objResults.Returns)[0].samAccountName).Trim() + " (UPN: " + ([String]($objResults.Returns)[0].UserPrincipalName).Trim() + ") is using EDIPI ";
 					#if ([String]::IsNullOrEmpty(([String]($objResults.Returns)[0].EDIPI).Trim())){
@@ -1616,7 +1682,7 @@
 						foreach ($strDomain in $arrDomains){
 							$objResults = $null;
 							$objResults = ADSearchADO $strOrigName $strDomain $strFilter $arrDesiredProps $True;
-							if ($objResults.Results -gt 0){
+							if ([Int]$objResults.Results -gt 0){
 								#Found email in use
 								$UserADInfo = "Email in use.";
 								$strMessage = ([String]($objResults.Returns)[0].name).Trim() + " is using the email address *" + $strOrigName + "*" + "`r`n" + ([String]($objResults.Returns)[0].proxyAddresses).Trim();
@@ -1696,6 +1762,7 @@
 					$strMessage = $strMessage + "Provide a new Login Name (SamAccountName) to use.`r`n`r`n" + "Type 'exit' to abort the process.";
 					$strNewName = MsgBox $strMessage "Name already in use." 6 $strNewName;
 					$strNewName = $strNewName.Trim();
+					$strWorkLog = $strWorkLog + "  (" + $strNewName + ")";
 					if ($strNewName -eq "exit"){
 						$bolNameOK = $False;
 						$bolDoWork = $False;
@@ -1707,7 +1774,7 @@
 					#OCM wanted this, and it can be useful for "Automated" processes.
 					$strNewName = $strNewName.Trim();
 					$strWorkLog = $strWorkLog + "`r`n" + $strMessage;
-					$strWorkLog = $strWorkLog + "Assumed the proposed name '$strNewName' is good.";
+					$strWorkLog = $strWorkLog + "(No prompt) Assumed the proposed name '$strNewName' is good.";
 				}
 
 				if (([String]::IsNullOrEmpty($strNewName)) -or ($strNewName -eq "exit")){
@@ -1795,7 +1862,7 @@
 
 				#If we did not have a MI, we have now used it now (if available).
 				$bHadMI = $True;
-			} while (($bolNameOK -eq $False) -or ([String]::IsNullOrEmpty($strNewName)))
+			} while (($bolNameOK -eq $False) -or ([String]::IsNullOrEmpty($strNewName)));
 			$strNewName = $strNewName.ToLower().Trim();
 		}
 
@@ -1820,7 +1887,7 @@
 		)
 		#Description....
 		#Note: If the SAMAccountName string provided, does not end with a '$', one will be appended (by powershell) if needed.
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Did the AD Computer get created?
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -1986,7 +2053,7 @@
 		)
 		#Description....
 		#Taking about 6 seconds in my initial testing.
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Did the AD User get created?
 			#$objReturn.Message		= A verbose message of the results (Or the error message).
@@ -2204,7 +2271,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$RequiredDomain = ""
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#Returns a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= # (typically 0 or 1, but could be more) of domains the OU was found on/in.
@@ -2309,7 +2376,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Long]$lngDefaultMailSize
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#$objADUser = AD User Object.
 		#$Action = The Action to perform.  "Read" (Default), "Set"
 		#$NumCLINs = The Number of CLIN16's to assign, if Action = "Set".
@@ -2436,7 +2503,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain
 		)
 		#Checks All domains (gotten from the Network) for $ComputerName, or just the ones provided.
-		#Return.....
+		#Returns: .....
 		#Paramater Explanation.....
 
 		$InitializeDefaultDrives=$False;
@@ -2519,7 +2586,7 @@
  			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDC
  		)
  		#Checks All domains (gotten from the Network) for $GrpName, or just the ones provided.
- 		#Returns the AD Group object.
+ 		#Returns: the AD Group object.
  		#$GrpName = The group, samaccountname, to look for.
  		#$strDomain = The domain to look for $GrpName in.
  		#$strDC = The DC to use to do the search, over rides $strDomain.  (Short or FQDN.)
@@ -2596,7 +2663,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDC
 		)
 		#Checks All domains (gotten from the Network) for $Username, or just the ones provided.
-		#Return.....
+		#Returns: .....
 		#$Username = The user, samaccountname, to look for.
 		#$strDomain = The domain to look for $Username in.
 		#$strDC = The DC to use to do the search, over rides $strDomain.  (Short or FQDN.)
@@ -2669,7 +2736,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolTranslate = $True
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= True or False (Were there Errors).
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -2837,7 +2904,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolTrusted = $False
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#$bolFQDN = $True, $False.  Return results in FQDN format.
 		#$bolTrusted = $True, $False.  Get Trusted Domains too.
 
@@ -2921,8 +2988,8 @@
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strDomain 
 		)
-		#Description....
-		#Returns a PowerShell object.
+		#Description ....
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= True or False (Were there Errors).
 			#$objReturn.Message		= A verbose message of the results (The error message).
@@ -2976,7 +3043,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$DestOU
 		)
 		#Description....
-		#Returns a PowerShell object.
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters.
 			#$objReturn.Results		= $True or $False.  Moved or not.
 			#$objReturn.Message		= A verbose message of the results. (The error message, or the DN.)
@@ -3203,7 +3270,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Property
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#$strUserDN = The DistinguishedName of the account. (i.e. CN=redirect.test,OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil)
 		#$Property = What TS Property to get. (blank or $null returns all) "allowLogon", "TerminalServicesHomeDirectory", "TerminalServicesHomeDrive", "TerminalServicesProfilePath"
 
@@ -3276,7 +3343,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$Value
 		)
 		#Description....
-		#Return.....
+		#Returns: .....
 		#$strUserDN = The DistinguishedName of the account. (i.e. CN=redirect.test,OU=USERS,OU=NRFK,OU=NAVRESFOR,DC=nadsusea,DC=nads,DC=navy,DC=mil)
 		#$Attribute = What TS Property to update.  "allowLogon", "TerminalServicesHomeDirectory", "TerminalServicesHomeDrive", "TerminalServicesProfilePath"
 		#$Value = The Value to populate $Attribute with.
@@ -3322,7 +3389,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$RIDMaster
 		)
 		#Description....
-		#No Return.
+		#Returns: nothing, no return.
 		#$ADUserDN = AD User DistinguishedName.  (i.e. CN=redirect.test,OU=USERS,OU=SDNI,OU=COMPACFLT,DC=nadsuswe,DC=nads,DC=navy,DC=mil)
 		#$FieldName = AD field name to update.
 		#$NewValue = The new value to put in FieldName.

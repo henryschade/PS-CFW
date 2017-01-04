@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	28 June 2016
+# Updated Date:	8 December 2016
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
@@ -7,12 +7,16 @@
 <# ---=== Change Log ===---
 	#Changes for 28 June 2016:
 		#Added Change Log.
-
+	#Changes for 21 November 2016
+		#Updated ParseLogFile() documentation, and added a PS progress bar.
+		#Added Close-OpenFile() routine.
+	#Changes for 8 December 2016
+		#Add "#Returns: " to functions, for routine documentation.
 #>
 
 
 
-	function ExcelSampleReadCOM{
+	function SampleExcelReadCOM{
 		#Option 3, is the desired option at this time.
 
 		#. C:\Projects\PS-CFW\Documents.ps1
@@ -91,7 +95,7 @@
 
 	}
 
-	function ExcelSampleUsageCOM{
+	function SampleExcelUsageCOM{
 		# The Excel Code is from following URL, but modified for my use.
 		# http://mypowershell.webnode.sk/news/create-or-open-excel-file-in-powershell/
 
@@ -163,7 +167,7 @@
 		[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objExcel) | Out-Null;
 	}
 
-	function ExcelSampleUsageXML1{
+	function SampleExcelUsageXML1{
 		#Updated the Code from Trev, that treats an Excel doc like an xml doc to pull data.
 
 		$strDocPath = "C:\Projects\PS-Scripts\Testing\CIVMAR Bulk MAC.xls";
@@ -207,7 +211,7 @@
 		Remove-Job $job
 	}
 
-	function ExcelSampleUsageXML2{
+	function SampleExcelUsageXML2{
 		$strDocPath = "C:\Projects\PS-Scripts\Testing\CIVMAR Bulk MAC.xls";
 		$WorkSheetName = "Create User Account";
 		$Query = "";
@@ -261,14 +265,53 @@
 	}
 
 
+	function Close-OpenFile{
+		[CmdletBinding()]
+		Param (
+			[Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true, Position=0)][String[]]$filesToClose
+		)
+		#If a file is locked open, this will close it.
+			#http://serverfault.com/questions/718875/close-locked-file-in-windows-share-using-powershell-and-openfiles
+		#Returns: 
+		#$filesToClose = The file, with path, to close, or an array list of the files, with paths.
+
+		Begin {
+			$netFile = net file
+			if($netFile.length -lt 7) { Throw "No Files are Open" }
+			$netFile = $netFile[4..($netFile.length-3)]
+			$netFile = $netFile | ForEach-Object {
+				$column = $_ -split "\s+", 4
+				New-Object -Type PSObject -Property @{
+					ID = $column[0]
+					FilePath = $column[1]
+					UserName = $column[2]
+					Locks = $column[3]
+				}
+			}
+			$count = 0
+		} Process {
+			ForEach ($file in $filesToClose) {
+				ForEach ($openFile in $netFile) {
+					if($openFile.FilePath -eq $file) {
+						$count++
+						net file $openfile.ID /close > $null
+					}
+				}
+			}
+		} End { Write-Output "Closed $count Files" }
+	}
+
 	function DeCode{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strBase64String, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strOutPut
 		);
-
-		#$Content = [System.Convert]::FromBase64String($Base64)
-		#Set-Content -Path $env:temp\AM.dll -Value $Content -Encoding Byte
+		#Description....
+			#$Content = [System.Convert]::FromBase64String($Base64)
+			#Set-Content -Path $env:temp\AM.dll -Value $Content -Encoding Byte
+		#Returns: 
+		#$strBase64String = String to be Decoded
+		#$strOutPut = How to output.  "Display" or [Output file with full path]
 
 		$strContent = [System.Convert]::FromBase64String($strBase64String);
 		if (($strOutPut -ne "") -and ($strOutPut -ne $null) -and ($strOutPut -ne "Display")){
@@ -287,6 +330,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strBase64String, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strOutPut
 		);
+		#A place holder.  Should be using DeCode() instead of this one.
+		#Returns: 
 
 		DeCode $strBase64String $strOutPut;
 	}
@@ -296,10 +341,13 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strOutPut
 		);
-
-		#$Content = Get-Content -Path C:\AM\AM.dll -Encoding Byte
-		#$Base64 = [System.Convert]::ToBase64String($Content)
-		#$Base64 | Out-File c:\AM\encoded.txt 
+		#Description....
+			#$Content = Get-Content -Path C:\AM\AM.dll -Encoding Byte
+			#$Base64 = [System.Convert]::ToBase64String($Content)
+			#$Base64 | Out-File c:\AM\encoded.txt 
+		#Returns: 
+		#$strFile = File to be Decoded
+		#$strOutPut = How to output.  "Display" or [Output file with full path]
 
 		$strContent = Get-Content -Path $strFile -Encoding Byte;
 		$strBase64 = [System.Convert]::ToBase64String($strContent);
@@ -317,6 +365,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strOutPut
 		);
+		#A place holder.  Should be using Encode() instead of this one.
+		#Returns: 
 
 		Encode $strFile $strOutPut;
 	}
@@ -328,6 +378,8 @@
 			[ValidateNotNull()][Parameter(Mandatory = $False, HelpMessage = "Excel Window visibility.")][bool] $ExcelVisible = $True, 
 			[ValidateNotNull()][Parameter(Mandatory = $False, HelpMessage = "Open WorkBook ReadOnly.")][bool] $AsReadOnly = $False
 		)
+		#Description....
+		#Returns: 
 
 		$cultureUS = [System.Globalization.CultureInfo]'en-US';
 		[System.Threading.Thread]::CurrentThread.CurrentCulture = $cultureUS;
@@ -383,7 +435,7 @@
 			[ValidateNotNull()][Parameter(Mandatory = $False)] $bShowStatus = $False
 		)
 		#Get data off a WorkSheet.
-		#Returns a DataTable (Returns a DataSet, if no WorkSheet provided).
+		#Returns: a DataTable (Returns a DataSet, if no WorkSheet provided).
 
 		if (($WorkSheet -eq "") -or ($WorkSheet -eq $null)){
 			#No WorkSheet name provided, so get ALL WorkSheets.
@@ -505,7 +557,8 @@
 			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel workbook object.")][object] $Workbook, 
 			[ValidateNotNull()][Parameter(Mandatory = $False)][string] $SheetName
 		)
-		#Returns a WorkSheet object, or an array of available WorkSheets.
+		#Description....
+		#Returns: a WorkSheet object, or an array of available WorkSheets.
 
 		if (($SheetName -eq "") -or ($SheetName -eq $null)){
 			#Return an array of the available sheets
@@ -534,10 +587,12 @@
 			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Excel file path.")][string] $ExcelFilePath,
 			[ValidateNotNull()][Parameter(Mandatory = $True, HelpMessage = "Object with input data e. g. hashtable, array, ...")][object] $InputData 
 		)
-		#Has some basic info on writing to Excel
-			#http://stackoverflow.com/questions/28101802/powershell-excel-combine-worksheets-into-a-single-worksheet
-		#This one might be better
-			#https://gist.github.com/fergus/8553443
+		#Description....
+			#Has some basic info on writing to Excel
+				#http://stackoverflow.com/questions/28101802/powershell-excel-combine-worksheets-into-a-single-worksheet
+			#This one might be better
+				#https://gist.github.com/fergus/8553443
+		#Returns: 
 
 		#Add next sheet for 'Test Case Overview'
 		($application, $workbook) = ExcelCreateOpenFile -ExcelFilePath $ExcelFilePath;
@@ -581,6 +636,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$WorksheetName,
 			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$ListValues
 		)
+		#Description....
+		#Returns: 
 
 		$strAction = "";
 		#Make sure we have defaults, and know what action is being done.
@@ -713,10 +770,14 @@
 			[ValidateNotNull()][parameter(Mandatory=$True, HelpMessage='Search criteria')][String]$SearchString,
 			[ValidateNotNull()][parameter(Mandatory=$False, HelpMessage='Destination Path for Report')][String]$DestPath
 		)
+		#Description....
+		#Returns: 
 		#$SourceFile = The log file to search through.  (i.e. "\\Nawespscfs101v.nadsuswe.nads.navy.mil\isf-ios$\ITSS-Tools\Logs\AScII\20160425_BO-12864827_CreatedBy_AScII.log")
-		#$SearchString = The sring to look for in each line.  (i.e. " INTO Transactions " or "283821")
+		#$SearchString = The string to look for in each line.  (i.e. " INTO Transactions " or "283821")
 		#$DestPath = The destination path to generate the "Filtered" log file to.
 			#ParseLogFile "\\Nawespscfs101v.nadsuswe.nads.navy.mil\isf-ios$\ITSS-Tools\Logs\AScII\20160426_AScII.log" "283821" "C:\Projects\PS-Scripts\Tests\";
+			#ParseLogFile $SourceFile $SearchString $DestPath;
+			#ParseLogFile $SourceFile $SearchString;
 
 		Write-Host "`r`n";
 		Write-Host "Parsing log '$SourceFile'.";
@@ -737,11 +798,12 @@
 							Write-Host "Destination path '$DestPath' does not exist, so using:";
 						}
 						$DestPath = $objFile.Directory.FullName;
-						Write-Host "  $DestPath";
 					}
 					if ($DestPath.EndsWith("\") -eq $False){
 						$DestPath = $DestPath + "\";
 					}
+					Write-Host "  $DestPath";
+
 					$ErrorActionPreference = 'SilentlyContinue';
 					$strOutFile = $DestPath + ($objFile.Name).SubString(0, ($objFile.Name.Length - $objFile.Extension.Length)) + "-Filtered-(" + $SearchString + ")" + $objFile.Extension;
 					$Error.Clear();
@@ -764,6 +826,14 @@
 						$objReader = New-Object System.IO.StreamReader($objStream);
 						while (!$objReader.EndOfStream){
 							$intLineCount++;
+							#Display a PowerShell progress bar
+								#https://msdn.microsoft.com/powershell/reference/5.1/microsoft.powershell.utility/Write-Progress
+							$dblPercentComp = (($intLineCount / $intTotalLines) * 100);
+							if ($dblPercentComp -gt 100){
+								$dblPercentComp = 100;
+							}
+							Write-Progress -Activity "Parsing log $SourceFile" -Status "Processing $intTotalLines total lines." -PercentComplete $dblPercentComp;
+
 							if (!(([String]($intLineCount / $intDivisor)).Contains("."))){
 								Write-Host "." -NoNewline;
 							}
@@ -803,7 +873,9 @@
 			[Parameter(Mandatory=$True)][String]$strUrl,
 			[Parameter(Mandatory=$True)][String]$strDestFolder
 		)
- 
+ 		#Description....
+		#Returns: 
+
 		$objResponse = $null;
 		$Error.Clear();
 		$objResponse = Invoke-WebRequest -Uri $strUrl;
@@ -834,7 +906,8 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$ZipFile, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][Array]$Files
 		)
-		#Returns a PowerShell object.
+		#Description....
+		#Returns: a PowerShell object.
 			#$objReturn.Name		= Name of this process, with paramaters passed in.
 			#$objReturn.Results		= $True or $False.  Was a zip file created.
 			#$objReturn.Message		= "Success" or the error message.
