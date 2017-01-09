@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	8 December 2016
+# Updated Date:	9 January 2017
 # Purpose:		Provide a central location for all the PowerShell DataBase routines.
 # Requirements: None
 ##########################################
@@ -13,6 +13,8 @@
 		#Update MiscSettings.txt default path to be CFW instead of SupportFiles.
 	#Changes for 8 December 2016
 		#Add "#Returns: " to functions, for routine documentation.
+	#Changes for 9 January 2017
+		#Add "CDRDevSIPR" entry.
 #>
 
 
@@ -166,7 +168,7 @@
 				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gREFXRVNETklTUTA2dlxzcTA2dmluc3QwMQ0Kc3RyREJOYW1lID0gZGJwaG9lbml4NTUxDQpzdHJEQkxvZ2luUiA9IGlzZnVzZXINCnN0ckRCUGFzc1IgPSBpc2Z1c2VyDQpzdHJEQkxvZ2luVyA9IGlzZnVzZXINCnN0ckRCUGFzc1cgPSBuL2E=";
 			}
 			"CDRDevSIPR"{
-				$strRawData = "";
+				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gRE1DSVNETklTUTAxdlxzcTAxdmluc3QwMQ0Kc3RyREJOYW1lID0gRGJQaG9lbml4NTUxDQpzdHJEQkxvZ2luUiA9IGlzZnVzZXINCnN0ckRCUGFzc1IgPSBwLXINCnN0ckRCTG9naW5XID0gaXNmdXNlcg0Kc3RyREJQYXNzVyA9IHAtdw==";
 			}
 			"CDRSIPR"{
 				$strRawData = "c3RyREJUeXBlID0gbXNzcWwNCnN0ckRCU2VydmVyID0gbmFlYW5yZmt0bTAxDQpzdHJEQk5hbWUgPSBkYnBob2VuaXg1NTENCnN0ckRCTG9naW5SID0gaXNmdXNlcg0Kc3RyREJQYXNzUiA9IG4vYQ0Kc3RyREJMb2dpblcgPSBpc2Z1c2VyDQpzdHJEQlBhc3NXID0gbi9h";
