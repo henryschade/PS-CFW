@@ -45,6 +45,7 @@
     <Compile Include="Forms.ps1" />
     <Compile Include="Jobs.ps1" />
     <Compile Include="Machine.ps1" />
+    <Compile Include="MiscSettings.txt" />
     <Compile Include="StartingCode.txt" />
     <Compile Include="StartingFromScratch.txt" />
   </ItemGroup>
