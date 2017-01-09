@@ -32,6 +32,7 @@
   <ItemGroup>
     <Compile Include="AD-Routines.ps1" />
     <Compile Include="Common.ps1" />
+    <Compile Include="Core.ps1" />
     <Compile Include="DB-Routines.ps1" />
     <Compile Include="Display.ps1" />
     <Compile Include="Documentation\CFW-ProposedRoutines.docx" />

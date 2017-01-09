@@ -9,7 +9,7 @@
 	#Changes for 5 December 2016:
 		#Create Core.ps1, with routines from Common.ps1, that has only the routines needed to start an App and check the basics.
 	#Changes for 8 December 2016
-	#Add "#Returns: " to functions, for routine documentation.
+		#Add "#Returns: " to functions, for routine documentation.
 #>
 
 
@@ -844,7 +844,7 @@
 			if ($dblPercentComp -gt 100){
 				$dblPercentComp = 100;
 			}
-			Write-Progress -Activity "Loading Required Files" -Status "Processing..." -PercentComplete $dblPercentComp;
+			Write-Progress -Activity "Loading Required Files" -Status "Working..." -PercentComplete $dblPercentComp;
 
 			$Error.Clear();
 			if (Test-Path -Path ($RootDir + "\PS-CFW\" + $strInclude)){
@@ -893,7 +893,7 @@
 					#$global:LoadedFiles.Add(($objFile.Name), (@{"Ver" = $strDateVer; "Date" = $Date}));
 			}
 		}
-		Write-Progress -Activity "Loading Required Files" -Status "Processing..." -Completed;
+		Write-Progress -Activity "Loading Required Files" -Status "Working..." -Completed;
 
 		return $bLoaded;
 	}
