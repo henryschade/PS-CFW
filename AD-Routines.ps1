@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	21 December 2016
+# Updated Date:	24 January 2017
 # Purpose:		Provide a central location for all the PowerShell Active Directory routines.
 # Requirements: For the PInvoked Code .NET 4+ is required.
 #				CheckNameAvail() requires isNumeric() from Common.ps1, and optionally MsgBox() from Forms.ps1.
@@ -21,6 +21,8 @@
 		#Add "#Returns: " to functions, for routine documentation.
 	#Changes for 21 December 2016
 		#Updated CheckNameAvail() documentation, and improved the return Message if an account is found.
+	#Changes for 24 January 2017
+		#Updated GetACLs() to spell out what the "ExtendedRight" permissions are.
 #>
 
 
@@ -2808,7 +2810,9 @@
 			$Error.Clear();
 			$strAccount = $null;
 			$objSID = New-Object System.Security.Principal.SecurityIdentifier($acl.IdentityReference);
-			$strAccount = $objSID.Translate([System.Security.Principal.NTAccount]);
+			$ErrorActionPreference = 'SilentlyContinue';
+			$strAccount = $objSID.Translate([System.Security.Principal.NTAccount]);		# -ErrorAction SilentlyContinue
+			$ErrorActionPreference = 'Continue';
 			if ($Error){
 				#The following SIDs are not Translating.
 					#S-1-5-32-548 = Account Operators
@@ -2818,31 +2822,34 @@
 				#https://support.microsoft.com/en-us/kb/243330
 				switch ($acl.IdentityReference){
 					"S-1-5-32-548"{
-						$strAccount = "Account Operators";
+						$strAccount = "Account Operators*";
 						break;
 					}
 					"S-1-5-32-554"{
-						$strAccount = "BUILTIN\Pre-Windows 2000 Compatible Access";
+						$strAccount = "BUILTIN\Pre-Windows 2000 Compatible Access*";
 						break;
 					}
 					"S-1-5-32-560"{
-						$strAccount = "BUILTIN\Windows Authorization Access Group";
+						$strAccount = "BUILTIN\Windows Authorization Access Group*";
 						break;
 					}
 					"S-1-5-32-561"{
-						$strAccount = "BUILTIN\Terminal Server License Servers";
+						$strAccount = "BUILTIN\Terminal Server License Servers*";
 						break;
 					}
 					default{
 						$objReturn.Message = $objReturn.Message + "`r`n" + $objSID + ": " + $Error;
 						#$strAccount = $acl.IdentityReference;
-						$strAccount = "UnKnown";
+						$strAccount = "UnKnown*";
 						break;
 					}
 				}
 			}
+
 			$objGUID1 = $acl.ObjectType;
 			$objGUID2 = $acl.InheritedObjectType;
+			$strAtt = $acl.ActiveDirectoryRights;
+
 			if (($bolTranslate -eq $True) -and ($objGUID1 -ne "00000000-0000-0000-0000-000000000000") -and ($objGUID2 -ne "00000000-0000-0000-0000-000000000000")){
 				$bolFound1 = $False;
 				$bolFound2 = $False;
@@ -2863,6 +2870,9 @@
 					foreach ($strKey in $extendedrightsmap.Keys){
 						if (($extendedrightsmap[$strKey] -eq $objGUID1) -and ($bolFound1 -eq $False)){
 							$objGUID1 = $strKey;
+							if ($strAtt -eq "ExtendedRight"){
+								$strAtt = $strKey;
+							}
 							$bolFound1 = $True;
 						}
 						if (($extendedrightsmap[$strKey] -eq $objGUID2) -and ($bolFound2 -eq $False)){
@@ -2876,18 +2886,30 @@
 				}
 			}
 
+			#if "ActiveDirectoryRights" -eq "ExtendedRight"
+			#Look at "ObjectType" to determine the Permission set being effected.
+			if ($strAtt -eq "ExtendedRight"){
+				foreach ($strKey in $extendedrightsmap.Keys){
+					if ($extendedrightsmap[$strKey] -eq $objGUID1){
+						$strAtt = $strKey;
+						break;
+					}
+				}
+			}
+			
 			$info = @{
-				'ActiveDirectoryRights' = $acl.ActiveDirectoryRights;
-				'InheritanceType' = $acl.InheritanceType;
-				'ObjectType' = $objGUID1;
+				'IsInherited' = $acl.IsInherited;
 				'InheritedObjectType' = $objGUID2;
-				'ObjectFlags' = $acl.ObjectFlags;
-				'AccessControlType' = $acl.AccessControlType;
+				'ObjectType' = $objGUID1;
 				'IdentityReference' = $acl.IdentityReference;
 				'NTAccount' = $strAccount;
-				'IsInherited' = $acl.IsInherited;
-				'InheritanceFlags' = $acl.InheritanceFlags;
+				#'ActiveDirectoryRights' = $acl.ActiveDirectoryRights;
+				'ActiveDirectoryRights' = $strAtt;
 				'PropagationFlags' = $acl.PropagationFlags;
+				'ObjectFlags' = $acl.ObjectFlags;
+				'InheritanceFlags' = $acl.InheritanceFlags;
+				'AccessControlType' = $acl.AccessControlType;
+				'InheritanceType' = $acl.InheritanceType;
 			}
 			$obj = New-Object -TypeName PSObject -Property $info;
 			$arrReturn += $obj;
