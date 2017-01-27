@@ -2766,8 +2766,7 @@
 			Returns = $null
 		}
 
-		#Sample usage:
-		<#
+		<# Sample usage:
 			$objRet = GetACLs "CN=john.alusik,OU=USERS,OU=NRFK,DC=nmci-isf,DC=com";
 			foreach ($strEntry in $objRet.Returns){
 				#if ($strEntry.NTAccount -eq "NT AUTHORITY\SELF"){

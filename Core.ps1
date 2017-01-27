@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	8 December 2016
+# Updated Date:	27 January 2017
 # Purpose:		StartUp routines to all/most projects.
 # Requirements: DB-Routines.ps1 for GetPathing() routine [it will try to load it automatically].
 #				...\PS-CFW\MiscSettings.txt
@@ -10,6 +10,8 @@
 		#Create Core.ps1, with routines from Common.ps1, that has only the routines needed to start an App and check the basics.
 	#Changes for 8 December 2016
 		#Add "#Returns: " to functions, for routine documentation.
+	#Changes for 27 January 2017
+		#Moved isNumeric() from Common.ps1 as we use it here too.
 #>
 
 
@@ -801,6 +803,22 @@
 
 		return $objReturn;
 
+	}
+
+	function isNumeric($intX){
+		#Check if passed in value is a number.
+			#IsNumeric() equivelant is -> [Boolean]([String]($x -as [int]))
+		#Returns: True or False
+		#$intX = The value to check to see if it is a number.
+
+		#http://rosettacode.org/wiki/Determine_if_a_string_is_numeric
+		try {
+			0 + $intX | Out-Null;
+			return $True;
+		}
+		catch {
+			return $False;
+		}
 	}
 
 	function LoadRequired{

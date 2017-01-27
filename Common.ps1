@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	15 December 2016
+# Updated Date:	27 January 2017
 # Purpose:		Common routines to all/most projects.
 # Requirements: Core.ps1 [will try to load it automatically].
 #				DB-Routines.ps1 for the CheckVer() routine [it will try to load it automatically].
@@ -32,18 +32,22 @@
 		#Added documentation to isNumeric().
 	#Changes for 15 December 2016
 		#Updated isADInstalled() to help accomodate Servers.
+	#Changes for 26 January 2017
+		#Updated $ScriptDir entries to $ScriptDirectory
+	#Changes for 27 January 2017
+		#Moved isNumeric() to Core.ps1 as it makes use of it too.
 #>
 
 
 	#$global:LoadedFiles that CheckVer() uses is in Core.ps1.
 
 	#Make sure the Core routines in Core.ps1 are loaded.
-	if ((!(Get-Command "EnableDotNet4" -ErrorAction SilentlyContinue)) -or (!(Get-Command "LoadRequired" -ErrorAction SilentlyContinue))){
+	if ((!(Get-Command "EnableDotNet4" -ErrorAction SilentlyContinue)) -or (!(Get-Command "LoadRequired" -ErrorAction SilentlyContinue)) -or (!(Get-Command "isNumeric" -ErrorAction SilentlyContinue))){
 		if ([String]::IsNullOrEmpty($MyInvocation.MyCommand.Path)){
-			$ScriptDir = (Get-Location).ToString();
+			$ScriptDirectory = (Get-Location).ToString();
 		}
 		else{
-			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+			$ScriptDirectory = Split-Path $MyInvocation.MyCommand.Path;
 		}
 
 		if ((Test-Path (".\Core.ps1"))){
@@ -122,9 +126,9 @@
 			#Make sure the DB routines that are in DB-Routines.ps1 are loaded.
 			if ((!(Get-Command "GetDBInfo" -ErrorAction SilentlyContinue)) -or (!(Get-Command "QueryDB" -ErrorAction SilentlyContinue))){
 				if ([String]::IsNullOrEmpty($MyInvocation.MyCommand.Path)){
-					$ScriptDir = (Get-Location).ToString();
+					$ScriptDirectory = (Get-Location).ToString();
 				}else{
-					$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+					$ScriptDirectory = Split-Path $MyInvocation.MyCommand.Path;
 				}
 				if ((Test-Path (".\DB-Routines.ps1"))){
 					. (".\DB-Routines.ps1");
@@ -350,16 +354,16 @@
 		#$Files = An array of the files to add to the zip file. (Full paths) [i.e. @("c:\path\file.one", "c:\path\file.two")]
 
 		if ([String]::IsNullOrEmpty($MyInvocation.MyCommand.Path)){
-			$ScriptDir = (Get-Location).ToString();
+			$ScriptDirectory = (Get-Location).ToString();
 		}else{
-			$ScriptDir = Split-Path $MyInvocation.MyCommand.Path;
+			$ScriptDirectory = Split-Path $MyInvocation.MyCommand.Path;
 		}
 		$strInclude = "Documents.ps1";
-		if (Test-Path -Path ($ScriptDir + "\..\PS-CFW\" + $strInclude)){
-			. ($ScriptDir + "\..\PS-CFW\" + $strInclude)
+		if (Test-Path -Path ($ScriptDirectory + "\..\PS-CFW\" + $strInclude)){
+			. ($ScriptDirectory + "\..\PS-CFW\" + $strInclude)
 		}
 		else{
-			. ($ScriptDir + "\" + $strInclude)
+			. ($ScriptDirectory + "\" + $strInclude)
 		}
 
 		$objReturn = ZipCreateFile $ZipFile $Files;
