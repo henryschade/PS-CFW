@@ -378,6 +378,7 @@
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFile
 		)
 		#Gets the Change Log of the File/Project ($strFile) requested.
+			#See the top of this file for an example of how the Change Log entries should be entered.
 		#Returns: A String of the Change Log.
 		#$strFile = The file (full path) to check/get the change log info of.
 
