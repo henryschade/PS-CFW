@@ -1526,12 +1526,12 @@
 			if (([String]::IsNullOrEmpty($ScriptDir)) -or ($Error)){
 				$ScriptDir = (Get-Location).ToString();
 			}
-			if (Test-Path ($ScriptDir + "\Common.ps1")){
-				. ($ScriptDir + "\Common.ps1")
+			if (Test-Path ($ScriptDir + "\Core.ps1")){
+				. ($ScriptDir + "\Core.ps1")
 			}
 			else{
-				if (Test-Path ($ScriptDir + "\..\PS-CFW\Common.ps1")){
-					. ($ScriptDir + "\..\PS-CFW\Common.ps1")
+				if (Test-Path ($ScriptDir + "\..\PS-CFW\Core.ps1")){
+					. ($ScriptDir + "\..\PS-CFW\Core.ps1")
 				}
 			}
 		}

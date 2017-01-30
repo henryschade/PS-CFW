@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	27 January 2017
+# Updated Date:	30 January 2017
 # Purpose:		Common routines to all/most projects.
 # Requirements: Core.ps1 [will try to load it automatically].
 #				DB-Routines.ps1 for the CheckVer() routine [it will try to load it automatically].
@@ -36,6 +36,8 @@
 		#Updated $ScriptDir entries to $ScriptDirectory
 	#Changes for 27 January 2017
 		#Moved isNumeric() to Core.ps1 as it makes use of it too.
+	#Changes for 30 January 2017
+		#Added GetChangeLog() routine.
 #>
 
 
@@ -371,13 +373,47 @@
 		return $objReturn;
 	}
 
+	function GetChangeLog{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strFile
+		)
+		#Gets the Change Log of the File/Project ($strFile) requested.
+		#Returns: A String of the Change Log.
+		#$strFile = The file (full path) to check/get the change log info of.
+
+		$strLogFile = "";
+		if (Test-Path -Path $strFile){
+			$bReadingLog = $False;
+			$arrFile = [System.IO.File]::ReadAllLines($strFile);
+			for ($intX = 0; $intX -lt $arrFile.Count; $intX++){
+				if (($bReadingLog -eq $False) -and ($arrFile[$intX] -Match "Change Log")){
+					$bReadingLog = $True
+				}
+				if ($bReadingLog -eq $True){
+					if (($arrFile[$intX] -Match "Change Log") -and (!($arrFile[$intX] -Match ($strFile.split("\")[-1].Replace(".ps1", "").Replace("PS-", ""))))){
+						$strLogFile = $strLogFile + ($arrFile[$intX].Replace("Change Log", (($strFile.split("\")[-1].Replace(".ps1", "").Replace("PS-", "")) + " Change Log"))) + "`r`n";
+					}
+					else{
+						$strLogFile = $strLogFile + $arrFile[$intX] + "`r`n";
+					}
+				}
+				if (($bReadingLog -eq $True) -and (($arrFile[$intX] -Match "#>") -or ((($arrFile[$intX] -Match "function") -and ($arrFile[$intX] -Match "{"))))){
+					$bReadingLog = $False;
+					break;
+				}
+			}
+		}
+
+		return $strLogFile;
+	}
+
 	function GetCurrentFiles{
 		Param(
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strLocalDir, 
 			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strProjName, 
 			[ValidateNotNull()][Parameter(Mandatory=$False)][Bool]$bolDoPrompts = $False
 		)
-		#A place holder.  Should be using UpdateLocalFiles() instead of this one.
+		#A place holder.  Should be using Core.UpdateLocalFiles() instead of this one.
 		#Returns: 
 
 		$strResults = UpdateLocalFiles $strLocalDir $strProjName $bolDoPrompts;
@@ -559,21 +595,21 @@
 		return $bInstalled;
 	}
 
-	function isNumeric($intX){
-		#Check if passed in value is a number.
-			#IsNumeric() equivelant is -> [Boolean]([String]($x -as [int]))
-		#Returns: True or False
-		#$intX = The value to check to see if it is a number.
+	#function isNumeric($intX){
+	#	#Check if passed in value is a number.
+	#		#IsNumeric() equivelant is -> [Boolean]([String]($x -as [int]))
+	#	#Returns: True or False
+	#	#$intX = The value to check to see if it is a number.
 
-		#http://rosettacode.org/wiki/Determine_if_a_string_is_numeric
-		try {
-			0 + $intX | Out-Null;
-			return $True;
-		}
-		catch {
-			return $False;
-		}
-	}
+	#	#http://rosettacode.org/wiki/Determine_if_a_string_is_numeric
+	#	try {
+	#		0 + $intX | Out-Null;
+	#		return $True;
+	#	}
+	#	catch {
+	#		return $False;
+	#	}
+	#}
 
 	function LocalToUTC{
 		Param(
