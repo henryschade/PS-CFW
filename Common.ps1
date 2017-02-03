@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	30 January 2017
+# Updated Date:	3 February 2017
 # Purpose:		Common routines to all/most projects.
 # Requirements: Core.ps1 [will try to load it automatically].
 #				DB-Routines.ps1 for the CheckVer() routine [it will try to load it automatically].
@@ -38,13 +38,15 @@
 		#Moved isNumeric() to Core.ps1 as it makes use of it too.
 	#Changes for 30 January 2017
 		#Added GetChangeLog() routine.
+	#Changes for 3 February 2017
+		#Fixed bug with checking for Core routines.
 #>
 
 
 	#$global:LoadedFiles that CheckVer() uses is in Core.ps1.
 
 	#Make sure the Core routines in Core.ps1 are loaded.
-	if ((!(Get-Command "EnableDotNet4" -ErrorAction SilentlyContinue)) -or (!(Get-Command "LoadRequired" -ErrorAction SilentlyContinue)) -or (!(Get-Command "isNumeric" -ErrorAction SilentlyContinue))){
+	if ((!(Get-Command "EnableDotNet4" -ErrorAction SilentlyContinue)) -or ((!(Get-Command "LoadRequired" -ErrorAction SilentlyContinue)) -or (!(Get-Command "isNumeric" -ErrorAction SilentlyContinue)))){
 		if ([String]::IsNullOrEmpty($MyInvocation.MyCommand.Path)){
 			$ScriptDirectory = (Get-Location).ToString();
 		}
