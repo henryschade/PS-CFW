@@ -40,6 +40,7 @@
 		#Added GetChangeLog() routine.
 	#Changes for 3 February 2017
 		#Fixed bug with checking for Core routines.
+		#Added CopyUpLocalLogs().
 #>
 
 
@@ -373,6 +374,84 @@
 		$objReturn = ZipCreateFile $ZipFile $Files;
 
 		return $objReturn;
+	}
+
+	function CopyUpLocalLogs{
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strLogDirL, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strLogDirS, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strLogFile
+		)
+		#Copies local log files to the Share, appending to any existing.
+		#Returns: 
+		#$strLogDirL = Local log Directory path.  i.e. "C:\SRM_Apps_N_Tools\Logs\"
+		#$strLogDirS = Share log Directory path.  i.e. "\\Server.Name.FQDN\Path1\Path2\Path3\Logs\"
+		#$strLogFile = Name of the default log file.
+
+		if (Test-Path -Path ($strLogDirL)){
+			$strLogDir = $strLogDirL;
+		}
+		else{
+			$strLogDir = $strLogDirS;
+		}
+
+		if ((Test-Path -Path $strLogDirS)){
+			if (!($env:UserDomain.toLower().Contains("snmci-isf"))){
+				$strMessage = "Moving local log file(s) to the File Server.";
+				#UpdateResults $strMessage $True;
+				WriteLogFile $strMessage $strLogDir $strLogFile;
+
+				#[System.DateTime]::Now;
+				if (Test-Path -Path ($strLogDirL)){
+					$SubItems = Get-ChildItem -Path $strLogDirL -Force;
+					if ($SubItems -ne $null){
+						$strMessage = "Moving local log file(s) to the File Server.";
+						#UpdateResults $strMessage $True;
+						WriteLogFile $strMessage $strLogDir $strLogFile;
+
+						foreach ($SubItem in $SubItems){
+							if (($SubItem -ne "") -and ($SubItem -ne $null)){
+								#Write-Host $SubItem;
+								#Write-Host $SubItem.Fullname;
+								$strFileDate = "";
+								$strFileName = $SubItem.Fullname;
+								if ($strFileName -Match $strLogFile){
+									#$strTodaysFile = ($strLogDirL + (Get-Date).ToString("yyyyMMdd") + "_" + $strLogFile);
+									$strFileDate = "";
+									$strFileName = $SubItem.Name;
+									$strFileDate = $strFileName.SubString(0, $strFileName.IndexOf("_"));
+									if ($strFileDate -ne ""){
+										$Error.Clear();
+										Add-Content ($strLogDirS + $strFileName) (Get-Content ($strLogDirL + $strFileName) -ReadCount 0);
+										if ((!($Error)) -and (Test-Path -Path ($strLogDirS + $strFileName))){
+											$intX = 0;
+											do {
+												$intX++;
+												$Error.Clear();
+												$strResults = Remove-Item ($strLogDirL + $strFileName);
+											} while (($Error) -and ($intX -lt 10))
+										}
+									}
+								}
+								else{
+									if (($strFileName.EndsWith(".log")) -or ($strFileName.EndsWith(".txt"))){
+										$strFileName = $SubItem.Name;
+										$strFileDate = $strFileName.SubString(0, $strFileName.IndexOf("_"));
+										if ($strFileDate -ne ""){
+											Add-Content ($strLogDirS + $strFileName) (Get-Content ($strLogDirL + $strFileName) -ReadCount 0);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				#[System.DateTime]::Now;
+				#The above processed a 252 MB log file in about (I gave up after 30 min), the system was basically unusable.
+				#So added the "-ReadCount 0" paramater, and reduced the log file to 131 MB; The above processed the log file in about 52 minutes  But at least the system did not basically lock up.
+				#With the "-ReadCount 0" paramater, and reduced the log file to 10.5 MB; The above processed the log file in about 4 minutes  And the system still did not lock up.
+			}
+		}
 	}
 
 	function GetChangeLog{
