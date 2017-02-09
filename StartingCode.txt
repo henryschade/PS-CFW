@@ -5,17 +5,18 @@
 # Requirements: PS-CFW
 ###########################################
 <# ---=== Change Log ===---
+	#Changes in ver 0.0:
+		#Started Project.
 	#Changes in ver 0.1:
-		#Added Change Log.
-
+		#
 #>
 
 
 	$strProjName = "Project";
-	$strVer = "0.1beta";
+	$strVer = "0.1";
 	$strShareLoc = "Logs_ITSS";
 	$strLocalLoc = "Local";
-	$arrIncludes = @("AD-Routines.ps1", "Common.ps1", "DB-Routines.ps1", "Display.ps1", "Exchange.ps1", "FileOperations.ps1", "Forms.ps1", "Jobs.ps1");
+	$arrIncludes = @("AD-Routines.ps1", "Common.ps1", "Core.ps1", "DB-Routines.ps1", "Display.ps1", "Exchange.ps1", "FileOperations.ps1", "Forms.ps1", "Jobs.ps1");
 
 	$strCodeFile = $strProjName + ".ps1";
 	$strGUIFile = $strProjName + "_GUI\MainWindow.xaml";
@@ -33,8 +34,8 @@
 	$strMessage = "Starting " + $strProjName + ", ver " + $strVer + ".  --  PS ver: " + $PSVersionTable.PSVersion.ToString() + " ($env:Processor_Architecture bit)  --  .NET ver: " + $PSVersionTable.CLRVersion.ToString() + ".";
 	Write-Host $strMessage;
 
-	#SetLogPath(), WriteLogFile(), EnableDotNet4(), and LoadRequired() are functions in Common.ps1, that are all used before Loading the Required Modules/Scripts.
-	. ($ScriptDir + "\..\PS-CFW\" + "Common.ps1")
+	#SetLogPath(), WriteLogFile(), EnableDotNet4(), and LoadRequired() are functions in Core.ps1, that are all used before Loading the Required Modules/Scripts.
+	. ($ScriptDir + "\..\PS-CFW\" + "Core.ps1")
 
 	#Get pathing info.
 	$arrLogDirs = SetLogPath $strProjName $strLogDirS $strLogDirL $strShareLoc $strLocalLoc;
@@ -42,12 +43,27 @@
 	$strLogDirS = $arrLogDirs[1];
 	$strLogDirL = $arrLogDirs[2];
 
+	#Add "Starting...." message to logs.
 	WriteLogFile $strMessage $strLogDir $strLogFile;
 
-	#Copy newer Production files.
-	$strResults = UpdateLocalFiles $ScriptDir $strProjName $False $strLogDir $strLogFile;
-	Write-Host $strResults;
+	$strMessage = "Logs will be recorded to: `r`n" + $strLogDir + "`r`n";
+	Write-Host $strMessage;
+	WriteLogFile $strMessage $strLogDir $strLogFile;
 
+	#Copy down any new Production files.
+	if ($ScriptDir.StartsWith("\\")){
+		#Running from network, do a local install.
+	}
+	else{
+		#Running from local, check if there are updates.
+		$strResults = UpdateLocalFiles $ScriptDir $strProjName $False $strLogDir $strLogFile;
+		#Write-Host "$strResults `r`n";
+		WriteLogFile $strResults $strLogDir $strLogFile;
+	}
+
+	$strMessage = "Ensuring .Net 4.x is enabled.";
+	Write-Host $strMessage;
+	WriteLogFile $strMessage $strLogDir $strLogFile;
 	#Ensure .NET 4.x support is "turned on".
 	if ($PSVersionTable.CLRVersion.Major -lt 4){
 		$bResults = EnableDotNet4 $True $MyInvocation.MyCommand.Path;
@@ -72,6 +88,7 @@
 	}
 
 	#Load/Include $arrIncludes Scripts/Files/modules.
+	#Has to be after the .NET check/load because some of the "add-ons" require .NET 4+.
 	$bResults = (. LoadRequired $arrIncludes $ScriptDir $strLogDir $strLogFile);
 	if ($bResults -ne $True){
 		$strMessage = "Failed to load all the required modules/scripts.  Aborting.";
@@ -86,35 +103,17 @@
 		exit;
 	}
 
-	#Commented out the following, as we are going to an xCopy update method, and checking ver #'s becomes obsolete.
-	##$objRet = (. CheckVer "Includes" "");		#To make sure the Required/Included files are running latest ver.
-	#$objRet = CheckVer $strProjName $strVer;
-	#if (($objRet.Message -eq "Disable") -or ($objRet.Results -eq $False)){
-	#	if (($strVer.EndsWith("b")) -or ($strVer.EndsWith("B")) -or ($strVer.EndsWith("beta")) -or ($strVer.EndsWith("Beta"))){
-	#		$strMessage = $objRet.Returns[1];
-	#	}
-	#	else{
-	#		$strMessage = $objRet.Returns[0];
-	#	}
-	#	$strMessage = "You do not appear to be running the latest version of $strProjName." + "`r`n" + "The latest version is $strMessage, and you are running ver $strVer.";
-	#	Write-Host "`r`n$strMessage `r`n" -foregroundcolor red -background black;
-	#	WriteLogFile $strMessage $strLogDir $strLogFile;
-
-	#	Write-Host "Press any key to continue ...";
-	#	$x = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown");
-	#	exit;
-	#}
 
 	# ---=== Start Add project code functions here ===---
 	function btnGetValidated_Click{
-	  #Code for the Button Click event
+		#Code for the Button Click event
 	}
 
 	function btnSubmit_Click{
 		#Code for the Button Click event
-
 	}
 	# ---=== End Add project code functions here ===---
+
 
 	# ---=== Start Code to do Just before show GUI. ===---
 	$bolAsAdmin = $False;
@@ -193,6 +192,17 @@
 		}
 	}
 	# ---=== GUI has been shut down, or error trying to show it. ===---
+
+	#Copy down any new Production files.
+	if ($ScriptDir.StartsWith("\\")){
+		#Running from network, do a local install.
+	}
+	else{
+		#Running from local, check if there are updates.
+		$strResults = UpdateLocalFiles $ScriptDir $strProjName $False $strLogDir $strLogFile;
+		#Write-Host "$strResults `r`n";
+		WriteLogFile $strResults $strLogDir $strLogFile;
+	}
 
 	#Do clean up.
 	[ConsoleHelper]::ShowConsole();				#To show the PowerShell Console.
