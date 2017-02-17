@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	8 December 2016
+# Updated Date:	17 February 2017
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process. 
@@ -18,6 +18,9 @@
 		#Updated SetupConn() to accomodate Dev, and fixed a bug.
 	#8 December 2016
 		#Updated SetupConn() to accomodate snmci-isf.
+	#17 February 2017
+		#Fixed a bug with CTR email addresses in CreateMailBox().
+		#Make CreateMailBox() set NNPI mailbox permissions.
 #>
 
 
@@ -441,7 +444,10 @@
 
 		$InitializeDefaultDrives=$False;
 		if (!(Get-Module "ActiveDirectory")) {Import-Module ActiveDirectory;};
-		$strLastName = ($(Try {Get-ADUser -Identity $strUserName -Server $strDC -Properties *} Catch {$null})).sn;
+		#$strLastName = ($(Try {Get-ADUser -Identity $strUserName -Server $strDC -Properties *} Catch {$null})).sn;
+		$objUser = $null;
+		$objUser = Get-ADUser -Identity $strUserName -Server $strDC -Properties *;
+		$strLastName = $objUser.sn;
 
 		if (($strUserName.EndsWith(".dev")) -and ($strLastName -ne "Dev")){
 			$strMessage = "Skipping MailBox creation; Dev accounts don't get Exchange MailBoxes.`r`n";
@@ -461,13 +467,10 @@
 				}
 			}
 
-			#Should check if a mailbox exists already.
-
-			#$strExchServer = $dgvBulk.SelectedRows[0].Cells['ExchSvr'].Value;
-			#$strExchStore = $dgvBulk.SelectedRows[0].Cells['ExchSG'].Value;
-			#$strExchMBDB = $dgvBulk.SelectedRows[0].Cells['ExchMS'].Value;
-			if (($strExchServer -eq "") -or ($strExchMBDB -eq "")){
-				$strMessage = "Skipping Mailbox creation, because could not determin what Exch Server (and Mail Store) to create the account on.`r`n";
+			#Check if a mailbox exists already.
+			if ((!([String]::IsNullOrEmpty($objUser.msExchHomeServerName))) -or (!([String]::IsNullOrEmpty($objUser.proxyAddresses)))){
+				#Has a mailbox
+				$strMessage = "Skipping Mailbox creation, because $strUserName already has a mailbox.`r`n";
 				$strRunningWorkLog = $strRunningWorkLog + $strMessage;
 				if ($bUpdateResults -eq $True){
 					if (Get-Command UpdateResults -errorAction SilentlyContinue){
@@ -476,175 +479,226 @@
 				}
 			}
 			else{
-				#$strEmail = $txbEmail.Text.Trim();
-				#$strAlias = $txbAlias.Text.Trim();
-				$strOtherName = "";
-
-				$strMessage = "Creating MailBox for '" + $strUserName + "' on '" + $strExchServer + "\";
-				if (($strExchStore -eq "") -or ($strExchStore -eq $null)){
-					$strMessage = $strMessage + $strExchMBDB + "'.";
-				}else{
-					$strMessage = $strMessage + $strExchStore + "\" + $strExchMBDB + "'.";
-				}
-				$strMessage = $strMessage + "`r`n";
-				$strRunningWorkLog = $strRunningWorkLog + $strMessage;
-				if ($bUpdateResults -eq $True){
-					if (Get-Command UpdateResults -errorAction SilentlyContinue){
-						UpdateResults "$strMessage `r`n" $False;
-					}
-				}
-
-				$objUser = FindUser $strUserName;
-				if ($objUser.DistinguishedName.Contains("OU=NNPI")){
-					#if NNPI need to run the following
-					#check if extensionAttribute8 is populated.  It will have the other account name.
-					if (!([String]::IsNullOrEmpty($objUser.extensionAttribute8))){
-						$strOtherName = $objUser.extensionAttribute8;
-					}
-					else{
-						if ($strUserName.EndsWith(".nnpi")){
-							#for the .nnpi account ($strUserName = "first.last.nnpi")
-							$strOtherName = $strUserName.SubString(0, ($strUserName.Length - 5));
-						}else{
-							#for the regular account ($strUserName = "first.last")
-							$strOtherName = ($strUserName + ".nnpi");
+				if (($strExchServer -eq "") -or ($strExchMBDB -eq "")){
+					$strMessage = "Skipping Mailbox creation, because could not determin what Exch Server (and Mail Store) to create the account on.`r`n";
+					$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+					if ($bUpdateResults -eq $True){
+						if (Get-Command UpdateResults -errorAction SilentlyContinue){
+							UpdateResults "$strMessage `r`n" $False;
 						}
-					}
-
-					$objUser = $null;
-					$objUser = FindUser $strOtherName;
-					if ($objUser -eq $null){
-						$strOtherName = "";
-					}
-				}
-
-				#Remove-MailboxPermission -Identity $strUserName -User $strOtherName -AccessRights FullAccess -Confirm:$False;
-				#Add-MailboxPermission -Identity $strUserName -User $strOtherName -AccessRights FullAccess -InheritanceType All -AutoMapping $False;
-
-				$Error.Clear();
-				#$bDoBackGround = $chkBackGrndMB.Checked;
-				if ($bDoBackGround -ne $True){
-					#Need Exchange commands from here on...
-					if ((!(Get-PSSession)) -or (!(Get-Command "Enable-Mailbox" -ErrorAction SilentlyContinue)) -or (!(Get-Command "Remove-MailboxPermission" -ErrorAction SilentlyContinue))){
-						$strMessage = "  Importing Exchange commands.  " + ([System.DateTime]::Now).ToString() + "`r`n";
-						if ($bUpdateResults -eq $True){
-							UpdateResults $strMessage $False;
-						}
-
-						Switch ($strDomain){
-							"nadsusea"{
-								$objResult = SetupConn "e" "Default";
-							}
-							"nadsuswe"{
-								$objResult = SetupConn "w" "Default";
-							}
-							"pads"{
-								$objResult = SetupConn "p" "Default";
-							}
-							"nmci-isf"{
-								$objResult = SetupConn "e" "Default";
-							}
-							default{
-								$objResult = SetupConn "w" "Default";
-							}
-						}
-						$strMessage = "  Done importing Exchange commands.  " + ([System.DateTime]::Now).ToString() + "`r`n";
-						if ($bUpdateResults -eq $True){
-							UpdateResults $strMessage $False;
-						}
-					}
-
-					$Error.Clear();
-					#From Ecxhange GUI
-					#$objResult = CreateMailBox ($strDomain + "\" + $strUserName) $strExchMBDB $strAlias $True;
-					if ($strAlias.EndsWith(".ctr", 1)){				#the 1 makes it case-insensitive.
-						$objResult = Enable-Mailbox $strUserName -Alias $strAlias -Database $strExchMBDB -DomainController $strDC -PrimarySmtpAddress $strEmail;
-
-						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $False;
-						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias@navy.mil"}
-						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias@nmci-isf.com"};
-						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias.ctr@navy.mil"}
-						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias.ctr@nmci-isf.com"}
-						$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $True;
-					}
-					else{
-						$objResult = Enable-Mailbox $strUserName -Alias $strAlias -Database $strExchMBDB -DomainController $strDC;
-					}
-
-					if ($Error){
-						$strMessage = "Error creating user Mailbox.";
-						#$strMessage = $strMessage + "   " + ([System.DateTime]::Now).ToString();
-						$strMessage = $strMessage + "`r`n" + $Error;
-						$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n";
-					}
-					else{
-						$bDidMailBox = $True;
-						if (($strOtherName -ne "") -and ($strOtherName -ne $null)){
-							#Remove-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess";
-							$objResult = Remove-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess" -Confirm:$False | Out-Null;
-							#Add-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False;
-							$objResult = Add-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False | Out-Null;
-						}
-
-						$Error.Clear();
-						#Hide the email in the GAL.
-						if ($strUserName.EndsWith(".nnpi", 1)){		#the 1 makes it case-insensitive.
-							$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -HiddenFromAddressListsEnabled $True;
-						}
-
-						$strMessage = "Successfully Created MailBox for '" + $strUserName + "' (Alias: " + $strAlias + ") on '" + $strExchServer + "\";
-						if (($strExchStore -eq "") -or ($strExchStore -eq $null)){
-							$strMessage = $strMessage + $strExchMBDB + "'.";
-						}else{
-							$strMessage = $strMessage + $strExchStore + "\" + $strExchMBDB + "'.";
-						}
-						#$strMessage = $strMessage + "   " + ([System.DateTime]::Now).ToString();
-						$strMessage = $strMessage + "`r`n";
 					}
 				}
 				else{
-					$Error.Clear();
-					if ($strAlias.EndsWith(".ctr", 1)){				#the 1 makes it case-insensitive.
-						#if ($strUserName.EndsWith(".nnpi")){
-						#	#$objJobCode = [scriptblock]::create({param($strUserName, $strAlias, $strEmail, $strMBDB, $strOpsMaster); Enable-Mailbox $strUserName -Alias $strAlias -PrimarySmtpAddress $strEmail -Database $strMBDB -DomainController $strOpsMaster; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddressPolicyEnabled $False; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddresses @{Add="$strAlias@nmci-isf.com"}; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddressPolicyEnabled $True; Remove-MailboxPermission -Identity $strUserName -DomainController $strOpsMaster -User ($strUserName.SubString(0, ($strUserName.Length - 5))) -AccessRights "FullAccess"; Add-MailboxPermission -Identity $strUserName -DomainController $strOpsMaster -User ($strUserName.SubString(0, ($strUserName.Length - 5))) -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False;});
-						#	$objJobCode = [scriptblock]::create({param($strUserName, $strAlias, $strEmail, $strMBDB, $strOpsMaster); Enable-Mailbox $strUserName -Alias $strAlias -PrimarySmtpAddress $strEmail -Database $strMBDB -DomainController $strOpsMaster; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddressPolicyEnabled $False; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddresses @{Add="$strAlias@nmci-isf.com"}; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddressPolicyEnabled $True; Remove-MailboxPermission -Identity $strUserName -DomainController $strOpsMaster -User $strOtherName -AccessRights "FullAccess" | Out-Null; Add-MailboxPermission -Identity $strUserName -DomainController $strOpsMaster -User $strOtherName -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False | Out-Null;});
-						#}else{
-							$objJobCode = [scriptblock]::create({param($strUserName, $strAlias, $strEmail, $strMBDB, $strOpsMaster); Enable-Mailbox $strUserName -Alias $strAlias -PrimarySmtpAddress $strEmail -Database $strMBDB -DomainController $strOpsMaster; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddressPolicyEnabled $False; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddresses @{Add="$strAlias@nmci-isf.com"}; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddressPolicyEnabled $True;});
-						#}
-					}else{
-						#if ($strUserName.EndsWith(".nnpi")){
-						#	#$objJobCode = [scriptblock]::create({param($strUserName, $strAlias, $strEmail, $strMBDB, $strOpsMaster); Enable-Mailbox $strUserName -Alias $strAlias -Database $strMBDB -DomainController $strOpsMaster; Remove-MailboxPermission -Identity $strUserName -DomainController $strOpsMaster -User ($strUserName.SubString(0, ($strUserName.Length - 5))) -AccessRights "FullAccess"; Add-MailboxPermission -Identity $strUserName -DomainController $strOpsMaster -User ($strUserName.SubString(0, ($strUserName.Length - 5))) -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False;});
-						#	$objJobCode = [scriptblock]::create({param($strUserName, $strAlias, $strEmail, $strMBDB, $strOpsMaster); Enable-Mailbox $strUserName -Alias $strAlias -Database $strMBDB -DomainController $strOpsMaster; Remove-MailboxPermission -Identity $strUserName -DomainController $strOpsMaster -User $strOtherName -AccessRights "FullAccess" | Out-Null; Add-MailboxPermission -Identity $strUserName -DomainController $strOpsMaster -User $strOtherName -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False | Out-Null;});
-						#}else{
-							$objJobCode = [scriptblock]::create({param($strUserName, $strAlias, $strEmail, $strMBDB, $strOpsMaster); Enable-Mailbox $strUserName -Alias $strAlias -Database $strMBDB -DomainController $strOpsMaster;});
-						#}
-					}
-					$strJobName = "CreateMailBox_" + $strUserName;
-					if (($strEmail -eq "") -or ($strEmail -eq $null)){
-						$strEmail = $strAlias + "@navy.mil";
-					}
-					#Run the background job.
-					if (([String]::IsNullOrEmpty($objJobs)) -or ([String]::IsNullOrEmpty($objExchPool))){
-						$global:objJobs += CreateRunSpaceJob -RSPool $global:objExchPool -JobName $strJobName -JobScript $objJobCode -Arguments @($strUserName, $strAlias, $strEmail, $strExchMBDB, $strDC);
+					#$strEmail = $txbEmail.Text.Trim();
+					#$strAlias = $txbAlias.Text.Trim();
+					$strOtherName = "";
+
+					$strMessage = "Creating MailBox for '" + $strUserName + "' on '" + $strExchServer + "\";
+					if (($strExchStore -eq "") -or ($strExchStore -eq $null)){
+						$strMessage = $strMessage + $strExchMBDB + "'.";
 					}
 					else{
-						$objJobs += CreateRunSpaceJob -RSPool $objExchPool -JobName $strJobName -JobScript $objJobCode -Arguments @($strUserName, $strAlias, $strEmail, $strExchMBDB, $strDC);
+						$strMessage = $strMessage + $strExchStore + "\" + $strExchMBDB + "'.";
 					}
-					if ($Error){
-						$strMessage = "Error creating background process to create the user Mailbox.";
-						#$strMessage = $strMessage + "   " + ([System.DateTime]::Now).ToString();
-						$strMessage = $strMessage + "`r`n" + $Error;
-						$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n";
-					}else{
-						$strMessage = "Creating the MailBox in a background process... `r`n";
-						$bDidMailBox = $True;
+					$strMessage = $strMessage + "`r`n";
+					$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+					if ($bUpdateResults -eq $True){
+						if (Get-Command UpdateResults -errorAction SilentlyContinue){
+							UpdateResults "$strMessage `r`n" $False;
+						}
 					}
-				}
 
-				$strRunningWorkLog = $strRunningWorkLog + $strMessage;
-				if ($bUpdateResults -eq $True){
-					if (Get-Command UpdateResults -errorAction SilentlyContinue){
-						UpdateResults "$strMessage `r`n" $False;
+					#$objUser = FindUser $strUserName;
+					if ($objUser.DistinguishedName.Contains("OU=NNPI")){
+						#if NNPI need to run the following
+						#check if extensionAttribute8 is populated.  It will have the other account name.
+						if (!([String]::IsNullOrEmpty($objUser.extensionAttribute8))){
+							$strOtherName = $objUser.extensionAttribute8;
+						}
+						else{
+							if ($strUserName.EndsWith(".nnpi")){
+								#for the .nnpi account ($strUserName = "first.last.nnpi")
+								$strOtherName = $strUserName.SubString(0, ($strUserName.Length - 5));
+							}else{
+								#for the regular account ($strUserName = "first.last")
+								$strOtherName = ($strUserName + ".nnpi");
+							}
+						}
+
+						$objUser = $null;
+						#$objUser = FindUser $strOtherName;
+						$objUser = Get-ADUser -Identity $strOtherName -Server $strDC -Properties *;
+						if ($objUser -eq $null){
+							$strOtherName = "";
+						}
+					}
+
+					$Error.Clear();
+					#$bDoBackGround = $chkBackGrndMB.Checked;
+					if ($bDoBackGround -ne $True){
+						#Need Exchange commands from here on...
+						if ((!(Get-Command "Add-ADPermission" -ErrorAction SilentlyContinue)) -or (!(Get-Command "Set-Mailbox" -ErrorAction SilentlyContinue)) -or (!(Get-PSSession)) -or (!(Get-Command "Enable-Mailbox" -ErrorAction SilentlyContinue)) -or (!(Get-Command "Remove-MailboxPermission" -ErrorAction SilentlyContinue))){
+							$strMessage = "  Importing Exchange commands.  " + ([System.DateTime]::Now).ToString() + "`r`n";
+							if ($bUpdateResults -eq $True){
+								UpdateResults $strMessage $False;
+							}
+
+							$objResult = SetupConn $strDomain "Default";
+							$strMessage = "  Done importing Exchange commands.  " + ([System.DateTime]::Now).ToString() + "`r`n";
+							if ($bUpdateResults -eq $True){
+								UpdateResults $strMessage $False;
+							}
+						}
+
+						$Error.Clear();
+						#From Ecxhange GUI
+						#$objResult = CreateMailBox ($strDomain + "\" + $strUserName) $strExchMBDB $strAlias $True;
+						if ($strAlias.EndsWith(".ctr", 1)){				#the 1 makes it case-insensitive.
+							$objResult = Enable-Mailbox $strUserName -Alias $strAlias -Database $strExchMBDB -DomainController $strDC -PrimarySmtpAddress $strEmail;
+
+							$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $False;
+							$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias@navy.mil"};
+							$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add="$strAlias@nmci-isf.com"};
+							$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add=($strAlias.replace(".ctr", "")) + "@navy.mil"};
+							$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddresses @{Add=($strAlias.replace(".ctr", "")) + "@nmci-isf.com"};
+							$objResult = Set-Mailbox -Identity $strUserName -DomainController $strDC -EmailAddressPolicyEnabled $True;
+						}
+						else{
+							$objResult = Enable-Mailbox $strUserName -Alias $strAlias -Database $strExchMBDB -DomainController $strDC;
+						}
+
+						if ($Error){
+							$strMessage = "Error creating user Mailbox.";
+							#$strMessage = $strMessage + "   " + ([System.DateTime]::Now).ToString();
+							$strMessage = $strMessage + "`r`n" + $Error;
+							$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n";
+							$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+						}
+						else{
+							$bDidMailBox = $True;
+							#if NNPI make sure AutoMapping is off.
+							if (($strOtherName -ne "") -and ($strOtherName -ne $null)){
+								$objResult = Remove-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess" -Confirm:$False | Out-Null;
+								$objResult = Add-MailboxPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False | Out-Null;
+							}
+
+							#Hide the email in the GAL, and set mailbox permissions.
+							if ($strUserName.EndsWith(".nnpi", 1)){		#the 1 makes it case-insensitive.
+								#Hide in GAL
+								$Error.Clear();
+								$objRet = Set-Mailbox -Identity $strUserName -DomainController $strDC -HiddenFromAddressListsEnabled $True;
+								if ($Error){
+									$strMessage = "  Setting 'HideInGAL' True had errors: 'r'n$Error";
+									WriteLogFile $strMessage $strLogDir $strLogFile;
+									$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+								}
+
+								if (!([String]::IsNullOrEmpty($strOtherName))){
+									#Receive-As
+									$Error.Clear();
+									$objRet = Add-ADPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -Confirm:$False -ExtendedRights Receive-As;
+									if ($Error){
+										$strMessage = "  Setting 'Receive-As' had errors: 'r'n$Error";
+										WriteLogFile $strMessage $strLogDir $strLogFile;
+										$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+									}
+
+									#Send As
+									$Error.Clear();
+									$objRet = Add-ADPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -Confirm:$False -AccessRights ExtendedRight -ExtendedRights "Send As";
+									if ($Error){
+										$strMessage = "  Setting 'Send As' had errors: 'r'n$Error";
+										WriteLogFile $strMessage $strLogDir $strLogFile;
+										$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+									}
+
+									#Read/Write Personal Information
+									#77b5b886-944a-11d1-aebd-0000f80367c1 = "Personal Information"
+									$Error.Clear();
+									$objRet = Add-ADPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -Confirm:$False -AccessRights:ReadProperty, WriteProperty -Properties "Personal Information";
+									if ($Error){
+										$strMessage = "  Setting 'Read/Write Personal Information' had errors: 'r'n$Error";
+										WriteLogFile $strMessage $strLogDir $strLogFile;
+										$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+									}
+
+									#Read/Write Phone and Mail Options
+									#e45795b2-9455-11d1-aebd-0000f80367c1 = "Phone and Mail Options"
+									$Error.Clear();
+									$objRet = Add-ADPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -Confirm:$False -AccessRights:ReadProperty, WriteProperty -Properties "Phone and Mail Options";
+									if ($Error){
+										$strMessage = "  Setting 'Read/Write Phone and Mail Options' had errors: 'r'n$Error";
+										WriteLogFile $strMessage $strLogDir $strLogFile;
+										$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+									}
+
+									#Read/Write Web Information
+									#e45795b3-9455-11d1-aebd-0000f80367c1 = "Web Information"
+									$Error.Clear();
+									$objRet = Add-ADPermission -Identity $strUserName -DomainController $strDC -User $strOtherName -Confirm:$False -AccessRights:ReadProperty, WriteProperty -Properties "Web Information";
+									if ($Error){
+										$strMessage = "  Setting 'Read/Write Web Information' had errors: 'r'n$Error";
+										WriteLogFile $strMessage $strLogDir $strLogFile;
+										$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+									}
+								}
+							}
+
+							$strMessage = "Successfully Created MailBox for '" + $strUserName + "' (Alias: " + $strAlias + ") on '" + $strExchServer + "\";
+							if (($strExchStore -eq "") -or ($strExchStore -eq $null)){
+								$strMessage = $strMessage + $strExchMBDB + "'.";
+							}
+							else{
+								$strMessage = $strMessage + $strExchStore + "\" + $strExchMBDB + "'.";
+							}
+							#$strMessage = $strMessage + "   " + ([System.DateTime]::Now).ToString();
+							$strMessage = $strMessage + "`r`n";
+							#$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+						}
+					}
+					else{
+						$Error.Clear();
+						if ($strAlias.EndsWith(".ctr", 1)){				#the 1 makes it case-insensitive.
+							$objJobCode = [scriptblock]::create({param($strUserName, $strAlias, $strEmail, $strMBDB, $strOpsMaster, $strOtherName); Enable-Mailbox $strUserName -Alias $strAlias -PrimarySmtpAddress $strEmail -Database $strMBDB -DomainController $strOpsMaster; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddressPolicyEnabled $False; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddresses @{Add="$strAlias@navy.mil"}; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddresses @{Add="$strAlias@nmci-isf.com"}; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddresses @{Add=($strAlias.replace(".ctr", "")) + "@navy.mil"}; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddresses @{Add=($strAlias.replace(".ctr", "")) + "@nmci-isf.com"}; Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -EmailAddressPolicyEnabled $True; DoNNPI $strUserName $strOtherName $strOpsMaster;});
+						}
+						else{
+							$objJobCode = [scriptblock]::create({param($strUserName, $strAlias, $strEmail, $strMBDB, $strOpsMaster, $strOtherName); Enable-Mailbox $strUserName -Alias $strAlias -Database $strMBDB -DomainController $strOpsMaster; DoNNPI $strUserName $strOtherName $strOpsMaster;});
+						}
+						$objJobCode2 = [scriptblock]::create('function DoNNPI{param($strUserName, $strOtherName, $strOpsMaster);}');
+						$strJobName = "CreateMailBox_" + $strUserName;
+						if (($strEmail -eq "") -or ($strEmail -eq $null)){
+							$strEmail = $strAlias + "@navy.mil";
+						}
+
+						#if NNPI make sure AutoMapping is off, and set mailbox perms, and Hide in GAL.
+						if (!([String]::IsNullOrEmpty($strOtherName))){
+							$objJobCode2 = [scriptblock]::create('function DoNNPI{param($strUserName, $strOtherName, $strOpsMaster); Remove-MailboxPermission -Identity $strUserName -DomainController $strOpsMaster -User $strOtherName -AccessRights "FullAccess" -Confirm:$False | Out-Null; Add-MailboxPermission -Identity $strUserName -DomainController $strOpsMaster -User $strOtherName -AccessRights "FullAccess" -InheritanceType All -AutoMapping $False | Out-Null; if ($strUserName.EndsWith(".nnpi", 1)){Set-Mailbox -Identity $strUserName -DomainController $strOpsMaster -HiddenFromAddressListsEnabled $True;Add-ADPermission -Identity $strUserName -DomainController $strOpsMaster -User $strOtherName -Confirm:$False -ExtendedRights Receive-As;Add-ADPermission -Identity $strUserName -DomainController $strOpsMaster -User $strOtherName -Confirm:$False -AccessRights ExtendedRight -ExtendedRights "Send As";Add-ADPermission -Identity $strUserName -DomainController $strOpsMaster -User $strOtherName -Confirm:$False -AccessRights:ReadProperty, WriteProperty -Properties "Personal Information";Add-ADPermission -Identity $strUserName -DomainController $strOpsMaster -User $strOtherName -Confirm:$False -AccessRights:ReadProperty, WriteProperty -Properties "Phone and Mail Options";Add-ADPermission -Identity $strUserName -DomainController $strOpsMaster -User $strOtherName -Confirm:$False -AccessRights:ReadProperty, WriteProperty -Properties "Web Information";};};');
+						}
+
+						#Run the background job.
+						if (([String]::IsNullOrEmpty($objJobs)) -or ([String]::IsNullOrEmpty($objExchPool))){
+							$global:objJobs += CreateRunSpaceJob -RSPool $global:objExchPool -JobName $strJobName -JobScript @($objJobCode, $objJobCode2) -Arguments @($strUserName, $strAlias, $strEmail, $strExchMBDB, $strDC, $strOtherName);
+						}
+						else{
+							$objJobs += CreateRunSpaceJob -RSPool $objExchPool -JobName $strJobName -JobScript $objJobCode -Arguments @($strUserName, $strAlias, $strEmail, $strExchMBDB, $strDC, $strOtherName);
+						}
+						if ($Error){
+							$strMessage = "Error creating background process to create the user Mailbox.";
+							#$strMessage = $strMessage + "   " + ([System.DateTime]::Now).ToString();
+							$strMessage = $strMessage + "`r`n" + $Error;
+							$strMessage = "`r`n" + ("-" * 100) + "`r`n" + $strMessage + "`r`n";
+						}
+						else{
+							$strMessage = "Creating the MailBox in a background process... `r`n";
+							$bDidMailBox = $True;
+						}
+					}
+
+					$strRunningWorkLog = $strRunningWorkLog + $strMessage;
+					if ($bUpdateResults -eq $True){
+						if (Get-Command UpdateResults -errorAction SilentlyContinue){
+							UpdateResults "$strMessage `r`n" $False;
+						}
 					}
 				}
 			}
@@ -1853,9 +1907,6 @@
 				if ($WhatSide -eq "nadsuswe"){
 					$WhatSide = "w";
 				}
-				if ($WhatSide -eq "snmci-isf"){
-					$WhatSide = "s";
-				}
 			}
 			else{
 				#if ($WhatSide -eq "pads"){
@@ -1863,6 +1914,9 @@
 				#}
 				#if ($WhatSide -eq "nmci-isf"){
 				#	$WhatSide = "n";
+				#}
+				#if ($WhatSide -eq "snmci-isf"){
+				#	$WhatSide = "s";
 				#}
 				$WhatSide = $WhatSide.substring(0, 1);
 			}

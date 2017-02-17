@@ -2748,6 +2748,7 @@
 
 		#Helpful URL's:
 			#https://social.technet.microsoft.com/Forums/windowsserver/en-US/df3bfd33-c070-4a9c-be98-c4da6e591a0a/forum-faq-using-powershell-to-assign-permissions-on-active-directory-objects?forum=winserverpowershell
+			#ACE meanings: -->  https://msdn.microsoft.com/en-us/library/cc223204.aspx
 
 		#Setup the PSObject to return.
 		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
@@ -2774,6 +2775,17 @@
 					$strEntry;
 				}
 			}
+
+			#. \\nawesdnifs101v.nadsuswe.nads.navy.mil\NMCIISF02$\ITSS-Tools\PS-CFW\AD-Routines.ps1;
+			$objUser = FindUser "matthew.j.bella.nnpi";
+			$objACLs = GetACLs $objUser.DistinguishedName;
+			$objACLs.Returns | FL
+			#or
+			$objACLs.Returns | where {$_.NTAccount -eq "NADSUSEA\matthew.j.bellair"};
+			#77b5b886-944a-11d1-aebd-0000f80367c1 = "Personal Information"
+			#e45795b2-9455-11d1-aebd-0000f80367c1 = "Phone and Mail Options"
+			#e45795b3-9455-11d1-aebd-0000f80367c1 = "Web Information"
+
 		#>
 
 		$InitializeDefaultDrives=$False;
