@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	17 February 2017
+# Updated Date:	21 February 2017
 # Purpose:		Exchange routines.
 # Requirements:	.\EWS-Files.txt  ($strEWSFiles)
 #				CreateMailBox() needs Jobs.ps1 if you want to run it in a background process. 
@@ -21,6 +21,8 @@
 	#17 February 2017
 		#Fixed a bug with CTR email addresses in CreateMailBox().
 		#Make CreateMailBox() set NNPI mailbox permissions.
+	#21 February 2017
+		#Bug fix -- CreateMailBox() NNPI updates.
 #>
 
 
@@ -677,10 +679,10 @@
 
 						#Run the background job.
 						if (([String]::IsNullOrEmpty($objJobs)) -or ([String]::IsNullOrEmpty($objExchPool))){
-							$global:objJobs += CreateRunSpaceJob -RSPool $global:objExchPool -JobName $strJobName -JobScript @($objJobCode, $objJobCode2) -Arguments @($strUserName, $strAlias, $strEmail, $strExchMBDB, $strDC, $strOtherName);
+							$global:objJobs += CreateRunSpaceJob -RSPool $global:objExchPool -JobName $strJobName -JobScript @($objJobCode2, $objJobCode) -Arguments @($strUserName, $strAlias, $strEmail, $strExchMBDB, $strDC, $strOtherName);
 						}
 						else{
-							$objJobs += CreateRunSpaceJob -RSPool $objExchPool -JobName $strJobName -JobScript $objJobCode -Arguments @($strUserName, $strAlias, $strEmail, $strExchMBDB, $strDC, $strOtherName);
+							$objJobs += CreateRunSpaceJob -RSPool $objExchPool -JobName $strJobName -JobScript @($objJobCode2, $objJobCode) -Arguments @($strUserName, $strAlias, $strEmail, $strExchMBDB, $strDC, $strOtherName);
 						}
 						if ($Error){
 							$strMessage = "Error creating background process to create the user Mailbox.";
