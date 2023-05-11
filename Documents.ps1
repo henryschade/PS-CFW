@@ -1,5 +1,5 @@
 ###########################################
-# Updated Date:	8 December 2016
+# Updated Date:	11 May 2023
 # Purpose:		Code to manipulate Documents.
 # Requirements: None
 ##########################################
@@ -12,6 +12,8 @@
 		#Added Close-OpenFile() routine.
 	#Changes for 8 December 2016
 		#Add "#Returns: " to functions, for routine documentation.
+	#Changes for 11 May 2023
+		#Add CSV functions.
 #>
 
 
@@ -92,7 +94,6 @@
 		#Clean up / Release Excel object
 		[System.Runtime.Interopservices.Marshal]::ReleaseComObject($objExcel) | Out-Null;
 		$objExcel = $null;
-
 	}
 
 	function SampleExcelUsageCOM{
@@ -237,7 +238,6 @@
 		#or
 		#$Query = "";
 		#$objData = ExcelXML $strDocPath $Query $WorkSheetName;
-
 	}
 
 	function SampleEncodeDecode{
@@ -299,6 +299,213 @@
 				}
 			}
 		} End { Write-Output "Closed $count Files" }
+	}
+
+	function Csv-Merge {
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)][String]$strBase64String, 
+			[ValidateNotNull()][Parameter(Mandatory=$False)][String]$strOutPut
+		);
+		#Description: Merge 2 CSV files into one.
+		#Returns: a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters passed in.
+			#$objReturn.Results		= $True or $False.
+			#$objReturn.Message		= "Success" or the error message.
+			#$objReturn.Returns		= 
+		#Inputs:
+			#$strBase64String = String to be Decoded
+			#$strOutPut = How to output.  "Display" or [Output file with full path]
+
+	}
+
+	function Csv-BuildCustomObject {
+		Param(
+			[Parameter(Mandatory=$True)]$custObject,
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$rowData,
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$headerColumns1,
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$headerColumns2
+		)
+
+		if ($null -eq $custObject) {
+			$custObject = [PSCustomObject]@{
+				$headerColumns1[0] = $rowData.($headerColumns2[0]);
+			};
+		}
+
+		#Add all the column data (as blanks) from file 1
+		for ($x = 1; $x -lt $headerColumns1.Count; $x++) {
+			$custObject | Add-Member NoteProperty -Name $headerColumns1[$x] -Value "" -Force;
+		}
+		#Add all the column data from file 2
+		for ($x = 1; $x -lt $headerColumns2.Count; $x++) {
+			$custObject | Add-Member NoteProperty -Name $headerColumns2[$x] -Value $rowData.($headerColumns2[$x]) -Force;
+		}
+
+		return $custObject;
+	}
+
+	function Csv-GetHeaderColumns {
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$strFilePath,
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$strDelimiter
+		)
+
+		[System.IO.StreamReader]$reader = [System.IO.File]::Open($strFilePath, [System.IO.FileMode]::Open);
+		$line = $reader.ReadLine();
+		$reader.Close();
+	
+		return $line -split $strDelimiter;
+	}
+
+	function Csv-MergeTwoFilesAllData {
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$strFile1Path,
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$strFile2Path
+		)
+		#Description: Merge entries from file 2 that match file 1, add non matches as a new row.
+		#Returns: a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters passed in.
+			#$objReturn.Results		= $True or $False.
+			#$objReturn.Message		= "Success" or the error message.
+			#$objReturn.Returns		= The merged file results.
+		#Inputs:
+			#$strFile1Path = First file to merge.
+			#$strFile2Path = Second file to merge.
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $False
+			Message = "Error"
+			Returns = "";
+		}
+
+		# Verify the 2 files exist.
+		if (![System.IO.File]::Exists($strFile1Path)) {
+			$objReturn.Message = "Error, file '$strFile1Path' could not be found.";
+			return $objReturn;
+		}
+		if (![System.IO.File]::Exists($strFile2Path)) {
+			$objReturn.Message = "Error, file '$strFile2Path' could not be found.";
+			return $objReturn;
+		}
+
+		$mergeResult = @{};
+		$itemCount = 0;
+		#$lineCount = (Get-Content -Path $strFile1Path | Measure-Object -Line).Lines;
+		$lineCount = 0;
+		Get-Content -Path $strFile2Path -ReadCount 100 | ForEach-Object { $lineCount += $_.Count; };
+		$lineCount--;		## To remove the count of the header row.
+		$delimiter = ",";
+		$headerColumns1 = Csv-GetHeaderColumns $strFile1Path $delimiter;
+		$headerColumns2 = Csv-GetHeaderColumns $strFile2Path $delimiter;
+
+		#Add all the entries from File1
+		Import-Csv $strFile1Path | ForEach-Object { 
+			$mergeResult[$_.($headerColumns1[0])] = $_;
+		}
+
+		#Add the entries from File2, updating matches and adding unMatched as new entry.
+		Import-Csv $strFile2Path | ForEach-Object { 
+			$itemCount++;
+
+			if ($mergeResult.ContainsKey($_.($headerColumns2[0]))) {
+				#Update Matched entries.
+				for ($x = 1; $x -lt $headerColumns2.Count; $x++) {
+					$mergeResult[$_.($headerColumns1[0])] | Add-Member NoteProperty -Name $headerColumns2[$x] -Value $_.($headerColumns2[$x]) -Force;
+				}
+			} else {
+				#unMatched entry, so build a Custom PS Object and add it
+				$custObject = [PSCustomObject]@{
+					$headerColumns1[0] = $_.($headerColumns2[0]);
+				};
+				$mergeResult[$_.($headerColumns2[0])] = Csv-BuildCustomObject $custObject $_ $headerColumns1 $headerColumns2;
+			}
+
+			if (Get-Command ('ShowProgress') -ErrorAction SilentlyContinue) {
+				ShowProgress $itemCount $lineCount "Merging files is in Progress" "line";
+			}
+		}
+
+		$objReturn.Results = $True
+		$objReturn.Message = "Success";
+		$objReturn.Returns = $mergeResult;
+
+		return $objReturn;
+	}
+
+	function Csv-MergeTwoFilesMatchesOnly {
+		Param(
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$strFile1Path, 
+			[ValidateNotNull()][Parameter(Mandatory=$True)]$strFile2Path
+		)
+		#Description: Merge entries from file 2 that match file 1, skips non matches.
+		#    Not fully coded.
+		#Returns: a PowerShell object.
+			#$objReturn.Name		= Name of this process, with paramaters passed in.
+			#$objReturn.Results		= $True or $False.  Was a zip file created.
+			#$objReturn.Message		= "Success" or the error message.
+			#$objReturn.Returns		= The merged file results.
+		#Inputs:
+			#$strFile1Path = First file to merge.
+			#$strFile2Path = Second file to merge.
+
+		#Setup the PSObject to return.
+		#http://stackoverflow.com/questions/21559724/getting-all-named-parameters-from-powershell-including-empty-and-set-ones
+		$CommandName = $PSCmdlet.MyInvocation.InvocationName;
+		$ParameterList = (Get-Command -Name $CommandName).Parameters;
+		$strTemp = "";
+		foreach ($key in $ParameterList.keys){
+			$var = Get-Variable -Name $key -ErrorAction SilentlyContinue;
+			if($var){$strTemp += "[$($var.name) = $($var.value)] ";}
+		}
+		$strTemp = $CommandName + "(" + $strTemp.Trim() + ")";
+		$objReturn = New-Object PSObject -Property @{
+			Name = $strTemp
+			Results = $False
+			Message = "Error"
+			Returns = "";
+		}
+
+		$file1 = Import-Csv -Path $strFile1Path;
+		$file2 = Import-Csv -Path $strFile2Path;
+
+		$mergeResult = @();
+
+		foreach ($line in $file1) {
+			$match = $file2 | Where-Object { $_.one -eq $line.one };
+			if ($match) {
+				$row = "" | Select-Object one, two, three, four, five, six, seven, eight, nine;
+
+				$row.one = $line.one;
+				$row.two = $line.two;
+				$row.three = $line.three;
+				$row.four = $line.four;
+				$row.five = $line.five;
+				$row.six = $line.six;
+				$row.seven = $line.seven;
+
+				$row.eight = $match.eight;
+				$row.nine = $match.nine;
+
+				$mergeResult += $row;
+			}
+		}
+
+		$objReturn.Results = $True
+		$objReturn.Message = "Success";
+		$objReturn.Returns = $mergeResult;
+
+		return $objReturn;
 	}
 
 	function DeCode{
@@ -865,7 +1072,6 @@
 		Write-Host "Results have been written to: "
 		Write-Host $strOutFile;
 		Write-Host "`r`n"
-
 	}
 
 	function URLSaveToFile{
@@ -982,4 +1188,3 @@
 
 		return $objReturn;
 	}
-
